@@ -1,20 +1,17 @@
 'use client';
 
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar, TopBar } from "@/components/layout";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: 'swap',
 });
-
-// Metadata needs to be in a server component or separate file
-// Moving static metadata to a server-side approach
 
 export default function RootLayout({
   children,
@@ -61,7 +58,20 @@ export default function RootLayout({
         >
           {children}
         </main>
+        <Toaster
+          position="top-right"
+          richColors
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              color: 'var(--foreground)',
+            },
+          }}
+        />
       </body>
     </html>
   );
 }
+
