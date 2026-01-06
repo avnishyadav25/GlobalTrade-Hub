@@ -3,113 +3,125 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Kite-style Light Theme - Default */
 :root {
-  /* Trading platform theme - Dark by default */
-  --background: #0a0e17;
-  --background-secondary: #121a2b;
-  --background-tertiary: #1a2438;
+  /* Kite-style backgrounds (light first) */
+  --background: #fafbfc;
+  --background-secondary: #ffffff;
+  --background-tertiary: #f5f5f5;
+  --foreground: #212121;
+  --foreground-muted: #666666;
+
+  /* Kite trading colors */
+  --profit: #4caf50;
+  --profit-dim: rgba(76, 175, 80, 0.12);
+  --loss: #e53935;
+  --loss-dim: rgba(229, 57, 53, 0.12);
+
+  /* Kite Buy/Sell colors */
+  --buy: #387ed1;
+  --buy-dim: rgba(56, 126, 209, 0.12);
+  --sell: #e53935;
+  --sell-dim: rgba(229, 57, 53, 0.12);
+
+  /* Kite brand - Orange */
+  --primary: #ff5722;
+  --primary-foreground: #ffffff;
+  --primary-dim: rgba(255, 87, 34, 0.12);
+
+  /* shadcn compatible */
+  --card: #ffffff;
+  --card-foreground: #212121;
+  --popover: #ffffff;
+  --popover-foreground: #212121;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #212121;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #ff5722;
+  --accent-foreground: #ffffff;
+  --destructive: #e53935;
+  --destructive-foreground: #ffffff;
+  --border: #e0e0e0;
+  --border-hover: #bdbdbd;
+  --input: #f5f5f5;
+  --ring: #ff5722;
+
+  /* Chart colors */
+  --chart-1: #387ed1;
+  --chart-2: #4caf50;
+  --chart-3: #e53935;
+  --chart-4: #ff9800;
+  --chart-5: #9c27b0;
+
+  /* Shadows - Kite uses subtle shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --radius: 0.25rem;
+
+  /* Sidebar/Watchlist */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #212121;
+  --sidebar-primary: #ff5722;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #212121;
+  --sidebar-border: #e0e0e0;
+  --sidebar-ring: #ff5722;
+}
+
+/* Dark theme override */
+.dark,
+[data-theme="dark"] {
+  --background: #1a1a2e;
+  --background-secondary: #252542;
+  --background-tertiary: #2d2d4a;
   --foreground: #e4e8ef;
   --foreground-muted: #8b95a7;
 
-  /* Trading specific colors */
-  --profit: #22c55e;
-  --profit-dim: rgba(34, 197, 94, 0.2);
-  --loss: #ef4444;
-  --loss-dim: rgba(239, 68, 68, 0.2);
-
-  /* shadcn compatible variables */
-  --card: #121a2b;
+  --card: #252542;
   --card-foreground: #e4e8ef;
-  --popover: #121a2b;
+  --popover: #252542;
   --popover-foreground: #e4e8ef;
-  --primary: #6366f1;
+  --primary: #ff7043;
   --primary-foreground: #ffffff;
-  --primary-dim: rgba(99, 102, 241, 0.2);
-  --secondary: #1a2438;
+  --primary-dim: rgba(255, 112, 67, 0.2);
+  --secondary: #2d2d4a;
   --secondary-foreground: #e4e8ef;
-  --muted: #1a2438;
+  --muted: #2d2d4a;
   --muted-foreground: #8b95a7;
-  --accent: #8b5cf6;
+  --accent: #ff7043;
   --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #1e293b;
-  --border-hover: #334155;
-  --input: #1a2438;
-  --ring: #6366f1;
+  --border: #3d3d5c;
+  --border-hover: #4d4d6a;
+  --input: #2d2d4a;
+  --ring: #ff7043;
 
-  /* Chart colors */
-  --chart-1: #6366f1;
-  --chart-2: #22c55e;
-  --chart-3: #ef4444;
-  --chart-4: #f59e0b;
-  --chart-5: #8b5cf6;
-
-  /* Shadows */
+  /* Shadows for dark theme */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-  --radius: 0.625rem;
 
-  /* Sidebar */
-  --sidebar: #121a2b;
+  /* Sidebar dark */
+  --sidebar: #252542;
   --sidebar-foreground: #e4e8ef;
-  --sidebar-primary: #6366f1;
+  --sidebar-primary: #ff7043;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a2438;
+  --sidebar-accent: #2d2d4a;
   --sidebar-accent-foreground: #e4e8ef;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #6366f1;
-}
+  --sidebar-border: #3d3d5c;
+  --sidebar-ring: #ff7043;
 
-/* Light theme override */
-.light,
-[data-theme="light"] {
-  --background: #f8fafc;
-  --background-secondary: #ffffff;
-  --background-tertiary: #f1f5f9;
-  --foreground: #0f172a;
-  --foreground-muted: #64748b;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --primary-dim: rgba(99, 102, 241, 0.15);
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --border-hover: #cbd5e1;
-  --input: #e2e8f0;
-  --ring: #6366f1;
-  --accent: #8b5cf6;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-
-  /* Shadows for light theme */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-
-  /* Sidebar light */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #6366f1;
-
-  /* Trading colors stay the same */
-  --profit: #22c55e;
-  --profit-dim: rgba(34, 197, 94, 0.15);
-  --loss: #ef4444;
-  --loss-dim: rgba(239, 68, 68, 0.15);
+  /* Trading colors */
+  --profit: #4caf50;
+  --profit-dim: rgba(76, 175, 80, 0.2);
+  --loss: #e53935;
+  --loss-dim: rgba(229, 57, 53, 0.2);
+  --buy: #42a5f5;
+  --buy-dim: rgba(66, 165, 245, 0.2);
+  --sell: #ef5350;
+  --sell-dim: rgba(239, 83, 80, 0.2);
 }
 
 @theme inline {
@@ -120,6 +132,8 @@
   --color-foreground-muted: var(--foreground-muted);
   --color-profit: var(--profit);
   --color-loss: var(--loss);
+  --color-buy: var(--buy);
+  --color-sell: var(--sell);
   --color-primary: var(--primary);
   --color-accent: var(--accent);
   --color-border: var(--border);
@@ -150,9 +164,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 }
@@ -169,29 +183,30 @@ html {
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  line-height: 1.6;
+  line-height: 1.5;
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
+  font-size: 13px;
 }
 
-/* Custom scrollbar */
+/* Kite-style scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background-secondary);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground-muted);
+  background: var(--border-hover);
 }
 
 /* Price flash animations */
@@ -252,30 +267,38 @@ body {
   transition: color 0.2s ease;
 }
 
-/* Trading specific badge variants */
-.badge-profit {
-  background: var(--profit-dim);
-  color: var(--profit);
+/* Kite-style buttons */
+.btn-buy {
+  background: var(--buy);
+  color: white;
 }
 
-.badge-loss {
-  background: var(--loss-dim);
-  color: var(--loss);
+.btn-buy:hover {
+  background: #2e6bb8;
 }
 
-/* Glass effect */
-.glass {
-  background: rgba(18, 26, 43, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.btn-sell {
+  background: var(--sell);
+  color: white;
+}
+
+.btn-sell:hover {
+  background: #c62828;
 }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #ff8a65 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Kite-style card */
+.kite-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 @layer base {

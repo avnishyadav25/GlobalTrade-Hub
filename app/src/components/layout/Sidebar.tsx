@@ -1,46 +1,49 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
-    LayoutDashboard,
+    Search,
     TrendingUp,
-    Wallet,
-    ScrollText,
-    Shield,
+    TrendingDown,
+    Plus,
     Settings,
-    ChevronLeft,
-    ChevronRight,
-    Zap,
-    Menu,
+    ChevronDown,
     X,
+    Bell,
+    Zap,
 } from 'lucide-react';
+import { WATCHLIST_ASSETS } from '@/lib/mockData';
+import { useTradingStore } from '@/stores/tradingStore';
+import { useWebSocketStore } from '@/stores/websocketStore';
 
-const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { icon: TrendingUp, label: 'Markets', href: '/markets' },
-    { icon: Wallet, label: 'Portfolio', href: '/portfolio' },
-    { icon: ScrollText, label: 'Orders', href: '/orders' },
-    { icon: Shield, label: 'Risk Manager', href: '/risk' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
+// Kite-style watchlist tabs
+const WATCHLIST_TABS = [
+    { id: 1, name: 'Watchlist 1' },
+    { id: 2, name: 'Watchlist 2' },
+    { id: 3, name: 'Watchlist 3' },
+    { id: 4, name: 'Watchlist 4' },
+    { id: 5, name: 'Watchlist 5' },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState(1);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const { watchlist, addToWatchlist, removeFromWatchlist } = useTradingStore();
+    const { prices } = useWebSocketStore();
 
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 1024);
-            if (window.innerWidth >= 1024) {
+            setIsMobile(window.innerWidth < 768);
+            if (window.innerWidth >= 768) {
                 setIsMobileOpen(false);
             }
         };
-
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
@@ -50,133 +53,202 @@ export function Sidebar() {
         setIsMobileOpen(false);
     }, [pathname]);
 
-    useEffect(() => {
-        if (isMobileOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => {
-            document.body.style.overflow = '';
+    // Get watchlist assets with live prices
+    const watchlistAssets = WATCHLIST_ASSETS.filter(a => watchlist.includes(a.symbol)).map(asset => {
+        const livePrice = prices[asset.symbol];
+        return {
+            ...asset,
+            price: livePrice?.price ?? asset.price,
+            change: livePrice?.change ?? asset.change,
+            changePercent: livePrice?.changePercent ?? asset.changePercent,
         };
-    }, [isMobileOpen]);
+    });
+
+    // Filter by search
+    const filteredAssets = searchQuery
+        ? WATCHLIST_ASSETS.filter(a =>
+            a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ).slice(0, 8)
+        : watchlistAssets;
 
     const MobileMenuButton = () => (
         <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="lg:hidden fixed top-4 left-4 z-[60] p-2 rounded-lg bg-card border border-border"
-            aria-label="Toggle menu"
+            className="md:hidden fixed top-3 left-3 z-[60] p-2 rounded bg-card border border-border"
+            aria-label="Toggle watchlist"
         >
             <AnimatePresence mode="wait">
                 {isMobileOpen ? (
-                    <motion.div
-                        key="close"
-                        initial={{ rotate: -90, opacity: 0 }}
-                        animate={{ rotate: 0, opacity: 1 }}
-                        exit={{ rotate: 90, opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                    >
-                        <X size={22} />
+                    <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+                        <X size={18} />
                     </motion.div>
                 ) : (
-                    <motion.div
-                        key="menu"
-                        initial={{ rotate: 90, opacity: 0 }}
-                        animate={{ rotate: 0, opacity: 1 }}
-                        exit={{ rotate: -90, opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                    >
-                        <Menu size={22} />
+                    <motion.div key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
+                        <TrendingUp size={18} />
                     </motion.div>
                 )}
             </AnimatePresence>
         </button>
     );
 
-    const MobileOverlay = () => (
-        <AnimatePresence>
-            {isMobileOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setIsMobileOpen(false)}
-                    className="lg:hidden fixed inset-0 z-40 bg-black/70"
-                />
-            )}
-        </AnimatePresence>
-    );
-
-    const NavContent = ({ showLabels = true }: { showLabels?: boolean }) => (
-        <>
-            {/* Logo */}
-            <div className="flex items-center gap-3 p-4 h-16">
-                <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{
-                        background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)',
-                    }}
-                >
-                    <Zap size={22} color="white" />
-                </div>
-                <AnimatePresence>
-                    {showLabels && (
-                        <motion.div
-                            initial={{ opacity: 0, width: 0 }}
-                            animate={{ opacity: 1, width: 'auto' }}
-                            exit={{ opacity: 0, width: 0 }}
-                            className="overflow-hidden whitespace-nowrap"
-                        >
-                            <h1 className="font-bold text-lg gradient-text">GlobalTrade</h1>
-                            <p className="text-xs text-muted-foreground">Hub</p>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+    const WatchlistContent = () => (
+        <div className="flex flex-col h-full">
+            {/* Header with Logo */}
+            <div className="p-3 border-b border-border flex items-center justify-between">
+                <Link href="/" className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
+                        <Zap size={16} className="text-white" />
+                    </div>
+                    <span className="font-bold text-lg gradient-text">GlobalTrade</span>
+                </Link>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-3 py-4">
-                <ul className="space-y-1">
-                    {navItems.map((item) => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <li key={item.href}>
+            {/* Market Indices Bar */}
+            <div className="px-3 py-2 border-b border-border text-xs flex gap-4">
+                <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">NIFTY 50</span>
+                    <span className="text-profit">22,456.80</span>
+                    <span className="text-profit">+0.45%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">SENSEX</span>
+                    <span className="text-profit">73,890.45</span>
+                    <span className="text-profit">+0.38%</span>
+                </div>
+            </div>
+
+            {/* Search */}
+            <div className="p-2 border-b border-border">
+                <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                        type="text"
+                        placeholder="Search eg: infy bse, nifty fut"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 text-sm bg-secondary border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                </div>
+            </div>
+
+            {/* Watchlist Tabs */}
+            <div className="flex border-b border-border">
+                {WATCHLIST_TABS.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === tab.id
+                                ? 'text-primary border-b-2 border-primary'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                    >
+                        {tab.id}
+                    </button>
+                ))}
+                <button className="px-2 py-2 text-muted-foreground hover:text-foreground">
+                    <Settings size={12} />
+                </button>
+            </div>
+
+            {/* Stock List */}
+            <div className="flex-1 overflow-y-auto">
+                {filteredAssets.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground text-sm">
+                        {searchQuery ? 'No results found' : 'Add stocks to your watchlist'}
+                    </div>
+                ) : (
+                    <div>
+                        {filteredAssets.map((asset) => {
+                            const isPositive = asset.change >= 0;
+                            const isInWatchlist = watchlist.includes(asset.symbol);
+                            const currency = asset.market === 'india' ? '' : '$';
+
+                            return (
                                 <Link
-                                    href={item.href}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive
-                                            ? 'bg-primary/20 text-primary'
-                                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                                        }`}
+                                    key={asset.symbol}
+                                    href={`/trade/${asset.symbol}`}
+                                    className="group flex items-center justify-between px-3 py-2.5 hover:bg-secondary transition-colors border-b border-border/50"
                                 >
-                                    <item.icon
-                                        size={20}
-                                        className="flex-shrink-0 transition-colors group-hover:text-primary"
-                                    />
-                                    <AnimatePresence>
-                                        {showLabels && (
-                                            <motion.span
-                                                initial={{ opacity: 0, width: 0 }}
-                                                animate={{ opacity: 1, width: 'auto' }}
-                                                exit={{ opacity: 0, width: 0 }}
-                                                className="text-sm font-medium overflow-hidden whitespace-nowrap"
-                                            >
-                                                {item.label}
-                                            </motion.span>
-                                        )}
-                                    </AnimatePresence>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-medium text-sm ${isPositive ? 'text-foreground' : 'text-foreground'}`}>
+                                                {asset.symbol}
+                                            </span>
+                                            {asset.exchange && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {asset.exchange}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className={`text-sm font-medium ${isPositive ? 'text-profit' : 'text-loss'}`}>
+                                            {isPositive ? <TrendingUp size={10} className="inline mr-1" /> : <TrendingDown size={10} className="inline mr-1" />}
+                                            {asset.changePercent.toFixed(2)}%
+                                        </div>
+                                        <div className="text-xs text-muted-foreground price-text">
+                                            {currency}{asset.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </div>
+                                    </div>
+                                    {/* Quick actions on hover */}
+                                    <div className="hidden group-hover:flex items-center gap-1 ml-2">
+                                        <button
+                                            className="px-2 py-0.5 text-[10px] font-medium bg-buy text-white rounded"
+                                            onClick={(e) => { e.preventDefault(); }}
+                                        >
+                                            B
+                                        </button>
+                                        <button
+                                            className="px-2 py-0.5 text-[10px] font-medium bg-sell text-white rounded"
+                                            onClick={(e) => { e.preventDefault(); }}
+                                        >
+                                            S
+                                        </button>
+                                    </div>
                                 </Link>
-                            </li>
-                        );
-                    })}
-                </ul>
-            </nav>
-        </>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer with page count */}
+            <div className="p-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map(n => (
+                        <button
+                            key={n}
+                            onClick={() => setActiveTab(n)}
+                            className={`w-6 h-6 rounded ${activeTab === n ? 'bg-primary text-white' : 'hover:bg-secondary'}`}
+                        >
+                            {n}
+                        </button>
+                    ))}
+                </div>
+                <button className="hover:text-foreground">
+                    <Settings size={14} />
+                </button>
+            </div>
+        </div>
     );
 
     return (
         <>
             <MobileMenuButton />
-            <MobileOverlay />
+
+            {/* Mobile Overlay */}
+            <AnimatePresence>
+                {isMobileOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileOpen(false)}
+                        className="md:hidden fixed inset-0 z-40 bg-black/50"
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Mobile Sidebar */}
             <AnimatePresence>
@@ -186,55 +258,23 @@ export function Sidebar() {
                         animate={{ x: 0 }}
                         exit={{ x: -280 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="lg:hidden fixed left-0 top-0 h-screen z-50 flex flex-col w-[280px] bg-card border-r border-border"
+                        className="md:hidden fixed left-0 top-0 h-screen z-50 w-[280px] bg-card border-r border-border"
                     >
-                        <NavContent showLabels={true} />
-                        <div className="p-4">
-                            <p className="text-xs text-center text-muted-foreground">
-                                Tap outside to close
-                            </p>
-                        </div>
+                        <WatchlistContent />
                     </motion.aside>
                 )}
             </AnimatePresence>
 
-            {/* Desktop Sidebar */}
-            <motion.aside
-                initial={false}
-                animate={{ width: isCollapsed ? 72 : 240 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="hidden lg:flex fixed left-0 top-0 h-screen z-50 flex-col bg-card border-r border-border"
-            >
-                <NavContent showLabels={!isCollapsed} />
-
-                {/* Collapse Toggle */}
-                <div className="p-3">
-                    <button
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors bg-secondary text-muted-foreground hover:text-foreground"
-                    >
-                        {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-                        <AnimatePresence>
-                            {!isCollapsed && (
-                                <motion.span
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="text-sm"
-                                >
-                                    Collapse
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
-                    </button>
-                </div>
-            </motion.aside>
+            {/* Desktop Sidebar - Kite Watchlist Style */}
+            <aside className="hidden md:flex fixed left-0 top-0 h-screen z-50 w-[280px] bg-card border-r border-border flex-col">
+                <WatchlistContent />
+            </aside>
         </>
     );
 }
 
 export const SIDEBAR_WIDTH = {
-    expanded: 240,
-    collapsed: 72,
+    expanded: 280,
+    collapsed: 280,
     mobile: 0,
 };

@@ -43,7 +43,7 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
@@ -56,10 +56,10 @@ export default function RootLayout({
           <main
             className="transition-all duration-200 bg-background text-foreground"
             style={{
-              marginLeft: isAuthPage ? 0 : (isMobile ? 0 : '240px'),
+              marginLeft: isAuthPage ? 0 : (isMobile ? 0 : '280px'),
               minHeight: '100vh',
-              padding: isAuthPage ? 0 : (isMobile ? '16px' : '24px'),
-              paddingTop: isAuthPage ? 0 : (isMobile ? '72px' : '88px'),
+              padding: isAuthPage ? 0 : (isMobile ? '12px' : '16px'),
+              paddingTop: isAuthPage ? 0 : (isMobile ? '56px' : '64px'),
             }}
           >
             {children}
