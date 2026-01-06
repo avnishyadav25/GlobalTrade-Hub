@@ -2,19 +2,23 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from 'next-themes';
 import {
     Settings,
     User,
     Bell,
     Shield,
     Palette,
-    Globe,
     Link2,
     ChevronRight,
     Check,
+    Moon,
+    Sun,
+    Monitor,
 } from 'lucide-react';
 
 export default function SettingsPage() {
+    const { theme, setTheme } = useTheme();
     const [notifications, setNotifications] = useState({
         priceAlerts: true,
         orderFills: true,
@@ -22,7 +26,6 @@ export default function SettingsPage() {
         marketOpen: true,
     });
 
-    const [theme, setTheme] = useState('dark');
     const [currency, setCurrency] = useState('USD');
 
     const settingsSections = [
@@ -46,15 +49,21 @@ export default function SettingsPage() {
         },
     ];
 
+    const themeOptions = [
+        { value: 'dark', label: 'Dark', icon: Moon },
+        { value: 'light', label: 'Light', icon: Sun },
+        { value: 'system', label: 'System', icon: Monitor },
+    ];
+
     return (
         <div className="space-y-6 max-w-4xl">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <Settings size={28} style={{ color: 'var(--primary)' }} />
+                    <Settings size={28} className="text-primary" />
                     Settings
                 </h1>
-                <p className="text-sm mt-1" style={{ color: 'var(--foreground-muted)' }}>
+                <p className="text-sm mt-1 text-muted-foreground">
                     Customize your trading experience
                 </p>
             </div>
@@ -63,49 +72,43 @@ export default function SettingsPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="card"
+                className="rounded-xl border border-border bg-card"
             >
-                <div className="card-header flex items-center gap-2">
-                    <Palette size={18} style={{ color: 'var(--accent)' }} />
+                <div className="p-4 border-b border-border flex items-center gap-2">
+                    <Palette size={18} className="text-accent" />
                     <h3 className="font-semibold">Appearance</h3>
                 </div>
-                <div className="card-body space-y-4">
+                <div className="p-4 space-y-4">
                     <div>
-                        <label className="text-sm mb-3 block" style={{ color: 'var(--foreground-muted)' }}>
+                        <label className="text-sm mb-3 block text-muted-foreground">
                             Theme
                         </label>
                         <div className="flex gap-3">
-                            {[
-                                { value: 'dark', label: 'Dark', icon: '🌙' },
-                                { value: 'light', label: 'Light', icon: '☀️' },
-                                { value: 'system', label: 'System', icon: '💻' },
-                            ].map((option) => (
-                                <button
-                                    key={option.value}
-                                    onClick={() => setTheme(option.value)}
-                                    className={`flex-1 p-4 rounded-xl border-2 transition-all ${theme === option.value ? 'border-[var(--primary)]' : 'border-transparent'
-                                        }`}
-                                    style={{
-                                        background:
-                                            theme === option.value ? 'var(--primary-dim)' : 'var(--background-tertiary)',
-                                    }}
-                                >
-                                    <div className="text-2xl mb-2">{option.icon}</div>
-                                    <div className="text-sm font-medium">{option.label}</div>
-                                    {theme === option.value && (
-                                        <Check
-                                            size={14}
-                                            className="mt-1 mx-auto"
-                                            style={{ color: 'var(--primary)' }}
-                                        />
-                                    )}
-                                </button>
-                            ))}
+                            {themeOptions.map((option) => {
+                                const Icon = option.icon;
+                                return (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => setTheme(option.value)}
+                                        className={`flex-1 p-4 rounded-xl border-2 transition-all ${theme === option.value ? 'border-primary bg-primary/10' : 'border-transparent bg-secondary'
+                                            }`}
+                                    >
+                                        <Icon size={24} className={`mb-2 mx-auto ${theme === option.value ? 'text-primary' : 'text-muted-foreground'}`} />
+                                        <div className="text-sm font-medium">{option.label}</div>
+                                        {theme === option.value && (
+                                            <Check
+                                                size={14}
+                                                className="mt-1 mx-auto text-primary"
+                                            />
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
                     <div>
-                        <label className="text-sm mb-3 block" style={{ color: 'var(--foreground-muted)' }}>
+                        <label className="text-sm mb-3 block text-muted-foreground">
                             Display Currency
                         </label>
                         <div className="flex gap-2">
@@ -113,11 +116,10 @@ export default function SettingsPage() {
                                 <button
                                     key={curr}
                                     onClick={() => setCurrency(curr)}
-                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                                    style={{
-                                        background: currency === curr ? 'var(--primary)' : 'var(--background-tertiary)',
-                                        color: currency === curr ? 'white' : 'var(--foreground-muted)',
-                                    }}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currency === curr
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-secondary text-muted-foreground hover:text-foreground'
+                                        }`}
                                 >
                                     {curr}
                                 </button>
@@ -132,13 +134,13 @@ export default function SettingsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="card"
+                className="rounded-xl border border-border bg-card"
             >
-                <div className="card-header flex items-center gap-2">
-                    <Bell size={18} style={{ color: 'var(--primary)' }} />
+                <div className="p-4 border-b border-border flex items-center gap-2">
+                    <Bell size={18} className="text-primary" />
                     <h3 className="font-semibold">Notifications</h3>
                 </div>
-                <div className="card-body space-y-4">
+                <div className="p-4 space-y-4">
                     {Object.entries({
                         priceAlerts: { label: 'Price Alerts', description: 'Get notified when prices hit your targets' },
                         orderFills: { label: 'Order Fills', description: 'Notifications when your orders are executed' },
@@ -151,18 +153,16 @@ export default function SettingsPage() {
                         >
                             <div>
                                 <p className="font-medium text-sm">{label}</p>
-                                <p className="text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                                <p className="text-xs text-muted-foreground">
                                     {description}
                                 </p>
                             </div>
                             <button
                                 onClick={() => setNotifications(prev => ({ ...prev, [key]: !prev[key as keyof typeof notifications] }))}
-                                className="relative w-12 h-6 rounded-full transition-colors"
-                                style={{
-                                    background: notifications[key as keyof typeof notifications]
-                                        ? 'var(--primary)'
-                                        : 'var(--background-tertiary)',
-                                }}
+                                className={`relative w-12 h-6 rounded-full transition-colors ${notifications[key as keyof typeof notifications]
+                                    ? 'bg-primary'
+                                    : 'bg-secondary'
+                                    }`}
                             >
                                 <motion.div
                                     className="absolute top-1 w-4 h-4 bg-white rounded-full shadow"
@@ -184,38 +184,35 @@ export default function SettingsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 + sectionIndex * 0.1 }}
-                    className="card"
+                    className="rounded-xl border border-border bg-card"
                 >
-                    <div className="card-header flex items-center gap-2">
-                        <section.icon size={18} style={{ color: 'var(--accent)' }} />
+                    <div className="p-4 border-b border-border flex items-center gap-2">
+                        <section.icon size={18} className="text-accent" />
                         <h3 className="font-semibold">{section.title}</h3>
                     </div>
-                    <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                    <div className="divide-y divide-border">
                         {section.items.map((item, index) => (
                             <div
                                 key={index}
-                                className="flex items-center justify-between px-5 py-4 hover:bg-[var(--background-tertiary)] cursor-pointer transition-colors"
+                                className="flex items-center justify-between px-4 py-4 hover:bg-secondary/50 cursor-pointer transition-colors"
                             >
                                 <div>
                                     <p className="font-medium text-sm">{item.label}</p>
-                                    <p className="text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                                    <p className="text-xs text-muted-foreground">
                                         {item.description}
                                     </p>
                                 </div>
                                 {'status' in item ? (
                                     <span
-                                        className="text-xs px-2 py-1 rounded font-medium"
-                                        style={{
-                                            background:
-                                                item.status === 'connected' ? 'var(--profit-dim)' : 'var(--background-tertiary)',
-                                            color:
-                                                item.status === 'connected' ? 'var(--profit)' : 'var(--foreground-muted)',
-                                        }}
+                                        className={`text-xs px-2 py-1 rounded font-medium ${item.status === 'connected'
+                                            ? 'bg-profit/20 text-profit'
+                                            : 'bg-secondary text-muted-foreground'
+                                            }`}
                                     >
                                         {item.status === 'connected' ? 'Connected' : 'Connect'}
                                     </span>
                                 ) : (
-                                    <ChevronRight size={18} style={{ color: 'var(--foreground-muted)' }} />
+                                    <ChevronRight size={18} className="text-muted-foreground" />
                                 )}
                             </div>
                         ))}
@@ -228,30 +225,24 @@ export default function SettingsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="card border-red-500/30"
-                style={{ background: 'rgba(239, 68, 68, 0.05)' }}
+                className="rounded-xl border border-destructive/30 bg-destructive/5"
             >
-                <div className="card-header flex items-center gap-2">
-                    <Shield size={18} style={{ color: 'var(--loss)' }} />
-                    <h3 className="font-semibold" style={{ color: 'var(--loss)' }}>
+                <div className="p-4 border-b border-destructive/30 flex items-center gap-2">
+                    <Shield size={18} className="text-destructive" />
+                    <h3 className="font-semibold text-destructive">
                         Danger Zone
                     </h3>
                 </div>
-                <div className="card-body">
+                <div className="p-4">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="font-medium text-sm">Reset Paper Trading Balance</p>
-                            <p className="text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                            <p className="text-xs text-muted-foreground">
                                 Reset your virtual balance to $100,000
                             </p>
                         </div>
                         <button
-                            className="px-4 py-2 rounded-lg text-sm font-medium border"
-                            style={{
-                                borderColor: 'var(--loss)',
-                                color: 'var(--loss)',
-                                background: 'transparent',
-                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium border border-destructive text-destructive hover:bg-destructive/10 transition-colors"
                         >
                             Reset Balance
                         </button>

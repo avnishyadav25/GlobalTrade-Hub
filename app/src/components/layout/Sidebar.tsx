@@ -33,7 +33,6 @@ export function Sidebar() {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
-    // Detect mobile viewport
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 1024);
@@ -47,12 +46,10 @@ export function Sidebar() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Close mobile menu on navigation
     useEffect(() => {
         setIsMobileOpen(false);
     }, [pathname]);
 
-    // Prevent body scroll when mobile menu is open
     useEffect(() => {
         if (isMobileOpen) {
             document.body.style.overflow = 'hidden';
@@ -64,15 +61,10 @@ export function Sidebar() {
         };
     }, [isMobileOpen]);
 
-    // Mobile hamburger button (rendered in TopBar via portal or separate component)
     const MobileMenuButton = () => (
         <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="lg:hidden fixed top-4 left-4 z-[60] p-2 rounded-lg"
-            style={{
-                background: 'var(--background-secondary)',
-                border: '1px solid var(--border)',
-            }}
+            className="lg:hidden fixed top-4 left-4 z-[60] p-2 rounded-lg bg-card border border-border"
             aria-label="Toggle menu"
         >
             <AnimatePresence mode="wait">
@@ -101,7 +93,6 @@ export function Sidebar() {
         </button>
     );
 
-    // Mobile overlay
     const MobileOverlay = () => (
         <AnimatePresence>
             {isMobileOpen && (
@@ -110,14 +101,12 @@ export function Sidebar() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setIsMobileOpen(false)}
-                    className="lg:hidden fixed inset-0 z-40"
-                    style={{ background: 'rgba(0, 0, 0, 0.7)' }}
+                    className="lg:hidden fixed inset-0 z-40 bg-black/70"
                 />
             )}
         </AnimatePresence>
     );
 
-    // Navigation content (shared between desktop and mobile)
     const NavContent = ({ showLabels = true }: { showLabels?: boolean }) => (
         <>
             {/* Logo */}
@@ -139,7 +128,7 @@ export function Sidebar() {
                             className="overflow-hidden whitespace-nowrap"
                         >
                             <h1 className="font-bold text-lg gradient-text">GlobalTrade</h1>
-                            <p className="text-xs" style={{ color: 'var(--foreground-muted)' }}>Hub</p>
+                            <p className="text-xs text-muted-foreground">Hub</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -154,16 +143,14 @@ export function Sidebar() {
                             <li key={item.href}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? 'active-nav-item' : ''
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive
+                                            ? 'bg-primary/20 text-primary'
+                                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                                         }`}
-                                    style={{
-                                        background: isActive ? 'var(--primary-dim)' : 'transparent',
-                                        color: isActive ? 'var(--primary)' : 'var(--foreground-muted)',
-                                    }}
                                 >
                                     <item.icon
                                         size={20}
-                                        className="flex-shrink-0 transition-colors group-hover:text-[var(--primary)]"
+                                        className="flex-shrink-0 transition-colors group-hover:text-primary"
                                     />
                                     <AnimatePresence>
                                         {showLabels && (
@@ -188,13 +175,10 @@ export function Sidebar() {
 
     return (
         <>
-            {/* Mobile Menu Button */}
             <MobileMenuButton />
-
-            {/* Mobile Overlay */}
             <MobileOverlay />
 
-            {/* Mobile Sidebar (Slide-out) */}
+            {/* Mobile Sidebar */}
             <AnimatePresence>
                 {isMobile && isMobileOpen && (
                     <motion.aside
@@ -202,17 +186,11 @@ export function Sidebar() {
                         animate={{ x: 0 }}
                         exit={{ x: -280 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="lg:hidden fixed left-0 top-0 h-screen z-50 flex flex-col w-[280px]"
-                        style={{
-                            background: 'var(--background-secondary)',
-                            borderRight: '1px solid var(--border)',
-                        }}
+                        className="lg:hidden fixed left-0 top-0 h-screen z-50 flex flex-col w-[280px] bg-card border-r border-border"
                     >
                         <NavContent showLabels={true} />
-
-                        {/* Close hint */}
                         <div className="p-4">
-                            <p className="text-xs text-center" style={{ color: 'var(--foreground-muted)' }}>
+                            <p className="text-xs text-center text-muted-foreground">
                                 Tap outside to close
                             </p>
                         </div>
@@ -225,11 +203,7 @@ export function Sidebar() {
                 initial={false}
                 animate={{ width: isCollapsed ? 72 : 240 }}
                 transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="hidden lg:flex fixed left-0 top-0 h-screen z-50 flex-col"
-                style={{
-                    background: 'var(--background-secondary)',
-                    borderRight: '1px solid var(--border)',
-                }}
+                className="hidden lg:flex fixed left-0 top-0 h-screen z-50 flex-col bg-card border-r border-border"
             >
                 <NavContent showLabels={!isCollapsed} />
 
@@ -237,11 +211,7 @@ export function Sidebar() {
                 <div className="p-3">
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors"
-                        style={{
-                            background: 'var(--background-tertiary)',
-                            color: 'var(--foreground-muted)',
-                        }}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors bg-secondary text-muted-foreground hover:text-foreground"
                     >
                         {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                         <AnimatePresence>
@@ -263,7 +233,6 @@ export function Sidebar() {
     );
 }
 
-// Export sidebar width for use in layout
 export const SIDEBAR_WIDTH = {
     expanded: 240,
     collapsed: 72,

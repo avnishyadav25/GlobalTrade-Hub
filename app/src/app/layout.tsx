@@ -6,6 +6,7 @@ import { Sidebar, TopBar } from "@/components/layout";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,38 +41,42 @@ export default function RootLayout({
         <meta name="description" content="Unified trading platform for Indian Equities, US Stocks, and Crypto/Commodities." />
       </head>
       <body className={`${inter.variable} antialiased`}>
-        {!isAuthPage && (
-          <>
-            <Sidebar />
-            <TopBar />
-          </>
-        )}
-        <main
-          className={`transition-all duration-200 ${isAuthPage ? '' : 'pt-16'}`}
-          style={{
-            marginLeft: isAuthPage ? 0 : (isMobile ? 0 : '240px'),
-            minHeight: '100vh',
-            padding: isAuthPage ? 0 : (isMobile ? '16px' : '24px'),
-            paddingTop: isAuthPage ? 0 : (isMobile ? '72px' : '88px'),
-            background: 'var(--background)',
-          }}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
         >
-          {children}
-        </main>
-        <Toaster
-          position="top-right"
-          richColors
-          theme="dark"
-          toastOptions={{
-            style: {
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
-              color: 'var(--foreground)',
-            },
-          }}
-        />
+          {!isAuthPage && (
+            <>
+              <Sidebar />
+              <TopBar />
+            </>
+          )}
+          <main
+            className="transition-all duration-200 bg-background text-foreground"
+            style={{
+              marginLeft: isAuthPage ? 0 : (isMobile ? 0 : '240px'),
+              minHeight: '100vh',
+              padding: isAuthPage ? 0 : (isMobile ? '16px' : '24px'),
+              paddingTop: isAuthPage ? 0 : (isMobile ? '72px' : '88px'),
+            }}
+          >
+            {children}
+          </main>
+          <Toaster
+            position="top-right"
+            richColors
+            toastOptions={{
+              style: {
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                color: 'var(--foreground)',
+              },
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );
 }
-
