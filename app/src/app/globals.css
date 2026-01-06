@@ -1,0 +1,263 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Trading platform theme - Dark by default */
+  --background: #0a0e17;
+  --background-secondary: #121a2b;
+  --background-tertiary: #1a2438;
+  --foreground: #e4e8ef;
+  --foreground-muted: #8b95a7;
+
+  /* Trading specific colors */
+  --profit: #22c55e;
+  --profit-dim: rgba(34, 197, 94, 0.2);
+  --loss: #ef4444;
+  --loss-dim: rgba(239, 68, 68, 0.2);
+
+  /* shadcn compatible variables */
+  --card: #121a2b;
+  --card-foreground: #e4e8ef;
+  --popover: #121a2b;
+  --popover-foreground: #e4e8ef;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --primary-dim: rgba(99, 102, 241, 0.2);
+  --secondary: #1a2438;
+  --secondary-foreground: #e4e8ef;
+  --muted: #1a2438;
+  --muted-foreground: #8b95a7;
+  --accent: #8b5cf6;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1e293b;
+  --border-hover: #334155;
+  --input: #1a2438;
+  --ring: #6366f1;
+
+  /* Chart colors */
+  --chart-1: #6366f1;
+  --chart-2: #22c55e;
+  --chart-3: #ef4444;
+  --chart-4: #f59e0b;
+  --chart-5: #8b5cf6;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --radius: 0.625rem;
+
+  /* Sidebar */
+  --sidebar: #121a2b;
+  --sidebar-foreground: #e4e8ef;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a2438;
+  --sidebar-accent-foreground: #e4e8ef;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #6366f1;
+}
+
+/* Light theme override */
+.light,
+[data-theme="light"] {
+  --background: #f8fafc;
+  --background-secondary: #ffffff;
+  --background-tertiary: #f1f5f9;
+  --foreground: #0f172a;
+  --foreground-muted: #64748b;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --input: #e2e8f0;
+  --ring: #6366f1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-tertiary: var(--background-tertiary);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-muted);
+}
+
+/* Price flash animations */
+@keyframes flash-green {
+
+  0%,
+  100% {
+    background-color: transparent;
+  }
+
+  50% {
+    background-color: var(--profit-dim);
+  }
+}
+
+@keyframes flash-red {
+
+  0%,
+  100% {
+    background-color: transparent;
+  }
+
+  50% {
+    background-color: var(--loss-dim);
+  }
+}
+
+.flash-profit {
+  animation: flash-green 0.3s ease-out;
+}
+
+.flash-loss {
+  animation: flash-red 0.3s ease-out;
+}
+
+/* Pulse animation for live indicator */
+@keyframes pulse-live {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+.pulse-live {
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+/* Number transitions */
+.price-text {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s ease;
+}
+
+/* Trading specific badge variants */
+.badge-profit {
+  background: var(--profit-dim);
+  color: var(--profit);
+}
+
+.badge-loss {
+  background: var(--loss-dim);
+  color: var(--loss);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(18, 26, 43, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
