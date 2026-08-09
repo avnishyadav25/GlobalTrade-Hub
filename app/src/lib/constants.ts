@@ -73,6 +73,7 @@ export const NAV_SECTIONS = [
   { key: 'portfolio', label: 'Portfolio', href: '/portfolio' },
   { key: 'insights', label: 'Insights', href: '/insights' },
   { key: 'scanner', label: 'Scanner', href: '/scanner' },
+  { key: 'agents', label: 'Agents', href: '/agents' },
 ] as const;
 
 export type Market = typeof MARKETS[keyof typeof MARKETS];

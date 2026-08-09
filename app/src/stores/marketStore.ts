@@ -22,7 +22,11 @@ export interface LiveQuote {
 }
 
 type FeedDetach = () => void;
-type FeedFactory = (symbols: string[], push: (q: Partial<LiveQuote> & { symbol: string }) => void) => FeedDetach;
+type FeedFactory = (
+    symbols: string[],
+    push: (q: Partial<LiveQuote> & { symbol: string }) => void,
+    getQuote: (symbol: string) => LiveQuote | undefined
+) => FeedDetach;
 
 interface MarketState {
     quotes: Record<string, LiveQuote>;
@@ -116,7 +120,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         get().detachFeed();
         get().stop();
         const symbols = Object.keys(get().quotes);
-        const detach = factory(symbols, (q) => get().applyQuote(q));
+        const detach = factory(symbols, (q) => get().applyQuote(q), (s) => get().quotes[s]);
         set({ usingRealFeed: true, _detachFeed: detach });
     },
 

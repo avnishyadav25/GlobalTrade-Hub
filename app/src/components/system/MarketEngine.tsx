@@ -15,8 +15,9 @@ export function MarketEngine() {
     useEffect(() => {
         const market = useMarketStore.getState();
 
-        // Prefer a real crypto feed when explicitly enabled; else simulate.
-        if (process.env.NEXT_PUBLIC_ENABLE_BINANCE_FEED === 'true') {
+        // Real crypto feed on by default (Binance public WS); set the env to 'false' to
+        // force pure simulation. Non-crypto instruments keep a light sim either way.
+        if (process.env.NEXT_PUBLIC_ENABLE_BINANCE_FEED !== 'false') {
             try {
                 market.attachFeed(createBinanceFeed);
             } catch {
@@ -35,8 +36,27 @@ export function MarketEngine() {
             i++;
         }, 1000);
 
+        // Poll the FX/commodity provider (server-side key); no-op if unconfigured.
+        let mdActive = true;
+        const pollMarketData = async () => {
+            try {
+                const res = await fetch('/api/marketdata');
+                const data = await res.json();
+                if (data.configured && Array.isArray(data.quotes)) {
+                    for (const q of data.quotes) useMarketStore.getState().applyQuote(q);
+                } else {
+                    mdActive = false; // stop polling if provider not configured
+                }
+            } catch {
+                /* ignore */
+            }
+        };
+        pollMarketData();
+        const mdTimer = setInterval(() => { if (mdActive) pollMarketData(); }, 15000);
+
         return () => {
             clearInterval(timer);
+            clearInterval(mdTimer);
             useMarketStore.getState().stop();
             useMarketStore.getState().detachFeed();
         };

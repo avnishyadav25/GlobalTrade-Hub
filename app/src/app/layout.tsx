@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MarketEngine } from "@/components/system/MarketEngine";
+import { AgentEngine } from "@/components/system/AgentEngine";
 
 const hanken = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -51,6 +52,7 @@ export default function RootLayout({
           ) : (
             <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
               <MarketEngine />
+              <AgentEngine />
               <TopBar />
               <main className="min-h-0 flex-1 overflow-auto">{children}</main>
             </div>

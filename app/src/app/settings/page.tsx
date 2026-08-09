@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { BROKERS, brokerById } from '@/lib/brokers/registry';
@@ -23,8 +23,33 @@ export default function SettingsPage() {
     const [mode, setMode] = useState<'paper' | 'live'>('paper');
     const [creds, setCreds] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
+    const [channels, setChannels] = useState<string[]>([]);
+    const [testing, setTesting] = useState(false);
 
     const broker = brokerById(brokerId)!;
+
+    useEffect(() => {
+        fetch('/api/notify').then((r) => r.json()).then((d) => setChannels(d.channels ?? [])).catch(() => {});
+    }, []);
+
+    const sendTest = async () => {
+        setTesting(true);
+        try {
+            const res = await fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '✅ GlobalTrade Hub test notification', subject: 'GlobalTrade Hub' }) });
+            const data = await res.json();
+            if (!data.channels?.length) toast.message('No channels configured', { description: data.message });
+            else toast.success('Test sent', { description: data.channels.join(', ') });
+        } catch {
+            toast.error('Test failed');
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    const logout = async () => {
+        await fetch('/api/auth/login', { method: 'DELETE' }).catch(() => {});
+        window.location.href = '/auth/login';
+    };
 
     const connect = async () => {
         setBusy(true);
@@ -119,11 +144,34 @@ export default function SettingsPage() {
                 <Toggle label="Default order mode" value={tradeMode === 'paper' ? 'Paper' : 'Live'} options={['Paper', 'Live']} onSelect={(v) => setTradeMode(v === 'Paper' ? 'paper' : 'live')} />
             </Section>
 
+            {/* Notifications */}
+            <Section title="Notifications" subtitle="Alerts, filled orders, auto-trades and the daily briefing are sent to your enabled channels. Configure tokens via env (see docs/PROVIDERS.md).">
+                <div className="mb-3 flex flex-wrap gap-2">
+                    {['telegram', 'email', 'whatsapp'].map((c) => {
+                        const on = channels.includes(c);
+                        return (
+                            <span key={c} className="flex items-center gap-1.5 rounded-full bg-chip px-3 py-1 text-[12px] font-semibold capitalize" style={{ color: on ? 'var(--up)' : 'var(--foreground-muted)' }}>
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ background: on ? 'var(--up)' : 'var(--faint)' }} />
+                                {c} {on ? '' : '· off'}
+                            </span>
+                        );
+                    })}
+                </div>
+                <button onClick={sendTest} disabled={testing} className="rounded-lg bg-accent px-4 py-2 text-[13px] font-bold text-[color:var(--cp-text)] disabled:opacity-60">
+                    {testing ? 'Sending…' : 'Send test notification'}
+                </button>
+            </Section>
+
             {/* Paper */}
             <Section title="Paper account" subtitle={`Virtual balance for simulated trading. Starting capital ${fmtMoney(STARTING_CASH, 'INR', 0)}.`}>
-                <button onClick={() => { resetPaper(); toast.success('Paper account reset'); }} className="rounded-lg border border-down/40 px-4 py-2 text-[13px] font-bold text-down">
-                    Reset paper account
-                </button>
+                <div className="flex gap-3">
+                    <button onClick={() => { resetPaper(); toast.success('Paper account reset'); }} className="rounded-lg border border-down/40 px-4 py-2 text-[13px] font-bold text-down">
+                        Reset paper account
+                    </button>
+                    <button onClick={logout} className="rounded-lg border border-border px-4 py-2 text-[13px] font-bold text-foreground-muted">
+                        Sign out
+                    </button>
+                </div>
             </Section>
         </div>
     );

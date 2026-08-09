@@ -5,6 +5,7 @@
 import type { LiveQuote } from '@/stores/marketStore';
 
 type Push = (q: Partial<LiveQuote> & { symbol: string }) => void;
+type Get = (symbol: string) => LiveQuote | undefined;
 
 const CRYPTO_MAP: Record<string, string> = {
     'BTC/USDT': 'btcusdt',
@@ -13,7 +14,7 @@ const CRYPTO_MAP: Record<string, string> = {
 };
 const REVERSE = Object.fromEntries(Object.entries(CRYPTO_MAP).map(([k, v]) => [v.toUpperCase(), k]));
 
-export function createBinanceFeed(symbols: string[], push: Push): () => void {
+export function createBinanceFeed(symbols: string[], push: Push, getQuote: Get): () => void {
     const cryptoStreams = symbols
         .filter((s) => CRYPTO_MAP[s])
         .map((s) => `${CRYPTO_MAP[s]}@miniTicker`);
@@ -43,14 +44,18 @@ export function createBinanceFeed(symbols: string[], push: Push): () => void {
         };
     }
 
-    // keep non-crypto instruments moving with a light random walk
+    // keep non-crypto instruments moving with a light random walk (real feed = crypto only)
     const others = symbols.filter((s) => !CRYPTO_MAP[s]);
     const timer = setInterval(() => {
         for (const symbol of others) {
-            // small nudge; marketStore recomputes change from prevClose it already holds
-            push({ symbol, price: undefined as unknown as number });
+            const cur = getQuote(symbol);
+            if (!cur) continue;
+            const isFx = symbol.includes('/') && (symbol.startsWith('EUR') || symbol.startsWith('GBP') || symbol.startsWith('USD'));
+            const volPct = isFx ? 0.0004 : 0.0016;
+            const price = Math.max(0.0001, cur.price * (1 + (Math.random() - 0.5) * 2 * volPct));
+            push({ symbol, price });
         }
-    }, 1500);
+    }, 1200);
 
     return () => {
         if (ws) {
