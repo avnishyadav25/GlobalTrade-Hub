@@ -1,16 +1,39 @@
 // Market and Trading Constants
 
 export const MARKETS = {
+  CRYPTO: 'crypto',
   INDIA: 'india',
   US: 'us',
-  CRYPTO: 'crypto',
+  FOREX: 'forex',
+  COMMODITY: 'commodity',
 } as const;
 
 export const MARKET_LABELS = {
+  [MARKETS.CRYPTO]: 'Crypto',
   [MARKETS.INDIA]: 'NSE/BSE',
   [MARKETS.US]: 'NASDAQ/NYSE',
-  [MARKETS.CRYPTO]: 'Crypto',
+  [MARKETS.FOREX]: 'Forex',
+  [MARKETS.COMMODITY]: 'Commodities',
 } as const;
+
+// Short tab labels used in the AxisOne watchlist (All / Crypto / India / US / FX / Comm)
+export const MARKET_TABS = [
+  { key: 'all', label: 'All' },
+  { key: MARKETS.CRYPTO, label: 'Crypto' },
+  { key: MARKETS.INDIA, label: 'India' },
+  { key: MARKETS.US, label: 'US' },
+  { key: MARKETS.FOREX, label: 'FX' },
+  { key: MARKETS.COMMODITY, label: 'Comm' },
+] as const;
+
+// Currency each market quotes in (used for formatting)
+export const MARKET_CURRENCY: Record<string, 'USD' | 'INR'> = {
+  [MARKETS.CRYPTO]: 'USD',
+  [MARKETS.INDIA]: 'INR',
+  [MARKETS.US]: 'USD',
+  [MARKETS.FOREX]: 'USD',
+  [MARKETS.COMMODITY]: 'USD',
+};
 
 export const ORDER_TYPES = {
   MARKET: 'market',
@@ -33,13 +56,24 @@ export const TIMEFRAMES = [
   { label: '1D', value: '1d', seconds: 86400 },
 ] as const;
 
+// AxisOne (Direction B — Terminal Dark) accent palette, mirrored in globals.css
 export const COLORS = {
-  profit: '#22c55e',
-  loss: '#ef4444',
-  neutral: '#6b7280',
-  primary: '#6366f1',
-  accent: '#8b5cf6',
+  profit: '#2fd47e',
+  loss: '#ff5470',
+  neutral: '#7a8494',
+  primary: '#7c8cff',
+  accent: '#7c8cff',
 } as const;
+
+// Top navigation sections
+export const NAV_SECTIONS = [
+  { key: 'terminal', label: 'Terminal', href: '/terminal' },
+  { key: 'backtest', label: 'Backtest', href: '/backtest' },
+  { key: 'paper', label: 'Paper', href: '/paper' },
+  { key: 'portfolio', label: 'Portfolio', href: '/portfolio' },
+  { key: 'insights', label: 'Insights', href: '/insights' },
+  { key: 'scanner', label: 'Scanner', href: '/scanner' },
+] as const;
 
 export type Market = typeof MARKETS[keyof typeof MARKETS];
 export type OrderType = typeof ORDER_TYPES[keyof typeof ORDER_TYPES];

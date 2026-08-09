@@ -3,125 +3,114 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Kite-style Light Theme - Default */
+/* ============================================================
+   AxisOne — Direction B (Terminal Dark) is the default theme.
+   Light theme (Direction A / Clarity Light) applies via .light.
+   ============================================================ */
+
 :root {
-  /* Kite-style backgrounds (light first) */
-  --background: #fafbfc;
-  --background-secondary: #ffffff;
-  --background-tertiary: #f5f5f5;
-  --foreground: #212121;
-  --foreground-muted: #666666;
+  /* AxisOne core tokens (dark) */
+  --bg: #0a0c10;
+  --panel: #0d1015;
+  --panel2: #11151b;
+  --border: #1b2027;
+  --border2: #14181e;
+  --text: #e6e9ef;
+  --foreground-muted: #7a8494;
+  --faint: #5b6573;
+  --accent: #7c8cff;
+  --accent-soft: rgba(124, 140, 255, 0.12);
+  --up: #2fd47e;
+  --up-dim: rgba(47, 212, 126, 0.14);
+  --down: #ff5470;
+  --down-dim: rgba(255, 84, 112, 0.14);
+  --warn: #e0a020;
+  --chip: #171b22;
+  --grid: #1a1f27;
+  --axis: #5b6573;
+  --cp-text: #06080c;
 
-  /* Kite trading colors */
-  --profit: #4caf50;
-  --profit-dim: rgba(76, 175, 80, 0.12);
-  --loss: #e53935;
-  --loss-dim: rgba(229, 57, 53, 0.12);
+  /* Trading semantics */
+  --profit: var(--up);
+  --profit-dim: var(--up-dim);
+  --loss: var(--down);
+  --loss-dim: var(--down-dim);
+  --buy: var(--up);
+  --buy-dim: var(--up-dim);
+  --sell: var(--down);
+  --sell-dim: var(--down-dim);
 
-  /* Kite Buy/Sell colors */
-  --buy: #387ed1;
-  --buy-dim: rgba(56, 126, 209, 0.12);
-  --sell: #e53935;
-  --sell-dim: rgba(229, 57, 53, 0.12);
-
-  /* Kite brand - Orange */
-  --primary: #ff5722;
-  --primary-foreground: #ffffff;
-  --primary-dim: rgba(255, 87, 34, 0.12);
-
-  /* shadcn compatible */
-  --card: #ffffff;
-  --card-foreground: #212121;
-  --popover: #ffffff;
-  --popover-foreground: #212121;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #212121;
-  --muted: #f5f5f5;
-  --muted-foreground: #666666;
-  --accent: #ff5722;
-  --accent-foreground: #ffffff;
-  --destructive: #e53935;
+  /* shadcn/ui compatible aliases (mapped onto AxisOne tokens) */
+  --background: var(--bg);
+  --background-secondary: var(--panel);
+  --background-tertiary: var(--panel2);
+  --foreground: var(--text);
+  --card: var(--panel);
+  --card-foreground: var(--text);
+  --popover: var(--panel2);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--cp-text);
+  --primary-dim: var(--accent-soft);
+  --secondary: var(--chip);
+  --secondary-foreground: var(--text);
+  --muted: var(--panel2);
+  --muted-foreground: var(--foreground-muted);
+  --accent-foreground: var(--cp-text);
+  --destructive: var(--down);
   --destructive-foreground: #ffffff;
-  --border: #e0e0e0;
-  --border-hover: #bdbdbd;
-  --input: #f5f5f5;
-  --ring: #ff5722;
+  --border-hover: #2a3140;
+  --input: var(--border);
+  --ring: var(--accent);
 
-  /* Chart colors */
-  --chart-1: #387ed1;
-  --chart-2: #4caf50;
-  --chart-3: #e53935;
-  --chart-4: #ff9800;
-  --chart-5: #9c27b0;
+  --chart-1: #7c8cff;
+  --chart-2: #2fd47e;
+  --chart-3: #ff5470;
+  --chart-4: #e0a020;
+  --chart-5: #5ec8d8;
 
-  /* Shadows - Kite uses subtle shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.1);
-  --radius: 0.25rem;
-
-  /* Sidebar/Watchlist */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #212121;
-  --sidebar-primary: #ff5722;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f5f5;
-  --sidebar-accent-foreground: #212121;
-  --sidebar-border: #e0e0e0;
-  --sidebar-ring: #ff5722;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --radius: 0.5rem;
 }
 
-/* Dark theme override */
+/* Re-assert dark values when next-themes adds `.dark` */
 .dark,
 [data-theme="dark"] {
-  --background: #1a1a2e;
-  --background-secondary: #252542;
-  --background-tertiary: #2d2d4a;
-  --foreground: #e4e8ef;
-  --foreground-muted: #8b95a7;
+  color-scheme: dark;
+}
 
-  --card: #252542;
-  --card-foreground: #e4e8ef;
-  --popover: #252542;
-  --popover-foreground: #e4e8ef;
-  --primary: #ff7043;
+/* Light theme — AxisOne Direction A (Clarity Light) */
+.light,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --panel2: #f0f1f4;
+  --border: #e6e8ec;
+  --border2: #eef0f3;
+  --text: #10131a;
+  --foreground-muted: #5b6472;
+  --faint: #9aa3b0;
+  --accent: #4f46e5;
+  --accent-soft: #eef0fe;
+  --up: #0d9f6e;
+  --up-dim: rgba(13, 159, 110, 0.12);
+  --down: #e0464f;
+  --down-dim: rgba(224, 70, 79, 0.12);
+  --warn: #b7791f;
+  --chip: #f1f2f5;
+  --grid: #eef0f3;
+  --axis: #9aa3b0;
+  --cp-text: #ffffff;
   --primary-foreground: #ffffff;
-  --primary-dim: rgba(255, 112, 67, 0.2);
-  --secondary: #2d2d4a;
-  --secondary-foreground: #e4e8ef;
-  --muted: #2d2d4a;
-  --muted-foreground: #8b95a7;
-  --accent: #ff7043;
   --accent-foreground: #ffffff;
-  --border: #3d3d5c;
-  --border-hover: #4d4d6a;
-  --input: #2d2d4a;
-  --ring: #ff7043;
+  --border-hover: #d3d7de;
 
-  /* Shadows for dark theme */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-
-  /* Sidebar dark */
-  --sidebar: #252542;
-  --sidebar-foreground: #e4e8ef;
-  --sidebar-primary: #ff7043;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2d2d4a;
-  --sidebar-accent-foreground: #e4e8ef;
-  --sidebar-border: #3d3d5c;
-  --sidebar-ring: #ff7043;
-
-  /* Trading colors */
-  --profit: #4caf50;
-  --profit-dim: rgba(76, 175, 80, 0.2);
-  --loss: #e53935;
-  --loss-dim: rgba(229, 57, 53, 0.2);
-  --buy: #42a5f5;
-  --buy-dim: rgba(66, 165, 245, 0.2);
-  --sell: #ef5350;
-  --sell-dim: rgba(239, 83, 80, 0.2);
+  --shadow-sm: 0 1px 2px rgba(16, 18, 24, 0.05);
+  --shadow-md: 0 8px 30px rgba(16, 18, 24, 0.08);
+  --shadow-lg: 0 12px 40px rgba(16, 18, 24, 0.12);
 }
 
 @theme inline {
@@ -130,14 +119,22 @@
   --color-background-tertiary: var(--background-tertiary);
   --color-foreground: var(--foreground);
   --color-foreground-muted: var(--foreground-muted);
+  --color-faint: var(--faint);
+  --color-panel: var(--panel);
+  --color-panel2: var(--panel2);
+  --color-chip: var(--chip);
   --color-profit: var(--profit);
   --color-loss: var(--loss);
+  --color-up: var(--up);
+  --color-down: var(--down);
   --color-buy: var(--buy);
   --color-sell: var(--sell);
+  --color-warn: var(--warn);
   --color-primary: var(--primary);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-border: var(--border);
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-border2: var(--border2);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -149,6 +146,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -156,14 +154,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), 'IBM Plex Mono', monospace;
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -182,130 +174,98 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-hanken), system-ui, sans-serif;
   line-height: 1.5;
   min-height: 100vh;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
   font-size: 13px;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Kite-style scrollbar */
+/* Monospace for all numbers/prices */
+.mono,
+.price-text {
+  font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-text {
+  transition: color 0.2s ease;
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
-
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-hover);
 }
 
 /* Price flash animations */
 @keyframes flash-green {
-
-  0%,
-  100% {
-    background-color: transparent;
-  }
-
-  50% {
-    background-color: var(--profit-dim);
-  }
+  0%, 100% { background-color: transparent; }
+  50% { background-color: var(--up-dim); }
 }
-
 @keyframes flash-red {
-
-  0%,
-  100% {
-    background-color: transparent;
-  }
-
-  50% {
-    background-color: var(--loss-dim);
-  }
+  0%, 100% { background-color: transparent; }
+  50% { background-color: var(--down-dim); }
 }
+.flash-profit { animation: flash-green 0.4s ease-out; }
+.flash-loss { animation: flash-red 0.4s ease-out; }
 
-.flash-profit {
-  animation: flash-green 0.3s ease-out;
-}
-
-.flash-loss {
-  animation: flash-red 0.3s ease-out;
-}
-
-/* Pulse animation for live indicator */
 @keyframes pulse-live {
-
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.5;
-    transform: scale(1.1);
-  }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.15); }
 }
+.pulse-live { animation: pulse-live 2s ease-in-out infinite; }
 
-.pulse-live {
-  animation: pulse-live 2s ease-in-out infinite;
+/* AxisOne surfaces & controls */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
-
-/* Number transitions */
-.price-text {
-  font-variant-numeric: tabular-nums;
-  transition: color 0.2s ease;
+.chip {
+  background: var(--chip);
+  color: var(--foreground-muted);
+  border-radius: 6px;
 }
+.btn-buy { background: var(--up); color: var(--cp-text); }
+.btn-sell { background: var(--down); color: #fff; }
 
-/* Kite-style buttons */
-.btn-buy {
-  background: var(--buy);
-  color: white;
+.gradient-brand {
+  background: linear-gradient(135deg, #7c8cff, #5a6bff);
 }
-
-.btn-buy:hover {
-  background: #2e6bb8;
-}
-
-.btn-sell {
-  background: var(--sell);
-  color: white;
-}
-
-.btn-sell:hover {
-  background: #c62828;
-}
-
-/* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, var(--primary) 0%, #ff8a65 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #a5b0ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Kite-style card */
-.kite-card {
+/* Legacy alias so any remaining .kite-card usage still renders */
+.kite-card,
+.card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 14px;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
   }

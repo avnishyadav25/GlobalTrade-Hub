@@ -1,152 +1,91 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-    Search,
-    Bell,
-    User,
-    Sun,
-    Moon,
-    Monitor,
-    Settings,
-    HelpCircle,
-    ChevronDown,
-} from 'lucide-react';
-import { useTradingStore } from '@/stores/tradingStore';
-
-const navItems = [
-    { label: 'Dashboard', href: '/' },
-    { label: 'Orders', href: '/orders' },
-    { label: 'Holdings', href: '/portfolio' },
-    { label: 'Positions', href: '/positions' },
-    { label: 'Funds', href: '/funds' },
-];
+import { Search, Sun, Moon, Settings } from 'lucide-react';
+import { NAV_SECTIONS } from '@/lib/constants';
 
 export function TopBar() {
     const pathname = usePathname();
-    const [isMobile, setIsMobile] = useState(false);
-    const [mounted, setMounted] = useState(false);
-    const { theme, setTheme } = useTheme();
-    const { isPaperTrading, paperBalance } = useTradingStore();
+    const router = useRouter();
+    const { resolvedTheme, setTheme } = useTheme();
 
-    useEffect(() => {
-        setMounted(true);
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    const cycleTheme = () => {
-        const themes = ['light', 'dark', 'system'];
-        const currentIndex = themes.indexOf(theme || 'light');
-        const nextIndex = (currentIndex + 1) % themes.length;
-        setTheme(themes[nextIndex]);
-    };
-
-    const ThemeIcon = () => {
-        if (!mounted) return <Sun size={16} className="text-muted-foreground" />;
-        switch (theme) {
-            case 'dark':
-                return <Moon size={16} className="text-muted-foreground" />;
-            case 'system':
-                return <Monitor size={16} className="text-muted-foreground" />;
-            default:
-                return <Sun size={16} className="text-muted-foreground" />;
-        }
-    };
+    const isActive = (href: string) =>
+        pathname === href || (href !== '/' && pathname?.startsWith(href));
 
     return (
-        <header
-            className="fixed top-0 right-0 h-12 z-40 flex items-center justify-between px-4 bg-card border-b border-border"
-            style={{ left: isMobile ? 0 : '280px' }}
-        >
-            {/* Logo - Mobile Only */}
-            {isMobile && (
-                <Link href="/" className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-primary rounded flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">G</span>
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-border bg-panel px-5">
+            <div className="flex items-center gap-6">
+                {/* Brand */}
+                <Link href="/terminal" className="flex items-center gap-2.5">
+                    <div className="gradient-brand flex h-7 w-7 items-center justify-center rounded-[7px] text-base font-extrabold text-white">
+                        G
                     </div>
-                </Link>
-            )}
-
-            {/* Kite-style Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`px-3 py-2 text-sm font-medium transition-colors rounded ${isActive
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            {item.label}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            {/* Right Section */}
-            <div className="flex items-center gap-3">
-                {/* Paper Trading Indicator */}
-                {isPaperTrading && (
-                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-profit/10 text-profit">
-                        <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-live" />
-                        <span>Paper</span>
-                    </div>
-                )}
-
-                {/* Balance */}
-                <div className="hidden md:flex items-center gap-1 text-sm">
-                    <span className="text-muted-foreground">₹</span>
-                    <span className="font-medium">
-                        {(isPaperTrading ? paperBalance : 0).toLocaleString('en-IN')}
+                    <span className="text-[15px] font-extrabold tracking-tight">
+                        GlobalTrade<span className="text-accent"> Hub</span>
                     </span>
-                </div>
+                </Link>
 
-                {/* Theme Toggle */}
+                {/* Section nav */}
+                <nav className="hidden items-center gap-0.5 md:flex">
+                    {NAV_SECTIONS.map((s) => (
+                        <Link
+                            key={s.key}
+                            href={s.href}
+                            className={`rounded-lg px-3.5 py-1.5 text-[13.5px] font-semibold transition-colors ${
+                                isActive(s.href)
+                                    ? 'bg-chip text-foreground'
+                                    : 'text-foreground-muted hover:text-foreground'
+                            }`}
+                        >
+                            {s.label}
+                        </Link>
+                    ))}
+                </nav>
+            </div>
+
+            <div className="flex items-center gap-3">
+                {/* Search */}
                 <button
-                    onClick={cycleTheme}
-                    className="p-2 rounded hover:bg-secondary transition-colors"
-                    title={mounted ? `Theme: ${theme}` : undefined}
+                    onClick={() => router.push('/scanner')}
+                    className="hidden w-[180px] items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-[13px] text-faint hover:border-border-hover lg:flex"
                 >
-                    <ThemeIcon />
+                    <Search size={14} />
+                    <span>Search markets</span>
                 </button>
 
-                {/* Help */}
-                <button className="p-2 rounded hover:bg-secondary transition-colors hidden sm:block">
-                    <HelpCircle size={16} className="text-muted-foreground" />
+                {/* LIVE indicator */}
+                <div className="flex items-center gap-1.5 rounded-lg border border-up/30 bg-up/10 px-2.5 py-1.5">
+                    <span className="h-[7px] w-[7px] rounded-full bg-up pulse-live" style={{ boxShadow: '0 0 8px var(--up)' }} />
+                    <span className="text-[12px] font-bold tracking-wide text-up">LIVE</span>
+                </div>
+
+                {/* Theme toggle */}
+                <button
+                    onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                    className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-border bg-chip text-foreground-muted transition-colors hover:text-foreground"
+                    title="Toggle theme"
+                    aria-label="Toggle theme"
+                >
+                    {/* CSS-driven so there's no hydration mismatch or effect setState */}
+                    <Sun size={15} className="hidden dark:block" />
+                    <Moon size={15} className="block dark:hidden" />
                 </button>
 
                 {/* Settings */}
                 <Link
                     href="/settings"
-                    className="p-2 rounded hover:bg-secondary transition-colors hidden sm:block"
+                    className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-border bg-chip text-foreground-muted transition-colors hover:text-foreground"
+                    aria-label="Settings"
                 >
-                    <Settings size={16} className="text-muted-foreground" />
+                    <Settings size={15} />
                 </Link>
 
-                {/* Notifications */}
-                <button className="relative p-2 rounded hover:bg-secondary transition-colors">
-                    <Bell size={16} className="text-muted-foreground" />
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                </button>
-
-                {/* User Menu */}
-                <button className="flex items-center gap-1 p-1 rounded hover:bg-secondary transition-colors">
-                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center">
-                        <User size={14} className="text-muted-foreground" />
-                    </div>
-                    <ChevronDown size={12} className="text-muted-foreground hidden md:block" />
-                </button>
+                {/* Avatar */}
+                <div className="flex h-[33px] w-[33px] items-center justify-center rounded-full bg-accent text-[13px] font-bold text-[color:var(--cp-text)]">
+                    GT
+                </div>
             </div>
         </header>
     );
