@@ -60,12 +60,12 @@ export default function ScannerPage() {
             </div>
 
             <div className="panel overflow-hidden">
-                <div className="grid border-b border-border2 py-2.5 text-[10px] font-bold tracking-wide text-faint" style={{ gridTemplateColumns: '1.4fr .9fr 1fr .9fr .8fr 1.4fr .8fr', paddingLeft: 18, paddingRight: 18 }}>
+                <div className="grid gap-x-4 border-b border-border2 py-2.5 text-[10px] font-bold tracking-wide text-faint" style={{ gridTemplateColumns: '1.4fr .9fr 1fr .9fr .8fr 1.4fr .8fr', paddingLeft: 18, paddingRight: 18 }}>
                     <span>INSTRUMENT</span><span>MARKET</span><span className="text-right">PRICE</span><span className="text-right">CHG</span><span className="text-right">RSI</span><span>SIGNALS</span><span className="text-right">ACTION</span>
                 </div>
                 {rows.length === 0 && <div className="py-10 text-center text-[13px] text-faint">No matches — adjust the filters</div>}
                 {rows.map((r) => (
-                    <div key={r.symbol} className="grid items-center border-b border-border2 py-3 text-[12.5px]" style={{ gridTemplateColumns: '1.4fr .9fr 1fr .9fr .8fr 1.4fr .8fr', paddingLeft: 18, paddingRight: 18 }}>
+                    <div key={r.symbol} className="grid items-center gap-x-4 border-b border-border2 py-3 text-[12.5px]" style={{ gridTemplateColumns: '1.4fr .9fr 1fr .9fr .8fr 1.4fr .8fr', paddingLeft: 18, paddingRight: 18 }}>
                         <div className="flex flex-col">
                             <span className="font-bold">{r.symbol}</span>
                             <span className="text-[10px] text-faint">{r.name}</span>

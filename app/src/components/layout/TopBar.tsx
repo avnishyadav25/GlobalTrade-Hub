@@ -28,7 +28,7 @@ export function TopBar() {
                 </Link>
 
                 {/* Section nav */}
-                <nav className="hidden items-center gap-0.5 md:flex">
+                <nav className="hidden items-center gap-1 md:flex">
                     {NAV_SECTIONS.map((s) => (
                         <Link
                             key={s.key}
