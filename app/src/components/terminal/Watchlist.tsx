@@ -22,7 +22,7 @@ export function Watchlist() {
                     <button
                         key={t.key}
                         onClick={() => setTab(t.key)}
-                        className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${
+                        className={`rounded-md px-2.5 py-1 text-xs font-bold ${
                             tab === t.key ? 'bg-accent text-[color:var(--cp-text)]' : 'bg-chip text-foreground-muted'
                         }`}
                     >
@@ -46,12 +46,12 @@ export function Watchlist() {
                             }`}
                         >
                             <div className="flex flex-col gap-0.5">
-                                <span className="text-[12.5px] font-bold">{a.symbol}</span>
-                                <span className="text-[10px] font-semibold tracking-wide text-faint">{a.exchange.toUpperCase()}</span>
+                                <span className="text-sm font-bold">{a.symbol}</span>
+                                <span className="text-2xs font-semibold tracking-wide text-faint">{a.exchange.toUpperCase()}</span>
                             </div>
                             <div className="flex flex-col items-end gap-0.5">
-                                <span className="mono text-[12.5px] font-semibold">{fmtPrice(price)}</span>
-                                <span className="mono text-[10.5px] font-semibold" style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
+                                <span className="mono text-sm font-semibold">{fmtPrice(price)}</span>
+                                <span className="mono text-2xs font-semibold" style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
                                     {fmtPct(pct)}
                                 </span>
                             </div>

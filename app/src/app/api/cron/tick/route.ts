@@ -11,7 +11,9 @@ export const runtime = 'nodejs';
 
 function authorized(req: Request): boolean {
     const secret = process.env.CRON_SECRET;
-    if (!secret) return true; // open in dev
+    // Open in dev only. In production an unset CRON_SECRET must fail closed rather
+    // than exposing an endpoint that runs an LLM agent and sends notifications.
+    if (!secret) return process.env.NODE_ENV !== 'production';
     const url = new URL(req.url);
     return url.searchParams.get('secret') === secret || req.headers.get('x-cron-secret') === secret;
 }

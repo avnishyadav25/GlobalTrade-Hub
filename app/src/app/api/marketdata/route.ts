@@ -1,35 +1,32 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
+import { fetchQuotes } from '@/lib/marketData/router';
+import { usdInr } from '@/lib/marketData/providers/fx';
+import { WATCHLIST_ASSETS } from '@/lib/mockData';
 
-// FX / commodity (and optionally equity) quotes via a provider (default Twelve Data).
-// Server-side so the provider key never reaches the browser. Returns configured:false
-// when no key is set, so the client keeps simulating those instruments.
+// Live quotes for every market, via the provider router.
+//
+// Replaces a direct Twelve Data call that was polled every 15s — 5,760 req/day
+// against an 800/day free tier — and only ever backed off when the provider was
+// unconfigured, never on a 429.
 
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
-    const key = process.env.MARKETDATA_API_KEY;
-    const provider = process.env.MARKETDATA_PROVIDER || 'twelvedata';
-    if (!key) return NextResponse.json({ configured: false, quotes: [] });
+    if (!(await requireAdmin(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const url = new URL(req.url);
-    const symbols = (url.searchParams.get('symbols') || 'EUR/USD,GBP/USD,USD/JPY,XAU/USD,XAG/USD,WTI/USD').split(',');
+    const requested = url.searchParams.get('symbols');
+    const symbols = requested ? requested.split(',') : WATCHLIST_ASSETS.map((a) => a.symbol);
 
-    try {
-        if (provider === 'twelvedata') {
-            const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbols.join(','))}&apikey=${key}`);
-            const data = await res.json();
-            const quotes = symbols
-                .map((s) => {
-                    const node = symbols.length === 1 ? data : data[s];
-                    const price = node?.price ? parseFloat(node.price) : null;
-                    return price ? { symbol: s, price } : null;
-                })
-                .filter(Boolean);
-            return NextResponse.json({ configured: true, provider, quotes });
-        }
-        // other providers can be added here (finnhub, alphavantage)
-        return NextResponse.json({ configured: false, quotes: [], message: `provider ${provider} not wired` });
-    } catch (e) {
-        return NextResponse.json({ configured: true, quotes: [], error: String(e) });
-    }
+    const [batch, fx] = await Promise.all([fetchQuotes(symbols), usdInr()]);
+
+    return NextResponse.json({
+        configured: true,
+        quotes: batch.quotes,
+        // Per-market provenance: the UI must be able to say "India is 15 min delayed"
+        // rather than showing one global LIVE badge over four different feeds.
+        status: batch.status,
+        fx: { usdInr: fx.rate, source: fx.source, at: fx.at },
+    });
 }

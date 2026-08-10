@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import { notify, configuredChannels } from '@/lib/notify';
+import { requireAdmin } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+// Both verbs are admin-only: POST sends real messages through the owner's
+// Telegram/Resend/Twilio accounts, and GET discloses which channels are configured.
+
+export async function GET(req: Request) {
+    if (!(await requireAdmin(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     return NextResponse.json({ channels: configuredChannels() });
 }
 
 export async function POST(req: Request) {
+    if (!(await requireAdmin(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
     let body: { text?: string; subject?: string };
     try {
         body = await req.json();

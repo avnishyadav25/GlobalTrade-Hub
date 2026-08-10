@@ -4,33 +4,46 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   AxisOne — Direction B (Terminal Dark) is the default theme.
-   Light theme (Direction A / Clarity Light) applies via .light.
+   GlobalTrade Hub design tokens.
+
+   Dark (Terminal) is :root. Light (Clarity) applies via .light.
+
+   IMPORTANT — do not add a bare `* { margin: 0; padding: 0 }` rule to this
+   file. Tailwind emits every utility inside `@layer utilities`, and unlayered
+   declarations beat layered ones in the cascade, so such a rule silently
+   nullifies EVERY p-* and m-* class in the app. Tailwind's Preflight already
+   resets margin/padding/box-sizing inside `@layer base`.
    ============================================================ */
 
 :root {
-  /* AxisOne core tokens (dark) */
+  /* ---- surfaces ---- */
   --bg: #0a0c10;
   --panel: #0d1015;
   --panel2: #11151b;
-  --border: #1b2027;
-  --border2: #14181e;
-  --text: #e6e9ef;
-  --foreground-muted: #7a8494;
-  --faint: #5b6573;
-  --accent: #7c8cff;
-  --accent-soft: rgba(124, 140, 255, 0.12);
-  --up: #2fd47e;
-  --up-dim: rgba(47, 212, 126, 0.14);
-  --down: #ff5470;
-  --down-dim: rgba(255, 84, 112, 0.14);
-  --warn: #e0a020;
-  --chip: #171b22;
-  --grid: #1a1f27;
-  --axis: #5b6573;
-  --cp-text: #06080c;
+  --border: #242a34;        /* was #1b2027 — 1.16:1 on panel, dividers invisible */
+  --border2: #191e26;
+  --chip: #1c222b;          /* was #171b22 — segmented-control track needs to read */
 
-  /* Trading semantics */
+  /* ---- text ---- */
+  --text: #e6e9ef;
+  --foreground-muted: #99a3b2;
+  --faint: #7b8695;         /* was #5b6573 — 3.22:1, failed AA on ~45 labels */
+
+  /* ---- semantic ---- */
+  --accent: #7c8cff;
+  --accent-soft: #1a1f36;
+  --up: #2fd47e;
+  --up-dim: #10281d;
+  --down: #ff5470;
+  --down-dim: #2c1419;
+  --warn: #e0a020;
+  --warn-dim: #2b2113;
+
+  --grid: #1a1f27;
+  --axis: #7b8695;
+  --cp-text: #06080c;       /* text that sits on a filled accent/up/down surface */
+
+  /* ---- trading semantics ---- */
   --profit: var(--up);
   --profit-dim: var(--up-dim);
   --loss: var(--down);
@@ -40,7 +53,7 @@
   --sell: var(--down);
   --sell-dim: var(--down-dim);
 
-  /* shadcn/ui compatible aliases (mapped onto AxisOne tokens) */
+  /* ---- aliases ---- */
   --background: var(--bg);
   --background-secondary: var(--panel);
   --background-tertiary: var(--panel2);
@@ -59,7 +72,7 @@
   --accent-foreground: var(--cp-text);
   --destructive: var(--down);
   --destructive-foreground: #ffffff;
-  --border-hover: #2a3140;
+  --border-hover: #323a48;
   --input: var(--border);
   --ring: var(--accent);
 
@@ -69,48 +82,66 @@
   --chart-4: #e0a020;
   --chart-5: #5ec8d8;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
-  --radius: 0.5rem;
+  /* ---- elevation (theme-aware; light needs it most) ---- */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --elev-2: 0 6px 20px rgb(0 0 0 / 0.55);
+  --elev-3: 0 16px 40px rgb(0 0 0 / 0.65);
 }
 
-/* Re-assert dark values when next-themes adds `.dark` */
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
 }
 
-/* Light theme — AxisOne Direction A (Clarity Light) */
+/* ============================================================
+   Light theme. Values chosen to hit WCAG AA for text (>=4.5:1) and to give
+   surfaces a visible hierarchy — the previous palette had panel-vs-page at
+   1.08:1 with no elevation, so panels were effectively invisible.
+   ============================================================ */
 .light,
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #f5f6f8;
+
+  --bg: #f0f2f5;            /* pushed back from #f5f6f8 so white panels lift */
   --panel: #ffffff;
-  --panel2: #f0f1f4;
-  --border: #e6e8ec;
-  --border2: #eef0f3;
-  --text: #10131a;
-  --foreground-muted: #5b6472;
-  --faint: #9aa3b0;
-  --accent: #4f46e5;
-  --accent-soft: #eef0fe;
-  --up: #0d9f6e;
-  --up-dim: rgba(13, 159, 110, 0.12);
-  --down: #e0464f;
-  --down-dim: rgba(224, 70, 79, 0.12);
-  --warn: #b7791f;
-  --chip: #f1f2f5;
-  --grid: #eef0f3;
-  --axis: #9aa3b0;
+  --panel2: #f7f8fa;
+  --border: #d5d9e0;        /* 1.42:1 on panel — a hairline you can actually see */
+  --border2: #e4e7ec;       /* 1.24:1 — table row dividers */
+  --chip: #e8ebf0;          /* 1.20:1 — segmented-control track */
+
+  --text: #12161f;          /* 18.1:1 */
+  --foreground-muted: #4a5261; /* 7.9:1 */
+  --faint: #697586;         /* 4.68:1 — passes AA; was #9aa3b0 at 2.55:1 */
+
+  /* up/down must pass AA in BOTH directions: they are P&L text AND button fills */
+  --accent: #2557d6;
+  --accent-soft: #e8edfb;
+  --up: #0a7d53;
+  --up-dim: #e3f3ec;
+  --down: #c62828;
+  --down-dim: #fdeaea;
+  --warn: #8d5b00;
+  --warn-dim: #fcf1dc;
+
+  --grid: #e8ebf0;
+  --axis: #697586;
   --cp-text: #ffffff;
+
   --primary-foreground: #ffffff;
   --accent-foreground: #ffffff;
-  --border-hover: #d3d7de;
+  --border-hover: #b9c0cb;
 
-  --shadow-sm: 0 1px 2px rgba(16, 18, 24, 0.05);
-  --shadow-md: 0 8px 30px rgba(16, 18, 24, 0.08);
-  --shadow-lg: 0 12px 40px rgba(16, 18, 24, 0.12);
+  --chart-1: #2557d6;
+  --chart-2: #0a7d53;
+  --chart-3: #c62828;
+  --chart-4: #8d5b00;
+  --chart-5: #0e7490;
+
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgb(16 22 31 / 0.06), 0 1px 1px rgb(16 22 31 / 0.04);
+  --elev-2: 0 4px 12px rgb(16 22 31 / 0.10);
+  --elev-3: 0 12px 32px rgb(16 22 31 / 0.16);
 }
 
 @theme inline {
@@ -126,15 +157,19 @@
   --color-profit: var(--profit);
   --color-loss: var(--loss);
   --color-up: var(--up);
+  --color-up-dim: var(--up-dim);
   --color-down: var(--down);
+  --color-down-dim: var(--down-dim);
   --color-buy: var(--buy);
   --color-sell: var(--sell);
   --color-warn: var(--warn);
+  --color-warn-dim: var(--warn-dim);
   --color-primary: var(--primary);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-border: var(--border);
   --color-border2: var(--border2);
+  --color-border-hover: var(--border-hover);   /* was missing → hover:border-border-hover compiled to nothing */
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -154,19 +189,44 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
   --font-sans: var(--font-hanken), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), 'IBM Plex Mono', monospace;
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-}
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  /* ---- type scale: 9 steps replacing the 22 ad-hoc sizes ----
+     Redefining Tailwind's own --text-* means existing text-sm/base/lg/xl
+     retarget for free. Body is 13px, so the scale is tuned around that. */
+  --text-2xs: 0.625rem;         /* 10 — table column headers, micro labels */
+  --text-2xs--line-height: 0.875rem;
+  --text-xs: 0.6875rem;         /* 11 — badges, chips, table meta */
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.75rem;           /* 12 — dense table cells, secondary */
+  --text-sm--line-height: 1rem;
+  --text-base: 0.8125rem;       /* 13 — body default */
+  --text-base--line-height: 1.125rem;
+  --text-md: 0.875rem;          /* 14 — panel titles, form labels */
+  --text-md--line-height: 1.25rem;
+  --text-lg: 1rem;              /* 16 — section headings */
+  --text-lg--line-height: 1.375rem;
+  --text-xl: 1.25rem;           /* 20 — page titles */
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.5rem;           /* 24 — stat values */
+  --text-2xl--line-height: 1.875rem;
+  --text-3xl: 1.875rem;         /* 30 — the single hero number */
+  --text-3xl--line-height: 2.25rem;
+
+  /* ---- radius: 4 steps replacing 8 ---- */
+  --radius-xs: 3px;             /* chips, badges */
+  --radius-sm: 4px;             /* buttons, inputs, selects */
+  --radius-md: 6px;             /* panels, cards, dropdowns */
+  --radius-lg: 10px;            /* modals, drawers, sheets */
+  --radius-xl: 14px;
+
+  /* ---- elevation as utilities: shadow-elev-1 etc. ---- */
+  --shadow-elev-0: var(--elev-0);
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
 }
 
 html {
@@ -230,43 +290,41 @@ body {
 }
 .pulse-live { animation: pulse-live 2s ease-in-out infinite; }
 
-/* AxisOne surfaces & controls */
+/* Surfaces. Elevation is load-bearing in light: a white panel on a near-white
+   page is invisible on border contrast alone. */
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-1);
 }
-.chip {
-  background: var(--chip);
-  color: var(--foreground-muted);
-  border-radius: 6px;
-}
-.btn-buy { background: var(--up); color: var(--cp-text); }
-.btn-sell { background: var(--down); color: #fff; }
 
 .gradient-brand {
-  background: linear-gradient(135deg, #7c8cff, #5a6bff);
-}
-.gradient-text {
-  background: linear-gradient(135deg, var(--accent) 0%, #a5b0ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Legacy alias so any remaining .kite-card usage still renders */
-.kite-card,
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* One global focus ring. `outline` rather than a ring box-shadow so it is not
+     clipped by overflow-hidden panels and needs no per-component wiring. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+
+  /* Inputs that sit inside a bordered wrapper delegate their ring to the
+     wrapper via :focus-within, so `outline-none` on the inner field is correct
+     rather than an accessibility hole. */
+  .field:focus-within {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }

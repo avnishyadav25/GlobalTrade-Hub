@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { WATCHLIST_ASSETS, type Asset } from '@/lib/mockData';
+import { useSeriesStore } from './seriesStore';
 
 export interface LiveQuote {
     symbol: string;
@@ -25,13 +26,26 @@ type FeedDetach = () => void;
 type FeedFactory = (
     symbols: string[],
     push: (q: Partial<LiveQuote> & { symbol: string }) => void,
-    getQuote: (symbol: string) => LiveQuote | undefined
+    getQuote: (symbol: string) => LiveQuote | undefined,
+    onStatus?: (connected: boolean) => void
 ) => FeedDetach;
+
+export type FeedState = 'live' | 'delayed' | 'sim';
+
+export interface MarketFeedStatus {
+    state: FeedState;
+    provider: string;
+    delayMinutes: number;
+    at: number;
+}
 
 interface MarketState {
     quotes: Record<string, LiveQuote>;
     running: boolean;
     usingRealFeed: boolean;
+    /** Per-market provenance. One global flag was a lie in three directions. */
+    feedStatus: Record<string, MarketFeedStatus>;
+    setFeedStatus: (m: Record<string, MarketFeedStatus>) => void;
     _timer: ReturnType<typeof setInterval> | null;
     _detachFeed: FeedDetach | null;
 
@@ -67,6 +81,8 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     quotes: initialQuotes,
     running: false,
     usingRealFeed: false,
+    feedStatus: {},
+    setFeedStatus: (feedStatus) => set((s) => ({ feedStatus: { ...s.feedStatus, ...feedStatus } })),
     _timer: null,
     _detachFeed: null,
 
@@ -90,6 +106,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
                 ts: q.ts ?? Date.now(),
                 dir: prev ? (price > prev.price ? 'up' : price < prev.price ? 'down' : prev.dir) : null,
             };
+            // Feed the rolling series so indicators are computed from real observed
+            // prices rather than a symbol-seeded generator.
+            useSeriesStore.getState().ingest(q.symbol, price, next.ts);
+            if (q.high != null && q.low != null) {
+                useSeriesStore.getState().ingestRange(q.symbol, q.high, q.low);
+            }
             return { quotes: { ...state.quotes, [q.symbol]: next } };
         }),
 
@@ -120,8 +142,15 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         get().detachFeed();
         get().stop();
         const symbols = Object.keys(get().quotes);
-        const detach = factory(symbols, (q) => get().applyQuote(q), (s) => get().quotes[s]);
-        set({ usingRealFeed: true, _detachFeed: detach });
+        // `usingRealFeed` now tracks the socket's ACTUAL state, reported by the feed.
+        // Setting it true on attach meant a failed connection still showed "LIVE".
+        const detach = factory(
+            symbols,
+            (q) => get().applyQuote(q),
+            (s) => get().quotes[s],
+            (connected) => set({ usingRealFeed: connected })
+        );
+        set({ usingRealFeed: false, _detachFeed: detach });
     },
 
     detachFeed: () => {
