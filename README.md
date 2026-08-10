@@ -6,6 +6,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind](https://img.shields.io/badge/Tailwind-v4-38bdf8?logo=tailwindcss)](https://tailwindcss.com/)
 
+> 📖 **Full end-to-end docs (setup, all API keys, testing, deployment, what's pending):**
+> **[`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)** · provider quick-ref: [`docs/PROVIDERS.md`](docs/PROVIDERS.md)
+
 ---
 
 ## ✨ What's inside
@@ -20,13 +23,17 @@ Six top-level sections (AxisOne **Direction B — Terminal Dark** design, with a
 | **Portfolio** | One balance sheet across all 5 markets — stat cards, allocation donut, value curve, holdings table (valued live). |
 | **Insights** | AI Trading Coach — discipline score, detected behaviour patterns, **rules you can apply that are enforced at order time**, discipline breakdown, and an emotion-tagged trade journal. |
 | **Scanner** | Screen every market (gainers/losers, RSI extremes, breakouts) → send a hit straight to the order ticket. |
+| **Agents** | Multi-provider AI agents (DeepSeek default): trading-signal, journal-writer, daily-briefing, NL-scanner + coach, with **auto-trading** (manual / auto-paper / auto-live), guardrails & kill-switch. |
 
 ### Trading engine
 
 - **Realistic + persistent paper engine** (`src/lib/paperEngine.ts`): market / limit / stop / stop-limit orders, **resting orders, partial fills, slippage, fees, margin**, multi-currency account (₹ base, USD converted). State persists across reloads.
 - **Live market data** (`src/stores/marketStore.ts`): realistic random-walk simulation by default, with a **real Binance WebSocket feed** seam (`NEXT_PUBLIC_ENABLE_BINANCE_FEED=true`).
 - **Connectors** (`src/lib/brokers/registry.ts` + `src/app/api/brokers/*`): Zerodha Kite, Dhan, Alpaca, Binance, Coinbase, Interactive Brokers and an FX/commodity data provider — behind a unified interface with a **paper ↔ live** toggle. **Broker keys are POSTed to the server and never stored in the browser** (meant for Supabase Vault).
-- **AI Coach** (`src/app/api/coach/route.ts`): uses the **Claude API** server-side when `ANTHROPIC_API_KEY` is set; otherwise a deterministic heuristic coach.
+- **AI (multi-provider)** (`src/lib/ai/`): **DeepSeek default**, + OpenAI/Gemini/Anthropic with fallback; powers the coach + agents. Heuristic fallback when no key.
+- **Auto-trading** (`src/components/system/AgentEngine.tsx`): manual / auto-paper / auto-live with guardrails, kill-switch and coach-rule enforcement.
+- **Notifications** (`src/lib/notify/`): Telegram, Email (Resend), WhatsApp (Twilio).
+- **Backend** (optional): super-admin env auth + middleware; Supabase (`gth_*` tables + RLS + `gth_app_state` cloud sync).
 
 ---
 
