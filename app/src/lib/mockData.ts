@@ -1,9 +1,10 @@
-// Mock data for the trading platform
+// Instrument catalog + seed data for the trading platform.
+// Prices are quoted in each instrument's own currency (INR for India, USD otherwise).
 
 import { MARKETS, type Market } from './constants';
 
 export interface Asset {
-    symbol: string;
+    symbol: string;      // display symbol, e.g. BTC/USDT, RELIANCE, EUR/USD
     name: string;
     market: Market;
     exchange: string;
@@ -26,6 +27,7 @@ export interface Position {
     currentPrice: number;
     pnl: number;
     pnlPercent: number;
+    side?: 'long' | 'short';
 }
 
 export interface Order {
@@ -41,252 +43,97 @@ export interface Order {
 }
 
 export const WATCHLIST_ASSETS: Asset[] = [
-    // Indian Equities
-    {
-        symbol: 'TATASTEEL',
-        name: 'Tata Steel Ltd',
-        market: MARKETS.INDIA,
-        exchange: 'NSE',
-        price: 142.35,
-        change: 2.45,
-        changePercent: 1.75,
-        volume: 12500000,
-        high24h: 144.50,
-        low24h: 139.80,
-        marketCap: 175000000000,
-    },
-    {
-        symbol: 'RELIANCE',
-        name: 'Reliance Industries',
-        market: MARKETS.INDIA,
-        exchange: 'NSE',
-        price: 2456.80,
-        change: -15.20,
-        changePercent: -0.62,
-        volume: 8900000,
-        high24h: 2480.00,
-        low24h: 2445.00,
-        marketCap: 1660000000000,
-    },
-    {
-        symbol: 'INFY',
-        name: 'Infosys Ltd',
-        market: MARKETS.INDIA,
-        exchange: 'NSE',
-        price: 1845.25,
-        change: 28.50,
-        changePercent: 1.57,
-        volume: 5600000,
-        high24h: 1860.00,
-        low24h: 1810.00,
-        marketCap: 768000000000,
-    },
-    // US Stocks
-    {
-        symbol: 'AAPL',
-        name: 'Apple Inc.',
-        market: MARKETS.US,
-        exchange: 'NASDAQ',
-        price: 185.92,
-        change: 3.45,
-        changePercent: 1.89,
-        volume: 45000000,
-        high24h: 187.50,
-        low24h: 183.20,
-        marketCap: 2900000000000,
-    },
-    {
-        symbol: 'TSLA',
-        name: 'Tesla Inc.',
-        market: MARKETS.US,
-        exchange: 'NASDAQ',
-        price: 248.50,
-        change: -8.75,
-        changePercent: -3.40,
-        volume: 78000000,
-        high24h: 258.00,
-        low24h: 245.00,
-        marketCap: 790000000000,
-    },
-    {
-        symbol: 'NVDA',
-        name: 'NVIDIA Corp',
-        market: MARKETS.US,
-        exchange: 'NASDAQ',
-        price: 495.22,
-        change: 12.88,
-        changePercent: 2.67,
-        volume: 35000000,
-        high24h: 498.50,
-        low24h: 480.00,
-        marketCap: 1220000000000,
-    },
-    // Crypto
-    {
-        symbol: 'BTCUSDT',
-        name: 'Bitcoin',
-        market: MARKETS.CRYPTO,
-        exchange: 'Binance',
-        price: 43250.00,
-        change: 850.00,
-        changePercent: 2.00,
-        volume: 28000000000,
-        high24h: 43800.00,
-        low24h: 42100.00,
-        marketCap: 847000000000,
-    },
-    {
-        symbol: 'ETHUSDT',
-        name: 'Ethereum',
-        market: MARKETS.CRYPTO,
-        exchange: 'Binance',
-        price: 2285.50,
-        change: -45.30,
-        changePercent: -1.94,
-        volume: 12000000000,
-        high24h: 2350.00,
-        low24h: 2260.00,
-        marketCap: 275000000000,
-    },
-    {
-        symbol: 'SOLUSDT',
-        name: 'Solana',
-        market: MARKETS.CRYPTO,
-        exchange: 'Binance',
-        price: 98.45,
-        change: 5.20,
-        changePercent: 5.58,
-        volume: 2800000000,
-        high24h: 102.00,
-        low24h: 92.50,
-        marketCap: 42500000000,
-    },
+    // ---- Crypto ----
+    { symbol: 'BTC/USDT', name: 'Bitcoin', market: MARKETS.CRYPTO, exchange: 'Binance', price: 67841.2, change: 831.4, changePercent: 1.24, volume: 1.2e9, high24h: 68090, low24h: 66840, marketCap: 1.33e12 },
+    { symbol: 'ETH/USDT', name: 'Ethereum', market: MARKETS.CRYPTO, exchange: 'Binance', price: 3512.8, change: 71.6, changePercent: 2.08, volume: 6.4e8, high24h: 3560, low24h: 3410, marketCap: 4.2e11 },
+    { symbol: 'SOL/USDT', name: 'Solana', market: MARKETS.CRYPTO, exchange: 'Binance', price: 172.35, change: 9.1, changePercent: 5.58, volume: 2.8e8, high24h: 178, low24h: 160, marketCap: 7.6e10 },
+    // ---- India (NSE) ----
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', market: MARKETS.INDIA, exchange: 'NSE', price: 24318, change: 75.2, changePercent: 0.31, volume: 0, high24h: 24380, low24h: 24210 },
+    { symbol: 'RELIANCE', name: 'Reliance Industries', market: MARKETS.INDIA, exchange: 'NSE', price: 2945.6, change: -13.6, changePercent: -0.46, volume: 8.9e6, high24h: 2980, low24h: 2932, marketCap: 1.99e13 },
+    { symbol: 'TATASTEEL', name: 'Tata Steel Ltd', market: MARKETS.INDIA, exchange: 'NSE', price: 142.35, change: 2.45, changePercent: 1.75, volume: 1.25e7, high24h: 144.5, low24h: 139.8, marketCap: 1.75e12 },
+    { symbol: 'INFY', name: 'Infosys Ltd', market: MARKETS.INDIA, exchange: 'NSE', price: 1845.25, change: 28.5, changePercent: 1.57, volume: 5.6e6, high24h: 1860, low24h: 1810, marketCap: 7.68e12 },
+    // ---- US ----
+    { symbol: 'AAPL', name: 'Apple Inc.', market: MARKETS.US, exchange: 'NASDAQ', price: 213.4, change: 1.31, changePercent: 0.62, volume: 4.5e7, high24h: 215.2, low24h: 211.5, marketCap: 3.3e12 },
+    { symbol: 'TSLA', name: 'Tesla Inc.', market: MARKETS.US, exchange: 'NASDAQ', price: 248.5, change: -4.68, changePercent: -1.85, volume: 7.8e7, high24h: 258, low24h: 245, marketCap: 7.9e11 },
+    { symbol: 'NVDA', name: 'NVIDIA Corp', market: MARKETS.US, exchange: 'NASDAQ', price: 124.72, change: 3.24, changePercent: 2.67, volume: 3.5e8, high24h: 126.5, low24h: 120.1, marketCap: 3.05e12 },
+    // ---- Forex ----
+    { symbol: 'EUR/USD', name: 'Euro / US Dollar', market: MARKETS.FOREX, exchange: 'FX', price: 1.0842, change: -0.0013, changePercent: -0.12, volume: 0, high24h: 1.0871, low24h: 1.0828 },
+    { symbol: 'GBP/USD', name: 'Pound / US Dollar', market: MARKETS.FOREX, exchange: 'FX', price: 1.2712, change: 0.0021, changePercent: 0.17, volume: 0, high24h: 1.2744, low24h: 1.2689 },
+    { symbol: 'USD/JPY', name: 'US Dollar / Yen', market: MARKETS.FOREX, exchange: 'FX', price: 156.82, change: 0.44, changePercent: 0.28, volume: 0, high24h: 157.1, low24h: 156.2 },
+    // ---- Commodities ----
+    { symbol: 'XAU/USD', name: 'Gold Spot', market: MARKETS.COMMODITY, exchange: 'COMEX', price: 2331.5, change: 17.1, changePercent: 0.74, volume: 0, high24h: 2342, low24h: 2312 },
+    { symbol: 'XAG/USD', name: 'Silver Spot', market: MARKETS.COMMODITY, exchange: 'COMEX', price: 29.44, change: -0.21, changePercent: -0.71, volume: 0, high24h: 29.9, low24h: 29.1 },
+    { symbol: 'WTI/USD', name: 'Crude Oil WTI', market: MARKETS.COMMODITY, exchange: 'NYMEX', price: 78.62, change: 0.63, changePercent: 0.81, volume: 0, high24h: 79.2, low24h: 77.5 },
 ];
 
+export function getAsset(symbol: string): Asset | undefined {
+    return WATCHLIST_ASSETS.find((a) => a.symbol === symbol);
+}
+
 export const MOCK_POSITIONS: Position[] = [
-    {
-        id: '1',
-        symbol: 'BTCUSDT',
-        name: 'Bitcoin',
-        market: MARKETS.CRYPTO,
-        quantity: 0.5,
-        avgPrice: 41000.00,
-        currentPrice: 43250.00,
-        pnl: 1125.00,
-        pnlPercent: 5.49,
-    },
-    {
-        id: '2',
-        symbol: 'AAPL',
-        name: 'Apple Inc.',
-        market: MARKETS.US,
-        quantity: 50,
-        avgPrice: 175.00,
-        currentPrice: 185.92,
-        pnl: 546.00,
-        pnlPercent: 6.24,
-    },
-    {
-        id: '3',
-        symbol: 'RELIANCE',
-        name: 'Reliance Industries',
-        market: MARKETS.INDIA,
-        quantity: 100,
-        avgPrice: 2500.00,
-        currentPrice: 2456.80,
-        pnl: -4320.00,
-        pnlPercent: -1.73,
-    },
+    { id: '1', symbol: 'BTC/USDT', name: 'Bitcoin', market: MARKETS.CRYPTO, quantity: 0.45, avgPrice: 58200, currentPrice: 67841, pnl: 4338.45, pnlPercent: 16.56, side: 'long' },
+    { id: '2', symbol: 'RELIANCE', name: 'Reliance Industries', market: MARKETS.INDIA, quantity: 120, avgPrice: 2640, currentPrice: 2945.6, pnl: 36672, pnlPercent: 11.58, side: 'long' },
+    { id: '3', symbol: 'AAPL', name: 'Apple Inc.', market: MARKETS.US, quantity: 40, avgPrice: 198.4, currentPrice: 213.4, pnl: 600, pnlPercent: 7.56, side: 'long' },
+    { id: '4', symbol: 'XAU/USD', name: 'Gold Spot', market: MARKETS.COMMODITY, quantity: 2, avgPrice: 2180, currentPrice: 2331.5, pnl: 303, pnlPercent: 6.95, side: 'long' },
 ];
 
 export const MOCK_ORDERS: Order[] = [
-    {
-        id: 'ord-001',
-        symbol: 'BTCUSDT',
-        side: 'buy',
-        type: 'limit',
-        quantity: 0.1,
-        price: 42000.00,
-        status: 'pending',
-        createdAt: '2026-01-06T10:30:00Z',
-    },
-    {
-        id: 'ord-002',
-        symbol: 'TSLA',
-        side: 'sell',
-        type: 'market',
-        quantity: 10,
-        status: 'filled',
-        filledAt: '2026-01-06T09:15:00Z',
-        createdAt: '2026-01-06T09:15:00Z',
-    },
-    {
-        id: 'ord-003',
-        symbol: 'TATASTEEL',
-        side: 'buy',
-        type: 'stop_loss',
-        quantity: 200,
-        price: 140.00,
-        status: 'pending',
-        createdAt: '2026-01-06T08:45:00Z',
-    },
+    { id: 'ord-001', symbol: 'BTC/USDT', side: 'buy', type: 'limit', quantity: 0.1, price: 66500, status: 'pending', createdAt: '2026-08-09T10:30:00Z' },
+    { id: 'ord-002', symbol: 'TSLA', side: 'sell', type: 'market', quantity: 10, status: 'filled', filledAt: '2026-08-09T09:15:00Z', createdAt: '2026-08-09T09:15:00Z' },
+    { id: 'ord-003', symbol: 'TATASTEEL', side: 'buy', type: 'stop_loss', quantity: 200, price: 140, status: 'pending', createdAt: '2026-08-09T08:45:00Z' },
 ];
 
-// Generate OHLCV candle data for charts
-export function generateCandleData(symbol: string, count: number = 100) {
-    const now = Date.now();
-    const basePrice = WATCHLIST_ASSETS.find(a => a.symbol === symbol)?.price || 100;
-    const candles = [];
+export interface Candle {
+    time: number; // unix seconds
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume?: number;
+}
 
-    let currentPrice = basePrice * 0.95; // Start 5% lower
-
+// Deterministic-ish OHLC generator for charts (seeded by symbol for stable initial render)
+export function generateCandleData(symbol: string, count = 120, seconds = 900): Candle[] {
+    const base = getAsset(symbol)?.price ?? 100;
+    const now = Math.floor(Date.now() / 1000);
+    let seed = 0;
+    for (let i = 0; i < symbol.length; i++) seed = (seed * 31 + symbol.charCodeAt(i)) % 233280;
+    const rnd = () => {
+        seed = (seed * 9301 + 49297) % 233280;
+        return seed / 233280;
+    };
+    const candles: Candle[] = [];
+    let price = base * (0.94 + rnd() * 0.04);
+    const vol = base * 0.012;
     for (let i = count; i >= 0; i--) {
-        const time = Math.floor((now - i * 60000) / 1000); // 1-minute candles
-        const volatility = 0.002 + Math.random() * 0.008; // 0.2% - 1% volatility
-
-        const open = currentPrice;
-        const changePercent = (Math.random() - 0.48) * volatility * 2;
-        const close = open * (1 + changePercent);
-        const high = Math.max(open, close) * (1 + Math.random() * volatility);
-        const low = Math.min(open, close) * (1 - Math.random() * volatility);
-
+        const time = now - i * seconds;
+        const open = price;
+        price = Math.max(base * 0.5, price + (rnd() - 0.47) * vol);
+        const close = price;
+        const high = Math.max(open, close) + rnd() * vol * 0.6;
+        const low = Math.min(open, close) - rnd() * vol * 0.6;
         candles.push({
             time,
-            open: parseFloat(open.toFixed(2)),
-            high: parseFloat(high.toFixed(2)),
-            low: parseFloat(low.toFixed(2)),
-            close: parseFloat(close.toFixed(2)),
+            open: +open.toFixed(4),
+            high: +high.toFixed(4),
+            low: +low.toFixed(4),
+            close: +close.toFixed(4),
+            volume: Math.round(rnd() * 1e6),
         });
-
-        currentPrice = close;
     }
-
     return candles;
 }
 
-// Generate order book data
-export function generateOrderBook(currentPrice: number, depth: number = 10) {
+export function generateOrderBook(currentPrice: number, depth = 12) {
     const bids = [];
     const asks = [];
-
     for (let i = 0; i < depth; i++) {
-        const bidPrice = currentPrice * (1 - (i + 1) * 0.001);
-        const askPrice = currentPrice * (1 + (i + 1) * 0.001);
-        const bidQty = Math.random() * 10 + 1;
-        const askQty = Math.random() * 10 + 1;
-
-        bids.push({
-            price: parseFloat(bidPrice.toFixed(2)),
-            quantity: parseFloat(bidQty.toFixed(4)),
-            total: parseFloat((bidPrice * bidQty).toFixed(2)),
-        });
-
-        asks.push({
-            price: parseFloat(askPrice.toFixed(2)),
-            quantity: parseFloat(askQty.toFixed(4)),
-            total: parseFloat((askPrice * askQty).toFixed(2)),
-        });
+        const bidPrice = currentPrice * (1 - (i + 1) * 0.0006);
+        const askPrice = currentPrice * (1 + (i + 1) * 0.0006);
+        const bidQty = Math.random() * 10 + 0.5;
+        const askQty = Math.random() * 10 + 0.5;
+        bids.push({ price: +bidPrice.toFixed(2), quantity: +bidQty.toFixed(4), total: +(bidPrice * bidQty).toFixed(2) });
+        asks.push({ price: +askPrice.toFixed(2), quantity: +askQty.toFixed(4), total: +(askPrice * askQty).toFixed(2) });
     }
-
     return { bids, asks };
 }

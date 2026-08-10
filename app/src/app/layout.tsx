@@ -1,17 +1,27 @@
 'use client';
 
-import { Inter } from "next/font/google";
+import { Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar, TopBar } from "@/components/layout";
+import { TopBar } from "@/components/layout";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MarketEngine } from "@/components/system/MarketEngine";
+import { AgentEngine } from "@/components/system/AgentEngine";
+import { CloudSync } from "@/components/system/CloudSync";
 
-const inter = Inter({
-  variable: "--font-inter",
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
-  display: 'swap',
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export default function RootLayout({
@@ -20,58 +30,43 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Check if on auth pages (don't show sidebar/topbar)
-  const isAuthPage = pathname?.startsWith('/auth');
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const isAuthPage = pathname?.startsWith("/auth");
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>GlobalTrade Hub | One Screen, All Markets</title>
-        <meta name="description" content="Unified trading platform for Indian Equities, US Stocks, and Crypto/Commodities." />
+        <title>GlobalTrade Hub — One Screen, All Markets</title>
+        <meta
+          name="description"
+          content="Unified multi-asset trading terminal: crypto, Indian & US equities, forex and commodities. Paper trading, backtesting and an AI trading coach."
+        />
       </head>
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${hanken.variable} ${plexMono.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
-          {!isAuthPage && (
-            <>
-              <Sidebar />
+          {isAuthPage ? (
+            <main className="min-h-screen bg-background text-foreground">{children}</main>
+          ) : (
+            <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+              <MarketEngine />
+              <AgentEngine />
+              <CloudSync />
               <TopBar />
-            </>
+              <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+            </div>
           )}
-          <main
-            className="transition-all duration-200 bg-background text-foreground"
-            style={{
-              marginLeft: isAuthPage ? 0 : (isMobile ? 0 : '280px'),
-              minHeight: '100vh',
-              padding: isAuthPage ? 0 : (isMobile ? '12px' : '16px'),
-              paddingTop: isAuthPage ? 0 : (isMobile ? '56px' : '64px'),
-            }}
-          >
-            {children}
-          </main>
           <Toaster
             position="top-right"
             richColors
             toastOptions={{
               style: {
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
-                color: 'var(--foreground)',
+                background: "var(--panel)",
+                border: "1px solid var(--border)",
+                color: "var(--text)",
               },
             }}
           />
