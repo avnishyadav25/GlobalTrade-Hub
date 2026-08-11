@@ -19,6 +19,7 @@ export const VISUAL_KEYS = [
     'greeks',
     'futures-curve',
     'yield-curve',
+    'compounding',
 ] as const;
 
 export type VisualKey = (typeof VISUAL_KEYS)[number];

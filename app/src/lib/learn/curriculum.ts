@@ -9,6 +9,8 @@ import { DERIVATIVES_LESSONS } from './tracks/derivatives';
 import { FOREX_LESSONS } from './tracks/forex';
 import { COMMODITY_LESSONS } from './tracks/commodities';
 import { OTHER_MARKET_LESSONS } from './tracks/otherMarkets';
+import { STRATEGY_LESSONS } from './tracks/strategy';
+import { MACRO_LESSONS } from './tracks/macro';
 import { CRYPTO_LESSONS } from './tracks/crypto';
 import { AIRDROP_LESSONS } from './tracks/airdrops';
 import { IPO_LESSONS } from './tracks/ipo';
@@ -1020,6 +1022,8 @@ export const LESSONS: Lesson[] = [
     ...FOREX_LESSONS,
     ...COMMODITY_LESSONS,
     ...OTHER_MARKET_LESSONS,
+    ...STRATEGY_LESSONS,
+    ...MACRO_LESSONS,
     ...CRYPTO_LESSONS,
     ...AIRDROP_LESSONS,
     ...IPO_LESSONS,

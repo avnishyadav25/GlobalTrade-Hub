@@ -668,6 +668,56 @@ function YieldCurve() {
     );
 }
 
+/* ------------------------------------------------- compounding vs drawdown */
+
+/**
+ * The recovery asymmetry, drawn rather than asserted.
+ *
+ * Both bars come from the same formula the lesson states, so the picture and the
+ * arithmetic cannot disagree: a 50% loss needs a 100% gain to undo.
+ */
+function CompoundingDrawdown() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [i, setI] = useState(3);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setI((x) => (x + 1) % 4), 2000);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const DDS = [0.1, 0.25, 0.5, 0.75];
+    const dd = DDS[i];
+    const recovery = 1 / (1 - dd) - 1;
+
+    return (
+        <Frame caption="The gain is computed on the smaller remaining base, which is why a large drawdown is mathematically expensive rather than merely painful.">
+            <div ref={ref} className="flex flex-col gap-2.5">
+                <div>
+                    <div className="mb-1 flex items-baseline justify-between">
+                        <span className="text-2xs font-semibold" style={{ color: DOWN }}>Drawdown</span>
+                        <span className="mono text-sm font-semibold" style={{ color: DOWN }}>−{(dd * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--chip)' }}>
+                        <div className="h-full rounded-full transition-[width] duration-700"
+                             style={{ width: `${dd * 100}%`, background: DOWN }} />
+                    </div>
+                </div>
+                <div>
+                    <div className="mb-1 flex items-baseline justify-between">
+                        <span className="text-2xs font-semibold" style={{ color: UP }}>Gain needed to recover</span>
+                        <span className="mono text-sm font-semibold" style={{ color: UP }}>+{(recovery * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--chip)' }}>
+                        <div className="h-full rounded-full transition-[width] duration-700"
+                             style={{ width: `${Math.min(100, (recovery / 3) * 100)}%`, background: UP }} />
+                    </div>
+                </div>
+            </div>
+        </Frame>
+    );
+}
+
 /* ------------------------------------------------------------------ registry */
 
 const VISUALS: Record<string, () => React.JSX.Element> = {
@@ -685,6 +735,7 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'greeks': Greeks,
     'futures-curve': FuturesCurve,
     'yield-curve': YieldCurve,
+    'compounding': CompoundingDrawdown,
 };
 
 export const VISUAL_KEYS = Object.keys(VISUALS);
