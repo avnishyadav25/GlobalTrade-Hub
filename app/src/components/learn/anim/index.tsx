@@ -718,6 +718,78 @@ function CompoundingDrawdown() {
     );
 }
 
+/* ---------------------------------------------------------------- order book */
+
+/**
+ * A depth ladder with a market order eating through it.
+ *
+ * The average fill price is computed by actually walking the levels, so the slippage
+ * number shown is the slippage the drawn book would produce — the point being that
+ * the quoted price applies to the top level and nothing else.
+ */
+function OrderBook() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [taken, setTaken] = useState(3);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setTaken((t) => (t >= 4 ? 0 : t + 1)), 1500);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const ASKS = [
+        { px: 100.4, qty: 120 },
+        { px: 100.3, qty: 80 },
+        { px: 100.2, qty: 60 },
+        { px: 100.1, qty: 40 },
+    ];
+    const BIDS = [
+        { px: 100.0, qty: 55 },
+        { px: 99.9, qty: 90 },
+        { px: 99.8, qty: 140 },
+    ];
+
+    // Walk the levels the buy order actually consumes, cheapest first.
+    const eaten = ASKS.slice(ASKS.length - taken);
+    const qty = eaten.reduce((n, l) => n + l.qty, 0);
+    const cost = eaten.reduce((n, l) => n + l.qty * l.px, 0);
+    const avg = qty ? cost / qty : ASKS[ASKS.length - 1].px;
+    const slipBps = ((avg - ASKS[ASKS.length - 1].px) / ASKS[ASKS.length - 1].px) * 10_000;
+    const maxQty = Math.max(...ASKS.map((l) => l.qty), ...BIDS.map((l) => l.qty));
+
+    const Row = ({ px, qty: q, tone, hit }: { px: number; qty: number; tone: string; hit: boolean }) => (
+        <div className="flex items-center gap-2">
+            <span className="mono w-14 shrink-0 text-2xs" style={{ color: hit ? FG : tone }}>{px.toFixed(1)}</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-xs" style={{ background: 'var(--chip)' }}>
+                <span className="block h-full rounded-xs transition-opacity duration-300"
+                      style={{ width: `${(q / maxQty) * 100}%`, background: tone, opacity: hit ? 0.25 : 1 }} />
+            </span>
+            <span className="mono w-10 shrink-0 text-right text-2xs" style={{ color: FAINT }}>{q}</span>
+        </div>
+    );
+
+    return (
+        <Frame caption="A market buy walks up the asks, filling each level in turn. The quoted price applies to the top of the book — everything above it is what size actually costs.">
+            <div ref={ref}>
+                <div className="flex flex-col gap-1">
+                    {ASKS.map((l, i) => (
+                        <Row key={l.px} {...l} tone={DOWN} hit={i >= ASKS.length - taken} />
+                    ))}
+                    <div className="my-1 flex items-baseline justify-between border-y border-border2 py-1">
+                        <span className="text-2xs font-bold tracking-wide" style={{ color: FAINT }}>
+                            {taken === 0 ? 'RESTING BOOK' : `BUYING ${qty}`}
+                        </span>
+                        <span className="mono text-2xs font-semibold" style={{ color: taken > 1 ? DOWN : FG }}>
+                            {taken === 0 ? 'ask 100.1' : `avg ${avg.toFixed(3)} · slip ${slipBps.toFixed(0)} bps`}
+                        </span>
+                    </div>
+                    {BIDS.map((l) => <Row key={l.px} {...l} tone={UP} hit={false} />)}
+                </div>
+            </div>
+        </Frame>
+    );
+}
+
 /* ------------------------------------------------------------------ registry */
 
 const VISUALS: Record<string, () => React.JSX.Element> = {
@@ -736,6 +808,7 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'futures-curve': FuturesCurve,
     'yield-curve': YieldCurve,
     'compounding': CompoundingDrawdown,
+    'order-book': OrderBook,
 };
 
 export const VISUAL_KEYS = Object.keys(VISUALS);

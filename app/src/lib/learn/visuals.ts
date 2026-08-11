@@ -20,6 +20,7 @@ export const VISUAL_KEYS = [
     'futures-curve',
     'yield-curve',
     'compounding',
+    'order-book',
 ] as const;
 
 export type VisualKey = (typeof VISUAL_KEYS)[number];

@@ -2,6 +2,7 @@ import * as v from './verify';
 import { deriveFxRates, equity, estimateCharges, toBase } from '@/lib/paperEngine';
 import type { Lesson, TrackId, VerifyContext } from './types';
 import { INDIA_EQUITY_LESSONS } from './tracks/indiaEquity';
+import { INDIA_EQUITY_ADVANCED } from './tracks/indiaEquityAdvanced';
 import { US_EQUITY_LESSONS } from './tracks/usEquity';
 import { COMPANY_LESSONS } from './tracks/company';
 import { TECHNICAL_LESSONS } from './tracks/technical';
@@ -12,6 +13,8 @@ import { OTHER_MARKET_LESSONS } from './tracks/otherMarkets';
 import { STRATEGY_LESSONS } from './tracks/strategy';
 import { MACRO_LESSONS } from './tracks/macro';
 import { CRYPTO_LESSONS } from './tracks/crypto';
+import { CRYPTO_ADVANCED } from './tracks/cryptoAdvanced';
+import { RISK_ADVANCED } from './tracks/riskAdvanced';
 import { AIRDROP_LESSONS } from './tracks/airdrops';
 import { IPO_LESSONS } from './tracks/ipo';
 
@@ -1015,6 +1018,7 @@ const CORE_LESSONS: Lesson[] = [
 export const LESSONS: Lesson[] = [
     ...CORE_LESSONS,
     ...INDIA_EQUITY_LESSONS,
+    ...INDIA_EQUITY_ADVANCED,
     ...US_EQUITY_LESSONS,
     ...COMPANY_LESSONS,
     ...TECHNICAL_LESSONS,
@@ -1026,6 +1030,8 @@ export const LESSONS: Lesson[] = [
     ...MACRO_LESSONS,
     ...CRYPTO_LESSONS,
     ...AIRDROP_LESSONS,
+    ...CRYPTO_ADVANCED,
+    ...RISK_ADVANCED,
     ...IPO_LESSONS,
 ];
 
