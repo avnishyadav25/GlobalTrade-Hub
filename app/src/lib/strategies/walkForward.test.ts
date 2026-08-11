@@ -153,4 +153,35 @@ describe('runWalkForward', () => {
         expect(Number.isFinite(r.outOfSampleNetPct)).toBe(true);
         expect(Number.isFinite(r.degradation)).toBe(true);
     });
+    it('reports progress without changing the result', () => {
+        // The worker relies on this: a progress-reporting run and a silent one must be
+        // the same computation, or the number on screen is not the number that was
+        // computed. onProgress is side-effect only, and this is what holds it to that.
+        const silent = runWalkForward({ ...base, bars: wavy(600), grid, folds: 3 });
+
+        const seen: number[] = [];
+        let lastTotal = 0;
+        const reported = runWalkForward({
+            ...base, bars: wavy(600), grid, folds: 3,
+            onProgress: (p) => { seen.push(p.done); lastTotal = p.total; },
+        });
+
+        expect(JSON.stringify(reported)).toBe(JSON.stringify(silent));
+        expect(seen.length).toBeGreaterThan(0);
+        // Monotonic and bounded — a progress bar that goes backwards is worse than none.
+        expect(seen.every((v, i) => i === 0 || v >= seen[i - 1])).toBe(true);
+        expect(Math.max(...seen)).toBeLessThanOrEqual(lastTotal);
+    });
+
+    it('counts every backtest in the progress total, not just folds', () => {
+        // Counting folds alone would sit at 0% through a minute of real work and then
+        // jump to 25%. The denominator has to be backtests.
+        let total = 0;
+        runWalkForward({
+            ...base, bars: wavy(600), grid: { fast: [3, 8], slow: [20, 30] }, folds: 2,
+            onProgress: (p) => { total = p.total; },
+        });
+        // 2 folds x (4 combinations + 1 test run)
+        expect(total).toBe(10);
+    });
 });

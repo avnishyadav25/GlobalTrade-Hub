@@ -103,7 +103,8 @@ export const NAV_SECTIONS: NavItem[] = [
     children: [
       { key: 'library', label: 'Library', href: '/strategies' },
       { key: 'signals', label: 'Signals', href: '/signals' },
-      { key: 'backtest', label: 'Backtest', href: '/backtest' },
+      { key: 'backtest', label: 'Compare', href: '/backtest' },
+      { key: 'walkforward', label: 'Walk-forward', href: '/backtest/walk-forward' },
     ],
   },
   {

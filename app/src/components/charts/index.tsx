@@ -10,6 +10,132 @@ const DOWN = 'var(--down)';
 const GRID = 'var(--grid)';
 const FAINT = 'var(--faint)';
 
+export interface LineSeries {
+    points: number[];
+    label: string;
+    color?: string;
+    dashed?: boolean;
+}
+
+/**
+ * Several series on ONE shared axis.
+ *
+ * This exists because `AreaChart` self-scales to its own min and max, so stacking two of
+ * them puts the series on different axes — which makes a strategy that lost to buy-and-hold
+ * look like it matched it. Every series here is scaled against the combined range, and
+ * series are truncated to the shortest length rather than stretched.
+ */
+export function MultiLine({ series, height = 190, label }: { series: LineSeries[]; height?: number; label: string }) {
+    const usable = series.filter((s) => s.points.length >= 2);
+    if (!usable.length) return null;
+
+    const n = Math.min(...usable.map((s) => s.points.length));
+    if (n < 2) return null;
+
+    const all = usable.flatMap((s) => s.points.slice(0, n));
+    const lo = Math.min(...all);
+    const hi = Math.max(...all);
+    const span = hi - lo || 1;
+    const W = 660;
+    const H = height;
+    const PAD = 10;
+
+    const toPath = (points: number[]) =>
+        points
+            .slice(0, n)
+            .map((v, i) => `${i === 0 ? 'M' : 'L'} ${(i / (n - 1)) * W} ${H - PAD - ((v - lo) / span) * (H - PAD * 2)}`)
+            .join(' ');
+
+    return (
+        <div>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={label}>
+                {usable.map((s) => (
+                    <path
+                        key={s.label}
+                        d={toPath(s.points)}
+                        fill="none"
+                        stroke={s.color ?? ACCENT}
+                        strokeWidth={s.dashed ? 1.5 : 2}
+                        strokeDasharray={s.dashed ? '4 3' : undefined}
+                    />
+                ))}
+            </svg>
+            <div className="mt-1 flex flex-wrap gap-4 text-2xs text-faint">
+                {usable.map((s) => (
+                    <span key={s.label}>
+                        <span className="inline-block h-0.5 w-4 align-middle" style={{ background: s.color ?? ACCENT }} /> {s.label}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * A symbol-by-symbol correlation matrix.
+ *
+ * `Heatmap` above cannot do this — despite the name it is a hardcoded 12-month calendar
+ * grid. Correlation needs a diverging ramp centred on zero, and it needs to distinguish a
+ * cell that is zero because two series genuinely do not move together from one that is
+ * zero because a sleeve never traded and has no variance at all.
+ */
+export function CorrelationMatrix({
+    labels,
+    values,
+    idle = [],
+}: {
+    labels: string[];
+    values: number[][];
+    /** Indices whose series was flat — their zeros mean "no variance", not "uncorrelated". */
+    idle?: number[];
+}) {
+    const isIdle = new Set(idle);
+
+    // Diverging: red for positively correlated (no diversification), green for negative.
+    const cell = (v: number) => {
+        const a = Math.min(1, Math.abs(v));
+        return v >= 0 ? `color-mix(in srgb, var(--down) ${a * 55}%, transparent)` : `color-mix(in srgb, var(--up) ${a * 55}%, transparent)`;
+    };
+
+    return (
+        <div className="overflow-x-auto">
+            <div
+                className="inline-grid gap-px text-2xs"
+                style={{ gridTemplateColumns: `minmax(72px, auto) repeat(${labels.length}, minmax(52px, 1fr))` }}
+            >
+                <div />
+                {labels.map((l) => (
+                    <div key={l} className="truncate px-1 py-1 text-center font-semibold" style={{ color: FAINT }} title={l}>
+                        {l}
+                    </div>
+                ))}
+
+                {labels.map((row, i) => (
+                    <React.Fragment key={row}>
+                        <div className="truncate px-1 py-1 font-semibold" style={{ color: FAINT }} title={row}>
+                            {row}
+                        </div>
+                        {labels.map((col, j) => {
+                            const v = values[i]?.[j] ?? 0;
+                            const dead = isIdle.has(i) || isIdle.has(j);
+                            return (
+                                <div
+                                    key={col}
+                                    className="mono px-1 py-1 text-center"
+                                    style={{ background: dead ? 'transparent' : cell(v), color: dead ? FAINT : undefined }}
+                                    title={dead ? `${row} / ${col}: a flat sleeve has no variance — this is not a measured zero` : `${row} / ${col}: ${v.toFixed(2)}`}
+                                >
+                                    {dead ? '—' : v.toFixed(2)}
+                                </div>
+                            );
+                        })}
+                    </React.Fragment>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function AreaChart({
     points,
     color = ACCENT,

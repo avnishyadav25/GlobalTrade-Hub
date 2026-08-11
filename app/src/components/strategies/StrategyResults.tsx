@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Panel, Badge, Callout, DataTable, type Column } from '@/components/ui';
-import { DrawdownChart } from '@/components/charts';
+import { DrawdownChart, MultiLine } from '@/components/charts';
 import { fmtMoney, fmtPct } from '@/lib/format';
 import type { StrategyBacktestResult, Trade } from '@/lib/strategies/backtest';
 
@@ -32,35 +32,14 @@ function Metric({ label, value, sub, tone }: { label: string; value: string; sub
 
 /** Equity against buy-and-hold on shared axes — the comparison that gives a result meaning. */
 function EquityVsBenchmark({ equity, benchmark }: { equity: number[]; benchmark: number[] }) {
-    const path = useMemo(() => {
-        const n = Math.min(equity.length, benchmark.length);
-        if (n < 2) return null;
-        const all = [...equity.slice(0, n), ...benchmark.slice(0, n)];
-        const lo = Math.min(...all);
-        const hi = Math.max(...all);
-        const span = hi - lo || 1;
-        const toPath = (series: number[]) =>
-            series
-                .slice(0, n)
-                .map((v, i) => `${i === 0 ? 'M' : 'L'} ${(i / (n - 1)) * 660} ${180 - ((v - lo) / span) * 170}`)
-                .join(' ');
-        return { strategy: toPath(equity), bench: toPath(benchmark) };
-    }, [equity, benchmark]);
-
-    if (!path) return null;
-
-    return (
-        <div>
-            <svg viewBox="0 0 660 190" className="w-full" role="img" aria-label="Strategy equity compared with buy and hold">
-                <path d={path.bench} fill="none" stroke="var(--faint)" strokeWidth="1.5" strokeDasharray="4 3" />
-                <path d={path.strategy} fill="none" stroke="var(--accent)" strokeWidth="2" />
-            </svg>
-            <div className="mt-1 flex gap-4 text-2xs text-faint">
-                <span><span className="inline-block h-0.5 w-4 align-middle" style={{ background: 'var(--accent)' }} /> strategy</span>
-                <span><span className="inline-block h-0.5 w-4 align-middle" style={{ background: 'var(--faint)' }} /> buy &amp; hold</span>
-            </div>
-        </div>
+    const series = useMemo(
+        () => [
+            { points: benchmark, label: 'buy & hold', color: 'var(--faint)', dashed: true },
+            { points: equity, label: 'strategy', color: 'var(--accent)' },
+        ],
+        [equity, benchmark]
     );
+    return <MultiLine series={series} label="Strategy equity compared with buy and hold" />;
 }
 
 const TRADE_COLUMNS: Column<Trade>[] = [

@@ -28,6 +28,24 @@ export interface ParamGrid {
  */
 export const MAX_COMBINATIONS = 400;
 
+/**
+ * Where a run has got to.
+ *
+ * A full run is `folds × (combinations + 1)` backtests — 1,600 at the defaults — so a
+ * caller that cannot report progress can only offer a frozen tab. `done` counts
+ * backtests actually finished, which is the only honest denominator for a progress bar:
+ * counting folds alone jumps from 0% to 25% after a minute of apparent inactivity.
+ */
+export interface WalkForwardProgress {
+    phase: 'optimising' | 'testing';
+    /** Zero-based fold being worked on, and how many were planned. */
+    fold: number;
+    folds: number;
+    /** Backtests finished so far, and the total this run will perform. */
+    done: number;
+    total: number;
+}
+
 export interface WalkForwardConfig extends Omit<BacktestConfig, 'params'> {
     grid: ParamGrid;
     /** Override the per-fold combination cap. */
@@ -37,6 +55,11 @@ export interface WalkForwardConfig extends Omit<BacktestConfig, 'params'> {
     folds?: number;
     /** What to maximise in-sample. Defaults to net return per unit of drawdown. */
     objective?: (r: StrategyBacktestResult) => number;
+    /**
+     * Called as work completes. Side-effect only — it must not influence the result, so
+     * that a progress-reporting run and a silent one produce identical output.
+     */
+    onProgress?: (p: WalkForwardProgress) => void;
 }
 
 export interface FoldResult {
@@ -110,7 +133,12 @@ export function expandGrid(grid: ParamGrid): Params[] {
 export function optimise(
     base: Omit<BacktestConfig, 'params'>,
     grid: ParamGrid,
-    opts: { objective?: (r: StrategyBacktestResult) => number; maxCombinations?: number } = {}
+    opts: {
+        objective?: (r: StrategyBacktestResult) => number;
+        maxCombinations?: number;
+        /** Fired after each combination. Side-effect only. */
+        onCombination?: (completed: number, total: number) => void;
+    } = {}
 ): { params: Params; score: number; tried: number; result: StrategyBacktestResult | null } {
     const objective = opts.objective ?? returnOverDrawdown;
     const combos = expandGrid(grid).slice(0, Math.max(1, opts.maxCombinations ?? MAX_COMBINATIONS));
@@ -119,8 +147,8 @@ export function optimise(
     let bestScore = Number.NEGATIVE_INFINITY;
     let bestResult: StrategyBacktestResult | null = null;
 
-    for (const combo of combos) {
-        const params = sanitiseParams(base.strategy, combo);
+    for (let i = 0; i < combos.length; i++) {
+        const params = sanitiseParams(base.strategy, combos[i]);
         const result = runStrategyBacktest({ ...base, params });
         const score = objective(result);
         if (Number.isFinite(score) && score > bestScore) {
@@ -128,6 +156,7 @@ export function optimise(
             bestParams = params;
             bestResult = result;
         }
+        opts.onCombination?.(i + 1, combos.length);
     }
 
     return { params: bestParams, score: bestScore, tried: combos.length, result: bestResult };
@@ -180,6 +209,13 @@ export function runWalkForward(config: WalkForwardConfig): WalkForwardResult {
 
     const results: FoldResult[] = [];
 
+    // Every fold runs `perFold` optimisation backtests plus one test backtest. Reporting
+    // against this total keeps a progress bar honest across the whole run rather than
+    // resetting each fold.
+    const perFold = Math.min(combos.length, cap);
+    const total = folds * (perFold + 1);
+    let done = 0;
+
     for (let f = 0; f < folds; f++) {
         const windowFrom = f * windowSize;
         const windowTo = f === folds - 1 ? bars.length : windowFrom + windowSize;
@@ -192,8 +228,19 @@ export function runWalkForward(config: WalkForwardConfig): WalkForwardResult {
 
         if (trainBars.length < minWindow || testBars.length < warmup + 3) continue;
 
-        const chosen = optimise({ ...config, bars: trainBars }, grid, { objective, maxCombinations: cap });
+        const foldStart = done;
+        const chosen = optimise({ ...config, bars: trainBars }, grid, {
+            objective,
+            maxCombinations: cap,
+            onCombination: (completed) => {
+                done = foldStart + completed;
+                config.onProgress?.({ phase: 'optimising', fold: f, folds, done, total });
+            },
+        });
+
+        config.onProgress?.({ phase: 'testing', fold: f, folds, done, total });
         const test = runStrategyBacktest({ ...config, bars: testBars, params: chosen.params });
+        done = foldStart + perFold + 1;
 
         results.push({
             index: f,

@@ -82,7 +82,7 @@ export const STRATEGY_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 8,
         outcome: 'Explain why in-sample results are worthless and what degradation is acceptable.',
-        where: { href: '/backtest', label: 'Back to testing' },
+        where: { href: '/backtest/walk-forward', label: 'Run a walk-forward' },
         prereq: ['overfitting'],
         concept: [
             'A single backtest over all your data answers a question nobody has: *if I had known the best parameters in advance, how would this have done?* You did not know them in advance. That is the whole difficulty.',
@@ -91,7 +91,7 @@ export const STRATEGY_LESSONS: Lesson[] = [
             'A second reading is available and often more valuable: **parameter stability across windows.** If the optimiser picks 20 in one window, 45 in the next and 12 in the third, there is no stable relationship to find. The parameter is not measuring anything persistent, and no amount of re-optimisation will fix that.',
             'Walk-forward is not a cure. It has its own hazards — repeated walk-forward runs with different window sizes and re-optimisation rules is itself a search you can overfit, at a higher level of abstraction. But it is a much harder test to pass than a single backtest, and passing a harder test is the only evidence worth having.',
         ],
-        inApp: '`lib/strategies/walkForward.ts` implements this — `expandGrid`, `optimise` and `runWalkForward`, reporting in-sample and out-of-sample per fold so degradation is visible rather than hidden. It is **built and tested but not yet exposed in the UI**: [Compare strategies](/backtest) still runs a single window per invocation.',
+        inApp: '[Walk-forward](/backtest/walk-forward) does exactly this. Pick a grid, and it reports in-sample against out-of-sample per fold, plus whether the winning parameters changed between folds. The run happens in a worker because a default grid over four folds is more than a thousand backtests. Compare a result there with [Compare strategies](/backtest), which runs a single window — a strategy that looks good there and degrades sharply here was fitted, not found.',
         quiz: [
             {
                 question: 'Why is a single full-period backtest misleading?',
