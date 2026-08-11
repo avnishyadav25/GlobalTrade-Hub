@@ -212,14 +212,26 @@ describe('companyFundamentals', () => {
     });
 
     it('returns null for an empty profile2 body and an empty metric block', async () => {
-        // 200 with `{}` is what Finnhub answers for a symbol it does not cover.
+        // 200 with `{}` and an empty metric block is what Finnhub answers for a symbol it
+        // does not cover. That is "we know nothing", which is a different state from
+        // "this company reports no debt" — and an all-null object would render in the UI
+        // exactly like a successful lookup of a company that happens to have no ratios.
         stubFetch((url) => ok(isMetric(url) ? { metric: {}, metricType: 'all' } : {}));
 
-        const got = await companyFundamentals('ZZZZ');
+        expect(await companyFundamentals('ZZZZ')).toBeNull();
+    });
 
-        // The metric block is present but empty, so this is an answer, not a failure:
-        // every ratio is null and the symbol echoes back.
-        expect(got).toMatchObject({ symbol: 'ZZZZ', name: null, peTTM: null, marketCap: null });
+    it('still answers when only SOME fields are missing', async () => {
+        // The complement of the case above: a real response with gaps IS data, and each
+        // absent field must come back null rather than zero.
+        //
+        // A DIFFERENT symbol to the test above on purpose: cachedFetch is module-global
+        // with a 6-hour TTL, so reusing ZZZZ would replay that test's cached null.
+        stubFetch((url) => ok(isMetric(url) ? { metric: { peTTM: 18.4 }, metricType: 'all' } : {}));
+
+        expect(await companyFundamentals('YYYY')).toMatchObject({
+            symbol: 'YYYY', peTTM: 18.4, roeTTM: null, marketCap: null,
+        });
     });
 
     it('rejects a symbol Finnhub cannot serve without spending an upstream call', async () => {

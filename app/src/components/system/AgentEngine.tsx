@@ -107,7 +107,10 @@ export function AgentEngine() {
                 const qty = sizeFromGuardrails(sig.symbol, price, agent.guardrails, fx);
                 if (qty <= 0) continue;
 
-                useAgentStore.getState().markActed(signalKey(sig));
+                // NOT marked as acted yet. Marking before placement burns the dedupe key
+                // even when the order is refused, so a signal blocked by a transient
+                // condition — no buying power, a cooldown — could never be retried.
+                const acted = () => useAgentStore.getState().markActed(signalKey(sig));
 
                 if (agent.mode === 'auto-live') {
                     if (!agent.liveArmed || !liveConn) {
@@ -121,6 +124,7 @@ export function AgentEngine() {
                             body: JSON.stringify({ symbol: sig.symbol, side: sig.side, type: 'market', qty, mode: 'live' }),
                         });
                         if (res.ok) {
+                            acted();
                             toast.success(`Live: ${sig.side} ${qty} ${sig.symbol}`);
                             notify(`🤖 LIVE ${sig.side.toUpperCase()} ${qty} ${sig.symbol} — ${sig.rationale}`);
                         } else {
@@ -138,8 +142,9 @@ export function AgentEngine() {
                 const result = usePaperStore.getState().place({ symbol: sig.symbol, side: sig.side, type: 'market', qty });
                 if (result.status === 'rejected') {
                     toast.error(`Auto-paper rejected ${sig.symbol}`, { description: result.reason });
-                    continue;
+                    continue;   // deliberately NOT marked acted — a refusal can be retried
                 }
+                acted();
                 toast.success(`Auto-paper: ${sig.side} ${qty} ${sig.symbol}`, { description: `conf ${sig.confidence} · ${sig.rationale}` });
                 notify(`🤖 PAPER ${sig.side.toUpperCase()} ${qty} ${sig.symbol} (conf ${sig.confidence}) — ${sig.rationale}`);
             }

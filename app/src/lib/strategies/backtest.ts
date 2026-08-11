@@ -1,6 +1,6 @@
 import type { Candle } from '@/lib/mockData';
 import type { Market } from '@/lib/constants';
-import { isFractional, TAKER_SLIPPAGE_BPS } from '@/lib/paperEngine';
+import { isFractional, TAKER_SLIPPAGE_BPS, type PaperSide } from '@/lib/paperEngine';
 import { chargeTotal, type Product } from '@/lib/charges';
 import { shouldSquareOff } from '@/lib/sessions';
 import { createContext } from './context';
@@ -149,8 +149,8 @@ export function runStrategyBacktest(config: BacktestConfig): StrategyBacktestRes
     const slip = TAKER_SLIPPAGE_BPS / 10_000;
     const fractional = isFractional(symbol);
 
-    const costOf = (notional: number, side: 'buy' | 'sell', qty: number) =>
-        chargeTotal({ market, side, product, notionalBase: Math.abs(notional), maker: false, qty });
+    const costOf = (notional: number, side: 'buy' | 'sell', qty: number, maker = false) =>
+        chargeTotal({ market, side, product, notionalBase: Math.abs(notional), maker, qty });
 
     if (bars.length < 2) {
         return emptyResult(params, startingCapital, ['Not enough bars to run anything.']);
@@ -176,6 +176,9 @@ export function runStrategyBacktest(config: BacktestConfig): StrategyBacktestRes
     const benchmark: number[] = [];
     const drawdown: number[] = [];
     const monthEnd = new Map<string, number>();
+
+    /** A working limit order. Replaced whenever the strategy issues a new one. */
+    let resting: { side: PaperSide; price: number; sizing: Sizing; reason: string } | null = null;
 
     let peak = startingCapital;
     let barsInPosition = 0;
@@ -258,13 +261,20 @@ export function runStrategyBacktest(config: BacktestConfig): StrategyBacktestRes
         return Math.min(qty, maxQty);
     };
 
-    const openPosition = (action: Extract<Action, { kind: 'enter' }>, price: number, index: number) => {
-        const isLong = action.side === 'buy';
-        const fill = isLong ? price * (1 + slip) : price * (1 - slip);
-        const qty = sizeFor(action.sizing, fill, equityVal);
+    const openPosition = (
+        spec: { side: PaperSide; sizing: Sizing; stop?: number; target?: number; reason: string },
+        price: number,
+        index: number,
+        maker = false
+    ) => {
+        const isLong = spec.side === 'buy';
+        // A resting limit fills AT its price. Slippage is what a market order pays for
+        // crossing the spread, and a maker was never crossing it.
+        const fill = maker ? price : isLong ? price * (1 + slip) : price * (1 - slip);
+        const qty = sizeFor(spec.sizing, fill, equityVal);
         if (qty <= 0) return;
 
-        const entryFee = costOf(qty * fill, action.side, qty);
+        const entryFee = costOf(qty * fill, spec.side, qty, maker);
         const signed = isLong ? qty : -qty;
 
         cash -= signed * fill;
@@ -277,9 +287,9 @@ export function runStrategyBacktest(config: BacktestConfig): StrategyBacktestRes
             entryIndex: index,
             entryTime: bars[index].time,
             entryFee,
-            entryReason: action.reason,
-            stop: action.stop,
-            target: action.target,
+            entryReason: spec.reason,
+            stop: spec.stop,
+            target: spec.target,
             worst: fill,
             best: fill,
         };
@@ -334,15 +344,42 @@ export function runStrategyBacktest(config: BacktestConfig): StrategyBacktestRes
         }
 
         // 3. Execute at bar i's OPEN.
-        if (action.kind === 'exit' && book.pos) {
+        if (action.kind === 'setStop' && book.pos) {
+            // Ratchet only. A trailing stop that can loosen is not a stop.
+            const isLong = book.pos.qty > 0;
+            const current = book.pos.stop;
+            const tighter = current == null || (isLong ? action.stop > current : action.stop < current);
+            if (tighter && Number.isFinite(action.stop)) book.pos.stop = action.stop;
+            if (action.target != null && Number.isFinite(action.target)) book.pos.target = action.target;
+            // Re-check immediately: a stop moved past the current price must resolve now.
+            checkProtective(bar, i, false);
+        } else if (action.kind === 'exit' && book.pos) {
             closePosition(bar.open, i, 'signal', action.reason);
         } else if (action.kind === 'enter') {
             if (book.pos && Math.sign(book.pos.qty) !== (action.side === 'buy' ? 1 : -1)) {
                 closePosition(bar.open, i, 'signal', 'reversed by a new signal');
             }
             if (!book.pos) {
+                resting = null;   // a market entry supersedes any working order
                 openPosition(action, bar.open, i);
                 // Exposed to the remainder of the bar we just entered on.
+                checkProtective(bar, i, true);
+            }
+        } else if (action.kind === 'rest') {
+            // Working orders are replaced, not stacked — the strategy re-states where it
+            // wants to be on every bar.
+            resting = book.pos ? null : { side: action.side, price: action.price, sizing: action.sizing, reason: action.reason };
+        }
+
+        // A working order fills if this bar trades through its price.
+        if (resting && !book.pos && Number.isFinite(resting.price) && resting.price > 0) {
+            const touched = resting.side === 'buy' ? bar.low <= resting.price : bar.high >= resting.price;
+            if (touched) {
+                // Gap through the level and you are filled at the open, not the limit.
+                const throughOpen = resting.side === 'buy' ? bar.open < resting.price : bar.open > resting.price;
+                const fillPrice = throughOpen ? bar.open : resting.price;
+                openPosition({ side: resting.side, sizing: resting.sizing, reason: resting.reason }, fillPrice, i, true);
+                resting = null;
                 checkProtective(bar, i, true);
             }
         }

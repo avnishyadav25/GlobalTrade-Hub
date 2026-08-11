@@ -84,6 +84,15 @@ export type Action =
     | { kind: 'hold' }
     | EnterAction
     | { kind: 'exit'; reason: string }
+    /**
+     * Move the protective stop on an open position — a trailing stop.
+     *
+     * The ENGINE enforces that this can only ever tighten toward profit. A stop that can
+     * move away from price is not a stop; it is a mechanism for turning a small planned
+     * loss into an unplanned large one, and it is not something each strategy should be
+     * trusted to get right individually.
+     */
+    | { kind: 'setStop'; stop: number; target?: number; reason: string }
     /** A resting limit order, for grid and maker strategies. */
     | { kind: 'rest'; side: PaperSide; price: number; sizing: Sizing; reason: string };
 

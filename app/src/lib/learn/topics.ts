@@ -407,6 +407,34 @@ export const COACH_TOPICS: Record<string, CoachTopic> = {
         ],
     },
 
+    signals: {
+        title: 'Strategy signals',
+        blurb: 'What your strategies want to do, before anything is placed.',
+        lesson: 'rules-that-bind',
+        cards: [
+            {
+                title: 'Nothing is placed without approval',
+                body:
+                    'Every strategy ships in **review** mode: it posts what it wants to do here and waits. ' +
+                    'Switching one to **auto** is a per-strategy decision you make after watching it, not a ' +
+                    'global setting.',
+            },
+            {
+                title: 'The price will have moved',
+                body:
+                    'A signal records the close of the bar that triggered it. By the time you read it the ' +
+                    'market has moved on, so the card shows both prices and how far apart they are. ' +
+                    'Orders are always sized from the **live** price, never the stale one.',
+            },
+            {
+                title: 'Refusals are recorded',
+                body:
+                    'An order the kill switch or a coach rule refuses stays here with its reason, and also ' +
+                    'appears on [Orders](/orders). A signal that vanished silently would be impossible to learn from.',
+            },
+        ],
+    },
+
     settings: {
         title: 'Settings',
         blurb: 'Connections, keys and the live-trading switch.',

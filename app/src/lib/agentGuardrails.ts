@@ -5,7 +5,8 @@
 // maxOrderValueINR, so a user could fire orders that the automatic path would have
 // refused — while the same screen advertised the guardrails as enforced.
 
-import { toBase, isFractional, type PaperState, type FxRates } from './paperEngine';
+import { toBase, isFractional, marketOf, type PaperState, type FxRates } from './paperEngine';
+import { sessionInfo, shouldSquareOff } from './sessions';
 import type { Guardrails } from '@/stores/agentStore';
 import type { LiveQuote } from '@/stores/marketStore';
 import type { TradeSignal } from './ai/types';
@@ -27,17 +28,25 @@ export function signalKey(sig: TradeSignal): string {
  */
 export function normaliseGuardrails(g: Guardrails): Guardrails {
     const pos = (n: number, fallback: number) => (Number.isFinite(n) && n > 0 ? n : fallback);
+    const nonNeg = (n: number | undefined, fallback: number) =>
+        Number.isFinite(n) && (n as number) >= 0 ? (n as number) : fallback;
     return {
         maxOrderValueINR: pos(g.maxOrderValueINR, 0),
         maxDailyLossINR: pos(g.maxDailyLossINR, 0),
         maxOpenPositions: Math.max(0, Math.floor(Number.isFinite(g.maxOpenPositions) ? g.maxOpenPositions : 0)),
         minConfidence: Math.min(100, Math.max(0, Number.isFinite(g.minConfidence) ? g.minConfidence : 0)),
+        // Newer limits default to OFF (0 = no cap) so an existing persisted store does
+        // not suddenly start refusing orders after an upgrade.
+        maxPerSymbolPct: Math.min(100, nonNeg(g.maxPerSymbolPct, 0)),
+        maxOrdersPerDay: Math.floor(nonNeg(g.maxOrdersPerDay, 0)),
+        squareOffBufferMin: Math.floor(nonNeg(g.squareOffBufferMin, 0)),
+        tradeOnlyWhenOpen: g.tradeOnlyWhenOpen ?? false,
     };
 }
 
 /** Realized net loss (negative number) booked since local midnight. */
-export function lossToday(state: PaperState): number {
-    const startOfDay = new Date().setHours(0, 0, 0, 0);
+export function lossToday(state: PaperState, now = Date.now()): number {
+    const startOfDay = new Date(now).setHours(0, 0, 0, 0);
     let loss = 0;
     for (const f of state.fills) {
         if (f.ts < startOfDay) continue;
@@ -47,6 +56,26 @@ export function lossToday(state: PaperState): number {
     return loss;
 }
 
+/** Orders placed since local midnight, from the order log rather than the fill log. */
+export function ordersToday(state: PaperState, now = Date.now()): number {
+    const startOfDay = new Date(now).setHours(0, 0, 0, 0);
+    return state.orders.filter((o) => o.createdAt >= startOfDay && o.status !== 'rejected').length;
+}
+
+/**
+ * Base-currency exposure already held in one instrument, as a fraction of equity.
+ *
+ * Uses the position's frozen cost basis rather than a live mark: the cap is about how
+ * much was COMMITTED, and a position that has moved against you should not quietly free
+ * up room to add to it.
+ */
+export function symbolExposurePct(state: PaperState, symbol: string, equityBase: number): number {
+    if (!(equityBase > 0)) return 0;
+    const p = state.positions[symbol];
+    if (!p) return 0;
+    return (Math.abs(p.basisBase) + Math.abs(p.marginHeldBase)) / equityBase * 100;
+}
+
 export interface GuardrailInput {
     guardrails: Guardrails;
     /** The book the limits are measured against. */
@@ -54,10 +83,14 @@ export interface GuardrailInput {
     sig: TradeSignal;
     actedIds: string[];
     killSwitch: boolean;
+    /** Equity in base currency, for the per-symbol exposure cap. */
+    equityBase?: number;
+    /** Injectable clock, so the daily and session rules are testable. */
+    now?: number;
 }
 
 /** Every check that must pass before a signal becomes an order. */
-export function checkGuardrails({ guardrails, book, sig, actedIds, killSwitch }: GuardrailInput): GuardrailVerdict {
+export function checkGuardrails({ guardrails, book, sig, actedIds, killSwitch, equityBase, now = Date.now() }: GuardrailInput): GuardrailVerdict {
     if (killSwitch) return { allowed: false, reason: 'Kill-switch is on.' };
 
     const g = normaliseGuardrails(guardrails);
@@ -74,9 +107,34 @@ export function checkGuardrails({ guardrails, book, sig, actedIds, killSwitch }:
     if (Object.keys(book.positions).length >= g.maxOpenPositions) {
         return { allowed: false, reason: `Already at the ${g.maxOpenPositions}-position limit.` };
     }
-    if (g.maxDailyLossINR > 0 && -lossToday(book) >= g.maxDailyLossINR) {
+    if (g.maxDailyLossINR > 0 && -lossToday(book, now) >= g.maxDailyLossINR) {
         return { allowed: false, reason: `Daily loss limit of ₹${g.maxDailyLossINR.toLocaleString('en-IN')} reached.` };
     }
+    if (g.maxOrdersPerDay > 0 && ordersToday(book, now) >= g.maxOrdersPerDay) {
+        return { allowed: false, reason: `Already placed ${g.maxOrdersPerDay} orders today.` };
+    }
+
+    // Concentration. The position limit counts instruments; this one counts money, and a
+    // book of eight positions all in the same name passes the first and fails this.
+    if (g.maxPerSymbolPct > 0 && equityBase != null) {
+        const held = symbolExposurePct(book, sig.symbol, equityBase);
+        if (held >= g.maxPerSymbolPct) {
+            return { allowed: false, reason: `${sig.symbol} is already ${held.toFixed(0)}% of equity, at the ${g.maxPerSymbolPct}% cap.` };
+        }
+    }
+
+    // Session rules. A market that is shut cannot fill an order, and an intraday
+    // position opened minutes before the close will be squared off by the broker — at
+    // its price, with its charges.
+    const market = marketOf(sig.symbol);
+    const session = sessionInfo(market, now);
+    if (g.tradeOnlyWhenOpen && !session.open) {
+        return { allowed: false, reason: `${session.label} is closed (${session.reason ?? 'outside hours'}).` };
+    }
+    if (g.squareOffBufferMin > 0 && shouldSquareOff(market, now, g.squareOffBufferMin)) {
+        return { allowed: false, reason: `Within ${g.squareOffBufferMin} minutes of the close — no new intraday positions.` };
+    }
+
     return { allowed: true };
 }
 
