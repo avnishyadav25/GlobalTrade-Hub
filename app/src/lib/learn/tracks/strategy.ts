@@ -202,7 +202,7 @@ export const STRATEGY_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 8,
         outcome: 'Measure real diversification rather than counting positions.',
-        where: { href: '/portfolio', label: 'Check your concentration' },
+        where: { href: '/backtest/portfolio', label: 'Measure it on a real basket' },
         prereq: ['systematic-sizing'],
         concept: [
             'Six positions look diversified. If they are six Indian IT companies, they are approximately one position with extra transaction costs. **Diversification is about correlation, not count.**',
@@ -211,7 +211,7 @@ export const STRATEGY_LESSONS: Lesson[] = [
             'The point that undermines the whole comfort of correlation analysis: **correlations rise toward 1 in crises.** The diversification you measured in calm data is partly absent in the episode you built it for, because in a broad liquidation everything correlated with risk appetite is sold together. Historical correlation understates crisis correlation, reliably.',
             'What follows practically: size on the assumption that correlations will be higher than measured, count **exposures** rather than positions, and treat cash as the one holding that genuinely does not correlate with anything.',
         ],
-        inApp: '[Portfolio](/portfolio) shows exposure by market, which surfaces the most common hidden concentration. `lib/strategies/portfolio.ts` computes a full correlation matrix across sleeve returns, plus the portfolio drawdown against the weighted average of the individual ones — the gap between those two **is** the diversification, measured. That engine is **not yet exposed in the UI**.',
+        inApp: '[Portfolio test](/backtest/portfolio) runs one strategy across several instruments and shows the correlation matrix between them, plus the portfolio drawdown against the weighted average of the individual ones. **The gap between those two figures is the diversification** — when it is near zero, several instruments were one position with several sets of costs. [Portfolio](/portfolio) shows the same concentration risk in your live paper book.',
         quiz: [
             {
                 question: 'You hold six Indian IT stocks. How diversified are you?',

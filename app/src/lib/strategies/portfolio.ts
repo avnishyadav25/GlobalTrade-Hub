@@ -98,7 +98,7 @@ export function allocate(legs: PortfolioLeg[], capital: number): number[] {
  * un-aligned curves by index instead would silently compare different dates, which is
  * the kind of error that produces a beautiful and meaningless equity curve.
  */
-function alignTo(timeline: number[], bars: Candle[], equity: number[], allocation: number): number[] {
+export function alignTo(timeline: number[], bars: Candle[], equity: number[], allocation: number): number[] {
     const out = new Array<number>(timeline.length);
     let cursor = 0;
     let last = allocation;
