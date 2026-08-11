@@ -91,7 +91,7 @@ export const STRATEGY_LESSONS: Lesson[] = [
             'A second reading is available and often more valuable: **parameter stability across windows.** If the optimiser picks 20 in one window, 45 in the next and 12 in the third, there is no stable relationship to find. The parameter is not measuring anything persistent, and no amount of re-optimisation will fix that.',
             'Walk-forward is not a cure. It has its own hazards — repeated walk-forward runs with different window sizes and re-optimisation rules is itself a search you can overfit, at a higher level of abstraction. But it is a much harder test to pass than a single backtest, and passing a harder test is the only evidence worth having.',
         ],
-        inApp: 'The plan schedules walk-forward as a second entry point to the backtester, reporting in-sample and out-of-sample together so degradation is visible rather than hidden. **This is planned, not yet built** — today the backtester runs a single window per invocation.',
+        inApp: '`lib/strategies/walkForward.ts` implements this — `expandGrid`, `optimise` and `runWalkForward`, reporting in-sample and out-of-sample per fold so degradation is visible rather than hidden. It is **built and tested but not yet exposed in the UI**: [Compare strategies](/backtest) still runs a single window per invocation.',
         quiz: [
             {
                 question: 'Why is a single full-period backtest misleading?',
@@ -211,7 +211,7 @@ export const STRATEGY_LESSONS: Lesson[] = [
             'The point that undermines the whole comfort of correlation analysis: **correlations rise toward 1 in crises.** The diversification you measured in calm data is partly absent in the episode you built it for, because in a broad liquidation everything correlated with risk appetite is sold together. Historical correlation understates crisis correlation, reliably.',
             'What follows practically: size on the assumption that correlations will be higher than measured, count **exposures** rather than positions, and treat cash as the one holding that genuinely does not correlate with anything.',
         ],
-        inApp: '[Portfolio](/portfolio) shows exposure by market, which surfaces the most common hidden concentration. **The app does not compute a correlation matrix across your holdings** — that is a real gap, and PR 26b (true multi-symbol portfolio backtesting) is where it would live.',
+        inApp: '[Portfolio](/portfolio) shows exposure by market, which surfaces the most common hidden concentration. `lib/strategies/portfolio.ts` computes a full correlation matrix across sleeve returns, plus the portfolio drawdown against the weighted average of the individual ones — the gap between those two **is** the diversification, measured. That engine is **not yet exposed in the UI**.',
         quiz: [
             {
                 question: 'You hold six Indian IT stocks. How diversified are you?',
