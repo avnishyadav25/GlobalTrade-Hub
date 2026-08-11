@@ -553,6 +553,121 @@ function Greeks() {
     );
 }
 
+/* -------------------------------------------------------------- futures curve */
+
+/**
+ * The futures curve alternating between contango and backwardation, with the roll
+ * cost stated as a number.
+ *
+ * The roll figure is computed from the two nearest points on the drawn curve, so the
+ * caption cannot drift out of sync with the picture.
+ */
+function FuturesCurve() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [contango, setContango] = useState(true);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setContango((c) => !c), 2800);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const MONTHS = ['spot', 'M1', 'M2', 'M3', 'M4', 'M5'];
+    const SPOT = 80;
+    // Curvature flattens further out, as real curves do.
+    const price = (i: number) => SPOT + (contango ? 1 : -1) * 5 * Math.sqrt(i);
+
+    const W = 320, H = 110, PAD = 22;
+    const x = (i: number) => PAD + (i / (MONTHS.length - 1)) * (W - PAD * 2);
+    const y = (p: number) => H - PAD - ((p - (SPOT - 14)) / 28) * (H - PAD * 2);
+
+    const d = MONTHS.map((_, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(price(i)).toFixed(1)}`).join(' ');
+    const rollPct = ((price(0) - price(1)) / price(0)) * 100;
+
+    return (
+        <Frame caption={
+            contango
+                ? 'Contango: each roll sells the cheap expiring contract and buys a dearer one. That cost is paid whatever the price does.'
+                : 'Backwardation: later delivery is cheaper, so rolling adds to the return. This signals physical tightness now.'
+        }>
+            <div ref={ref}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold" style={{ color: contango ? DOWN : UP }}>
+                        {contango ? 'Contango' : 'Backwardation'}
+                    </span>
+                    <span className="mono text-2xs" style={{ color: contango ? DOWN : UP }}>
+                        roll yield {rollPct > 0 ? '+' : ''}{rollPct.toFixed(1)}% per cycle
+                    </span>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Futures curve">
+                    <path d={d} fill="none" stroke={contango ? DOWN : UP} strokeWidth={2}
+                          strokeLinejoin="round" className="transition-all duration-700" />
+                    {MONTHS.map((m, i) => (
+                        <g key={m}>
+                            <circle cx={x(i)} cy={y(price(i))} r={2.5} fill={contango ? DOWN : UP}
+                                    className="transition-all duration-700" />
+                            <text x={x(i)} y={H - 5} fontSize={8} fill={FAINT} textAnchor="middle">{m}</text>
+                        </g>
+                    ))}
+                </svg>
+            </div>
+        </Frame>
+    );
+}
+
+/* ---------------------------------------------------------------- yield curve */
+
+/**
+ * An illustrative yield curve moving between normal, flat and inverted.
+ *
+ * Explicitly labelled illustrative: this app holds no bond data, and an unlabelled
+ * curve drawn from invented numbers would read as live.
+ */
+function YieldCurve() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [phase, setPhase] = useState(0);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setPhase((p) => (p + 1) % 3), 2600);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const TENORS = ['3m', '1y', '2y', '5y', '10y', '30y'];
+    const SHAPES = [
+        { name: 'Normal', tone: UP, note: 'longer lending pays more', f: (i: number) => 5 + 1.6 * Math.sqrt(i) },
+        { name: 'Flat', tone: FAINT, note: 'little change expected', f: () => 6.4 },
+        { name: 'Inverted', tone: DOWN, note: 'the market expects rates to fall', f: (i: number) => 7.4 - 0.9 * Math.sqrt(i) },
+    ];
+
+    const shape = SHAPES[phase];
+    const W = 320, H = 110, PAD = 22;
+    const x = (i: number) => PAD + (i / (TENORS.length - 1)) * (W - PAD * 2);
+    const y = (v: number) => H - PAD - ((v - 4) / 5) * (H - PAD * 2);
+    const d = TENORS.map((_, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(shape.f(i)).toFixed(1)}`).join(' ');
+
+    return (
+        <Frame caption="Illustrative shapes, not live data — this app holds no bond prices. An inversion says the market expects rates to fall, usually with a long and variable lag before anything else happens.">
+            <div ref={ref}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold" style={{ color: shape.tone }}>{shape.name}</span>
+                    <span className="text-2xs" style={{ color: FAINT }}>{shape.note}</span>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${shape.name} yield curve`}>
+                    <path d={d} fill="none" stroke={shape.tone} strokeWidth={2} strokeLinejoin="round"
+                          className="transition-all duration-700" />
+                    {TENORS.map((t, i) => (
+                        <g key={t}>
+                            <circle cx={x(i)} cy={y(shape.f(i))} r={2.5} fill={shape.tone} className="transition-all duration-700" />
+                            <text x={x(i)} y={H - 5} fontSize={8} fill={FAINT} textAnchor="middle">{t}</text>
+                        </g>
+                    ))}
+                </svg>
+            </div>
+        </Frame>
+    );
+}
+
 /* ------------------------------------------------------------------ registry */
 
 const VISUALS: Record<string, () => React.JSX.Element> = {
@@ -568,6 +683,8 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'three-statements': ThreeStatements,
     'option-payoff': OptionPayoff,
     'greeks': Greeks,
+    'futures-curve': FuturesCurve,
+    'yield-curve': YieldCurve,
 };
 
 export const VISUAL_KEYS = Object.keys(VISUALS);
