@@ -13,7 +13,7 @@ const tracksById = () => new Set(TRACKS.map((t) => t.id));
 const ROUTES = new Set([
     '/terminal', '/orders', '/holdings', '/portfolio', '/funds', '/watchlists',
     '/alerts', '/scanner', '/insights', '/agents', '/settings', '/backtest', '/paper',
-    '/learn', '/strategies', '/signals', '/research',
+    '/learn', '/strategies', '/strategies/unavailable', '/signals', '/research',
 ]);
 
 /** A fresh account with nothing done — every verifier must cope with this. */

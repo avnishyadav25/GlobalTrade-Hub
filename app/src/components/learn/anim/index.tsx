@@ -436,6 +436,123 @@ function ThreeStatements() {
     );
 }
 
+/* ------------------------------------------------------------- option payoff */
+
+/**
+ * Payoff at expiry for the four basic option positions, plus a vertical spread.
+ *
+ * Drawn from the actual payoff functions rather than hand-placed points, so the
+ * break-even really is at strike + premium and the spread really is the sum of its
+ * two legs. Cycles through the positions so the shapes can be compared.
+ */
+function OptionPayoff() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [n, setN] = useState(0);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setN((x) => (x + 1) % 5), 2200);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const K = 100, K2 = 120, PREM = 8, PREM2 = 3;
+
+    const POSITIONS = [
+        { name: 'Long call', be: `break-even ${K + PREM}`, f: (s: number) => Math.max(0, s - K) - PREM },
+        { name: 'Long put', be: `break-even ${K - PREM}`, f: (s: number) => Math.max(0, K - s) - PREM },
+        { name: 'Short call', be: 'loss is unbounded above', f: (s: number) => PREM - Math.max(0, s - K) },
+        { name: 'Short put', be: 'bounded — price stops at zero', f: (s: number) => PREM - Math.max(0, K - s) },
+        {
+            name: 'Bull call spread',
+            be: `capped at ${K2}`,
+            f: (s: number) => Math.max(0, s - K) - PREM - (Math.max(0, s - K2) - PREM2),
+        },
+    ];
+
+    const pos = POSITIONS[n];
+    const W = 320, H = 130, LO = 60, HI = 160, SCALE = 2.0;
+    const x = (s: number) => ((s - LO) / (HI - LO)) * W;
+    const y = (p: number) => H / 2 - p * (H / 2) / (SCALE * PREM);
+
+    const d = Array.from({ length: 81 }, (_, i) => {
+        const s = LO + (i / 80) * (HI - LO);
+        return `${i === 0 ? 'M' : 'L'}${x(s).toFixed(1)} ${Math.max(2, Math.min(H - 2, y(pos.f(s)))).toFixed(1)}`;
+    }).join(' ');
+
+    return (
+        <Frame caption="Profit at expiry against the underlying price. Note the long call is not profitable at the strike — it is profitable at the strike plus what you paid.">
+            <div ref={ref}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold" style={{ color: ACCENT }}>{pos.name}</span>
+                    <span className="text-2xs" style={{ color: FAINT }}>{pos.be}</span>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${pos.name} payoff at expiry`}>
+                    <line x1={0} y1={H / 2} x2={W} y2={H / 2} stroke={FAINT} strokeWidth={1} strokeDasharray="2 3" />
+                    <line x1={x(K)} y1={0} x2={x(K)} y2={H} stroke={FAINT} strokeWidth={1} strokeDasharray="2 3" />
+                    <text x={x(K) + 3} y={H - 4} fontSize={8} fill={FAINT}>strike {K}</text>
+                    <path d={d} fill="none" stroke={UP} strokeWidth={2} strokeLinejoin="round" />
+                </svg>
+            </div>
+        </Frame>
+    );
+}
+
+/* -------------------------------------------------------------------- greeks */
+
+/**
+ * The five sensitivities as bars, with the sign that matters called out.
+ *
+ * Theta is rendered separately below the others because it is the only Greek whose
+ * direction is certain for a buyer — which is the lesson's point.
+ */
+function Greeks() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [day, setDay] = useState(30);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setDay((d) => (d <= 1 ? 30 : d - 1)), 140);
+        return () => clearInterval(id);
+    }, [play]);
+
+    // An at-the-money option as expiry approaches: gamma and theta both intensify.
+    const t = Math.max(day, 0.5) / 30;
+    const gamma = 1 / Math.sqrt(t);
+    const theta = -1 / Math.sqrt(t);
+    const vega = Math.sqrt(t);
+
+    const BARS = [
+        { label: 'Delta', v: 0.5, max: 1, tone: ACCENT, note: 'moves with price' },
+        { label: 'Gamma', v: gamma, max: 8, tone: ACCENT, note: 'spikes into expiry' },
+        { label: 'Vega', v: vega, max: 1, tone: ACCENT, note: 'fades into expiry' },
+        { label: 'Theta', v: -theta, max: 8, tone: DOWN, note: 'always against the buyer' },
+    ];
+
+    return (
+        <Frame caption="An at-the-money option as expiry approaches. Gamma and theta intensify together — the position that gains most from movement bleeds most from stillness.">
+            <div ref={ref}>
+                <div className="mb-2 text-2xs" style={{ color: FAINT }}>
+                    <span className="mono font-semibold" style={{ color: FG }}>{Math.round(day)}</span> days to expiry
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    {BARS.map((b) => (
+                        <div key={b.label} className="flex items-center gap-2">
+                            <span className="w-12 shrink-0 text-2xs font-semibold" style={{ color: b.tone }}>{b.label}</span>
+                            <span className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: 'var(--chip)' }}>
+                                <span
+                                    className="block h-full rounded-full transition-[width] duration-150"
+                                    style={{ width: `${Math.min(100, (b.v / b.max) * 100)}%`, background: b.tone }}
+                                />
+                            </span>
+                            <span className="w-32 shrink-0 text-2xs" style={{ color: FAINT }}>{b.note}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </Frame>
+    );
+}
+
 /* ------------------------------------------------------------------ registry */
 
 const VISUALS: Record<string, () => React.JSX.Element> = {
@@ -449,6 +566,8 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'risk-sizing': RiskSizing,
     'token-vesting': TokenVesting,
     'three-statements': ThreeStatements,
+    'option-payoff': OptionPayoff,
+    'greeks': Greeks,
 };
 
 export const VISUAL_KEYS = Object.keys(VISUALS);

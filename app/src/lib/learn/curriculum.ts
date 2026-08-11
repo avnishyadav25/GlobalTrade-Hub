@@ -5,6 +5,7 @@ import { INDIA_EQUITY_LESSONS } from './tracks/indiaEquity';
 import { US_EQUITY_LESSONS } from './tracks/usEquity';
 import { COMPANY_LESSONS } from './tracks/company';
 import { TECHNICAL_LESSONS } from './tracks/technical';
+import { DERIVATIVES_LESSONS } from './tracks/derivatives';
 import { CRYPTO_LESSONS } from './tracks/crypto';
 import { AIRDROP_LESSONS } from './tracks/airdrops';
 import { IPO_LESSONS } from './tracks/ipo';
@@ -1012,6 +1013,7 @@ export const LESSONS: Lesson[] = [
     ...US_EQUITY_LESSONS,
     ...COMPANY_LESSONS,
     ...TECHNICAL_LESSONS,
+    ...DERIVATIVES_LESSONS,
     ...CRYPTO_LESSONS,
     ...AIRDROP_LESSONS,
     ...IPO_LESSONS,
