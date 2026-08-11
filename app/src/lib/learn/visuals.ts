@@ -14,6 +14,7 @@ export const VISUAL_KEYS = [
     'equity-drawdown',
     'risk-sizing',
     'token-vesting',
+    'three-statements',
 ] as const;
 
 export type VisualKey = (typeof VISUAL_KEYS)[number];

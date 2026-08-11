@@ -2,6 +2,9 @@ import * as v from './verify';
 import { deriveFxRates, equity, estimateCharges, toBase } from '@/lib/paperEngine';
 import type { Lesson, TrackId, VerifyContext } from './types';
 import { INDIA_EQUITY_LESSONS } from './tracks/indiaEquity';
+import { US_EQUITY_LESSONS } from './tracks/usEquity';
+import { COMPANY_LESSONS } from './tracks/company';
+import { TECHNICAL_LESSONS } from './tracks/technical';
 import { CRYPTO_LESSONS } from './tracks/crypto';
 import { AIRDROP_LESSONS } from './tracks/airdrops';
 import { IPO_LESSONS } from './tracks/ipo';
@@ -1006,6 +1009,9 @@ const CORE_LESSONS: Lesson[] = [
 export const LESSONS: Lesson[] = [
     ...CORE_LESSONS,
     ...INDIA_EQUITY_LESSONS,
+    ...US_EQUITY_LESSONS,
+    ...COMPANY_LESSONS,
+    ...TECHNICAL_LESSONS,
     ...CRYPTO_LESSONS,
     ...AIRDROP_LESSONS,
     ...IPO_LESSONS,

@@ -370,6 +370,72 @@ function TokenVesting() {
     );
 }
 
+/* --------------------------------------------------------- three statements */
+
+/**
+ * A credit sale traced through all three statements.
+ *
+ * The teaching point is the third panel: profit rises, the receivable rises, and
+ * operating cash flow does not move at all. The animation walks the same transaction
+ * through each statement in turn rather than showing three static tables.
+ */
+function ThreeStatements() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [step, setStep] = useState(3);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setStep((s) => (s >= 3 ? 0 : s + 1)), 1600);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const rows: { panel: number; label: string; value: string; tone?: string }[] = [
+        { panel: 0, label: 'Revenue', value: '+100', tone: UP },
+        { panel: 0, label: 'Net income', value: '+20', tone: UP },
+        { panel: 1, label: 'Receivables', value: '+100', tone: ACCENT },
+        { panel: 1, label: 'Retained earnings', value: '+20', tone: UP },
+        { panel: 2, label: 'Net income', value: '+20', tone: UP },
+        { panel: 2, label: 'Less: receivable rise', value: '−100', tone: DOWN },
+        { panel: 2, label: 'Operating cash flow', value: '0', tone: FG },
+    ];
+
+    const PANELS = ['Income statement', 'Balance sheet', 'Cash flow'];
+
+    return (
+        <Frame caption="One sale on credit. Profit rose by 20, and operating cash flow did not move — which is how a profitable company runs out of money.">
+            <div ref={ref} className="grid gap-2 sm:grid-cols-3">
+                {PANELS.map((name, p) => {
+                    const active = step > p;
+                    return (
+                        <div
+                            key={name}
+                            className="rounded-xs border p-2 transition-opacity duration-500"
+                            style={{
+                                borderColor: active ? ACCENT : 'var(--border2)',
+                                opacity: active ? 1 : 0.35,
+                            }}
+                        >
+                            <div className="text-2xs font-bold tracking-wide" style={{ color: FAINT }}>
+                                {name.toUpperCase()}
+                            </div>
+                            <div className="mt-1.5 flex flex-col gap-1">
+                                {rows.filter((r) => r.panel === p).map((r) => (
+                                    <div key={r.label} className="flex items-baseline justify-between gap-2">
+                                        <span className="text-2xs" style={{ color: FAINT }}>{r.label}</span>
+                                        <span className="mono text-xs font-semibold" style={{ color: active ? (r.tone ?? FG) : FAINT }}>
+                                            {r.value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Frame>
+    );
+}
+
 /* ------------------------------------------------------------------ registry */
 
 const VISUALS: Record<string, () => React.JSX.Element> = {
@@ -382,6 +448,7 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'equity-drawdown': EquityDrawdown,
     'risk-sizing': RiskSizing,
     'token-vesting': TokenVesting,
+    'three-statements': ThreeStatements,
 };
 
 export const VISUAL_KEYS = Object.keys(VISUALS);
