@@ -1,273 +1,196 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { AreaChart, DrawdownChart, Heatmap } from '@/components/charts';
-import { runBacktest, DEFAULT_PARAMS, sanitiseParams, type BacktestResult } from '@/lib/backtestEngine';
-import { type Candle } from '@/lib/mockData';
-import { allInstruments } from '@/lib/instruments';
-import { useMarketStore } from '@/stores/marketStore';
+import { useCallback, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { PageShell, Panel, Badge, Button, Callout, Field, Select, Input, DataTable, type Column } from '@/components/ui';
+import { allStrategies } from '@/lib/strategies/defs';
+import { defaultParams } from '@/lib/strategies/types';
+import { runStrategyBacktest } from '@/lib/strategies/backtest';
 import { candlesUrl } from '@/lib/marketData/candlesUrl';
+import { allInstruments } from '@/lib/instruments';
+import { marketOf } from '@/lib/paperEngine';
+import { useMarketStore } from '@/stores/marketStore';
 import { TIMEFRAMES } from '@/lib/constants';
-import { fmtMoney } from '@/lib/format';
+import { fmtPct, fmtMoney } from '@/lib/format';
 
-type RunState = 'idle' | 'loading' | 'done' | 'error';
+// Compare every applicable strategy on one instrument, at default settings.
+//
+// Defaults on purpose. The moment you tune parameters per strategy you are choosing the
+// winner with hindsight, and the ranking stops meaning anything. This screen answers a
+// narrower and more useful question: on this instrument, over this window, which of
+// these ideas did anything at all — and did any of them beat simply holding it?
 
-interface CandleResponse {
-    source: string;
-    synthetic: boolean;
-    seconds: number;
-    candles: Candle[];
+interface Row {
+    id: string;
+    name: string;
+    family: string;
+    netPct: number;
+    benchmarkPct: number;
+    maxDD: number;
+    trades: number;
+    exposure: number;
+    suppressed: number;
 }
+
+const COLUMNS: Column<Row>[] = [
+    {
+        key: 'name', header: 'Strategy', width: '1.6fr',
+        render: (r) => (
+            <Link href={`/strategies/${r.id}`} className="text-sm font-semibold hover:text-accent">
+                {r.name}
+                <span className="ml-2 text-2xs font-normal text-faint">{r.family}</span>
+            </Link>
+        ),
+    },
+    {
+        key: 'net', header: 'Return', width: '110px', align: 'right',
+        render: (r) => (
+            <span className="mono text-sm" style={{ color: r.netPct >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtPct(r.netPct)}</span>
+        ),
+    },
+    {
+        key: 'vs', header: 'vs hold', width: '110px', align: 'right',
+        render: (r) => {
+            const diff = r.netPct - r.benchmarkPct;
+            return <span className="mono text-sm" style={{ color: diff >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtPct(diff)}</span>;
+        },
+    },
+    { key: 'dd', header: 'Max DD', width: '100px', align: 'right', render: (r) => <span className="mono text-sm text-down">{fmtPct(r.maxDD)}</span> },
+    { key: 'trades', header: 'Trades', width: '80px', align: 'right', render: (r) => <span className="mono text-sm">{r.trades}</span> },
+    { key: 'exp', header: 'Exposure', width: '90px', align: 'right', render: (r) => <span className="mono text-sm text-faint">{(r.exposure * 100).toFixed(0)}%</span> },
+];
 
 export default function BacktestPage() {
-    const [symbol, setSymbol] = useState('BTC/USDT');
-    const [timeframe, setTimeframe] = useState('15m');
-    const [startingCapital, setStartingCapital] = useState(DEFAULT_PARAMS.startingCapital);
-    const [fast, setFast] = useState(9);
-    const [slow, setSlow] = useState(21);
-    const [rsiMax, setRsiMax] = useState(70);
-    const [stopPct, setStopPct] = useState(2);
-    const [takePct, setTakePct] = useState(5);
-    const [sizePct, setSizePct] = useState(10);
-    const [result, setResult] = useState<BacktestResult | null>(null);
-    const [runState, setRunState] = useState<RunState>('idle');
+    const instruments = useMemo(() => allInstruments(), []);
+    const [symbol, setSymbol] = useState(instruments[0]?.symbol ?? 'AAPL');
+    const [timeframe, setTimeframe] = useState('1d');
+    const [capital, setCapital] = useState(100_000);
+    const [rows, setRows] = useState<Row[] | null>(null);
+    const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-    const [source, setSource] = useState<{ source: string; synthetic: boolean; bars: number; range: string } | null>(null);
-    /** True when inputs changed since the displayed run — the results below are stale. */
-    const [dirty, setDirty] = useState(false);
+    const [meta, setMeta] = useState<{ bars: number; source: string; synthetic: boolean } | null>(null);
 
     const run = useCallback(async () => {
-        setRunState('loading');
+        setBusy(true);
         setError('');
         try {
-            const res = await fetch(candlesUrl(symbol, timeframe, 1000, useMarketStore.getState().quotes[symbol]?.price));
-            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `request failed (${res.status})`);
-            const data: CandleResponse = await res.json();
-            if (!data.candles?.length) throw new Error('no candles returned');
+            const price = useMarketStore.getState().quotes[symbol]?.price;
+            const res = await fetch(candlesUrl(symbol, timeframe, 1000, price));
+            if (!res.ok) throw new Error(`Could not load candles (${res.status}).`);
+            const data = await res.json();
+            const bars = data?.candles ?? [];
+            if (!bars.length) throw new Error('No candles came back for this instrument.');
 
-            const params = sanitiseParams({
-                ...DEFAULT_PARAMS,
-                symbol,
-                timeframe,
-                startingCapital,
-                fast,
-                slow,
-                rsiMax,
-                stopPct,
-                takePct,
-                sizePct,
-                seed: 1,
+            setMeta({ bars: bars.length, source: data?.source ?? 'unknown', synthetic: !!data?.synthetic });
+
+            const market = marketOf(symbol);
+            const barSeconds = TIMEFRAMES.find((t) => t.value === timeframe)?.seconds ?? 86_400;
+
+            // Single-instrument strategies only. A pair or universe strategy needs a
+            // second series chosen deliberately, and picking one automatically would be
+            // inventing half the strategy.
+            const applicable = allStrategies().filter(
+                (s) => !s.signalOnly && s.shape === 'single' && s.markets.includes(market)
+            );
+
+            const out: Row[] = applicable.map((s) => {
+                const r = runStrategyBacktest({
+                    strategy: s,
+                    params: defaultParams(s),
+                    symbol,
+                    market,
+                    bars,
+                    barSeconds,
+                    startingCapital: capital,
+                });
+                return {
+                    id: s.id,
+                    name: s.name,
+                    family: s.family,
+                    netPct: r.metrics.netPct,
+                    benchmarkPct: r.metrics.benchmarkPct,
+                    maxDD: r.metrics.maxDD,
+                    trades: r.metrics.trades,
+                    exposure: r.metrics.exposure,
+                    suppressed: r.suppressed.length,
+                };
             });
-            setResult(runBacktest(params, data.candles, data.seconds));
-            const first = new Date(data.candles[0].time * 1000);
-            const last = new Date(data.candles[data.candles.length - 1].time * 1000);
-            const f = (d: Date) => d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-            setSource({ source: data.source, synthetic: data.synthetic, bars: data.candles.length, range: `${f(first)} → ${f(last)}` });
-            setRunState('done');
-            setDirty(false);
+
+            out.sort((a, b) => b.netPct - a.netPct);
+            setRows(out);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'backtest failed');
-            setRunState('error');
+            setError(e instanceof Error ? e.message : 'The comparison failed.');
+            setRows(null);
+        } finally {
+            setBusy(false);
         }
-    }, [symbol, timeframe, startingCapital, fast, slow, rsiMax, stopPct, takePct, sizePct]);
+    }, [symbol, timeframe, capital]);
 
-    useEffect(() => {
-        run();
-        // Run once on mount; afterwards the user drives it with the Run button.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const touched = <T,>(set: (v: T) => void) => (v: T) => { set(v); setDirty(true); };
-
-    const entryRules = [`EMA(${fast}) crosses above EMA(${slow})`, `RSI(${DEFAULT_PARAMS.rsiPeriod}) below ${rsiMax}`];
-    const exitRules = [`EMA(${fast}) crosses below EMA(${slow})`, `Stop loss · ${stopPct}%`, `Take profit · ${takePct}%`];
+    const benchmark = rows?.[0]?.benchmarkPct ?? 0;
+    const beat = rows?.filter((r) => r.netPct > r.benchmarkPct).length ?? 0;
+    const inactive = rows?.filter((r) => r.trades === 0).length ?? 0;
 
     return (
-        <div className="grid h-full min-h-0 lg:grid-cols-[330px_1fr]">
-            {/* builder */}
-            <div className="overflow-auto border-b border-border bg-panel p-4 lg:border-b-0 lg:border-r">
-                <div className="mb-4 flex items-center justify-between">
-                    <span className="text-base font-bold">Strategy</span>
-                    <span className="mono rounded-md bg-chip px-2.5 py-1.5 text-xs text-foreground-muted">EMA + RSI</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                        <Label>MARKET / SYMBOL</Label>
-                        <select value={symbol} onChange={(e) => touched(setSymbol)(e.target.value)} className="mt-1.5 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]">
-                            {allInstruments().map((a) => <option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <Label>TIMEFRAME</Label>
-                        <select value={timeframe} onChange={(e) => touched(setTimeframe)(e.target.value)} className="mt-1.5 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]">
+        <PageShell
+            title="Compare strategies"
+            coachTopic="backtest"
+            subtitle="Every single-instrument strategy, run at its DEFAULT settings on one instrument. Tuning each one first would be choosing the winner with hindsight."
+        >
+            <Panel>
+                <div className="grid gap-4 sm:grid-cols-3">
+                    <Field label="Instrument" hint="Strategies are filtered to those that target this market.">
+                        <Select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
+                            {instruments.map((a) => <option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
+                        </Select>
+                    </Field>
+                    <Field label="Timeframe" hint="Daily bars give about two years; intraday gives far less.">
+                        <Select value={timeframe} onChange={(e) => setTimeframe(e.target.value)}>
                             {TIMEFRAMES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                    </div>
+                        </Select>
+                    </Field>
+                    <Field label="Starting capital" hint="Brokerage is capped per order, so size genuinely changes the ranking.">
+                        <Input type="number" value={capital} onChange={(e) => setCapital(Number(e.target.value) || 0)} />
+                    </Field>
                 </div>
+                <Button variant="primary" className="mt-4" onClick={run} loading={busy}>Run comparison</Button>
+            </Panel>
 
-                <Label className="mt-3.5 block">DATE RANGE</Label>
-                <Box mono>{source ? source.range : '—'}</Box>
+            {error && <Callout tone="down">{error}</Callout>}
 
-                <Label>STARTING CAPITAL</Label>
-                <Num label="" value={startingCapital} set={touched(setStartingCapital)} step={10000} />
+            {meta?.synthetic && (
+                <Callout tone="warn">
+                    No provider covers this instrument at this timeframe, so the series is <strong>generated</strong>.
+                    Nothing below is a historical result — it only shows that the rules execute.
+                </Callout>
+            )}
 
-                <Divider color="var(--up)" text="ENTRY CONDITIONS" />
-                {entryRules.map((c) => <Cond key={c} color="var(--up)" text={c} />)}
-
-                <Divider color="var(--down)" text="EXIT CONDITIONS" />
-                {exitRules.map((c) => <Cond key={c} color="var(--down)" text={c} />)}
-
-                <div className="mt-4 grid grid-cols-2 gap-2.5">
-                    <Num label="EMA FAST" value={fast} set={touched(setFast)} />
-                    <Num label="EMA SLOW" value={slow} set={touched(setSlow)} />
-                    <Num label="RSI MAX" value={rsiMax} set={touched(setRsiMax)} />
-                    <Num label="SIZE %" value={sizePct} set={touched(setSizePct)} />
-                    <Num label="STOP %" value={stopPct} set={touched(setStopPct)} />
-                    <Num label="TAKE %" value={takePct} set={touched(setTakePct)} />
-                </div>
-
-                <button
-                    onClick={run}
-                    disabled={runState === 'loading'}
-                    className="mt-4 w-full rounded-sm bg-accent py-2.5 text-md font-semibold text-[color:var(--cp-text)] transition-opacity hover:opacity-90 disabled:opacity-60"
-                >
-                    {runState === 'loading' ? 'Running…' : '▶ Run Backtest'}
-                </button>
-                {dirty && runState === 'done' && (
-                    <div className="mt-2 text-center text-xs font-semibold" style={{ color: 'var(--warn)' }}>
-                        Parameters changed — results below are from the previous run.
+            {rows && (
+                <>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <Badge tone={benchmark >= 0 ? 'up' : 'down'}>Buy &amp; hold {fmtPct(benchmark)}</Badge>
+                        <Badge tone={beat > 0 ? 'up' : 'neutral'}>{beat} of {rows.length} beat it</Badge>
+                        {inactive > 0 && <Badge>{inactive} took no trades</Badge>}
+                        {meta && !meta.synthetic && <span className="text-xs text-faint">real data · {meta.source} · {meta.bars} bars</span>}
                     </div>
-                )}
-            </div>
 
-            {/* results */}
-            <div className="overflow-auto bg-background px-4 py-5 sm:px-6">
-                <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                        <div className="text-xl font-bold">EMA Crossover + RSI filter</div>
-                        <div className="mono text-sm text-foreground-muted">
-                            {symbol} · {timeframe}{source ? ` · ${source.range} · ${source.bars} bars` : ''}
-                        </div>
-                    </div>
-                    {runState === 'done' && (
-                        <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                source?.synthetic ? 'bg-warn-dim text-warn' : 'bg-up-dim text-up'
-                            }`}
-                        >
-                            ● {source?.synthetic ? 'Synthetic data' : `Real data · ${source?.source}`}
-                        </span>
-                    )}
-                </div>
+                    <p className="mt-2 text-xs text-faint">
+                        Sorted by return, which is the wrong way to choose one. Look at the drawdown it took to get
+                        there and how many trades produced it — a large return from three trades is luck, not an edge.
+                    </p>
 
-                {/* An honest label beats a plausible-looking number. */}
-                {runState === 'done' && source?.synthetic && (
-                    <div className="mb-5 rounded-sm bg-warn-dim px-4 py-3 text-sm text-warn">
-                        <strong>This is not a historical backtest.</strong> No price provider covers {symbol} at this
-                        timeframe, so the run used a generated random-walk series. Treat the metrics as a smoke test of the
-                        strategy logic, not evidence of an edge.
-                    </div>
-                )}
+                    <Panel className="mt-4" padding="none">
+                        <DataTable columns={COLUMNS} rows={rows} getRowKey={(r) => r.id} minWidth={720} />
+                    </Panel>
+                </>
+            )}
 
-                {runState === 'loading' && (
-                    <div className="panel flex items-center justify-center py-20 text-base text-faint">Fetching candles…</div>
-                )}
-
-                {runState === 'error' && (
-                    <div className="panel px-5 py-6 text-base">
-                        <div className="mb-1 font-bold text-down">Backtest failed</div>
-                        <div className="text-foreground-muted">{error}</div>
-                    </div>
-                )}
-
-                {runState === 'done' && result && (
-                    <>
-                        {result.warnings.length > 0 && (
-                            <div className="mb-5 flex flex-col gap-1 rounded-lg px-4 py-3 text-sm" style={{ background: 'var(--chip)', color: 'var(--foreground-muted)' }}>
-                                {result.warnings.map((w) => <span key={w}>· {w}</span>)}
-                            </div>
-                        )}
-
-                        <div className="mb-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-                            {result.metrics.map((m) => (
-                                <div key={m.label} className="panel p-4">
-                                    <div className="text-2xs font-bold tracking-wide text-faint">{m.label}</div>
-                                    <div className="mono my-2 text-xl font-bold" style={{ color: m.col }}>{m.value}</div>
-                                    <div className="text-xs text-faint">{m.sub}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="panel mb-5 p-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold">Equity curve</span>
-                                <span className="mono text-sm text-foreground-muted">{fmtMoney(startingCapital, 'INR', 0)} → {fmtMoney(result.finalValue, 'INR', 0)}</span>
-                            </div>
-                            <div className="mt-3" style={{ height: 230 }}>
-                                {result.equity.length > 1
-                                    ? <AreaChart points={result.equity} id="bt-eq" />
-                                    : <div className="flex h-full items-center justify-center text-sm text-faint">Not enough bars to plot.</div>}
-                            </div>
-                        </div>
-
-                        <div className="grid gap-5 xl:grid-cols-[1fr_1.25fr]">
-                            <div className="panel p-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold">Drawdown</span>
-                                    <span className="mono text-sm font-bold text-down">{result.maxDD.toFixed(1)}%</span>
-                                </div>
-                                <div className="mt-3" style={{ height: 120 }}><DrawdownChart points={result.drawdown} /></div>
-                            </div>
-                            <div className="panel p-4">
-                                <div className="mb-3.5 text-sm font-bold">Monthly returns <span className="text-xs font-medium text-faint">%</span></div>
-                                {result.heatRows.length
-                                    ? <Heatmap rows={result.heatRows} />
-                                    : <div className="py-6 text-center text-sm text-faint">The series does not span a full month.</div>}
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function Label({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-    return <label className={`text-2xs font-bold tracking-wide text-faint ${className}`}>{children}</label>;
-}
-function Box({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
-    return <div className={`my-1.5 flex items-center rounded-sm border border-border bg-background px-3 py-2.5 text-base font-semibold ${mono ? 'mono' : ''}`}>{children}</div>;
-}
-function Divider({ color, text }: { color: string; text: string }) {
-    return (
-        <div className="mb-2 mt-5 flex items-center gap-2">
-            <span className="text-xs font-bold tracking-wide" style={{ color }}>{text}</span>
-            <span className="h-px flex-1" style={{ background: 'var(--border)' }} />
-        </div>
-    );
-}
-function Cond({ color, text }: { color: string; text: string }) {
-    return (
-        <div className="mb-2 flex items-center justify-between rounded-sm border border-border bg-background px-3 py-2.5 text-sm">
-            <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />{text}</span>
-        </div>
-    );
-}
-function Num({ label, value, set, step }: { label: string; value: number; set: (n: number) => void; step?: number }) {
-    return (
-        <div>
-            {label && <Label>{label}</Label>}
-            <input
-                type="number"
-                step={step}
-                value={value}
-                onChange={(e) => {
-                    const n = Number(e.target.value);
-                    if (Number.isFinite(n)) set(n);
-                }}
-                className="mono mt-1.5 w-full rounded-sm border border-border bg-background px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]"
-            />
-        </div>
+            {!rows && !busy && !error && (
+                <p className="mt-5 text-sm text-faint">
+                    Pick an instrument and run. Pair and spread strategies are excluded here because they need a
+                    second instrument chosen deliberately — open those from the{' '}
+                    <Link href="/strategies" className="text-accent underline underline-offset-2">strategy library</Link>.
+                </p>
+            )}
+        </PageShell>
     );
 }

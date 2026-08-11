@@ -13,6 +13,7 @@ export const VISUAL_KEYS = [
     'rsi-gauge',
     'equity-drawdown',
     'risk-sizing',
+    'token-vesting',
 ] as const;
 
 export type VisualKey = (typeof VISUAL_KEYS)[number];

@@ -5,14 +5,17 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageShell, Panel, Badge, Button, Callout } from '@/components/ui';
 import { LESSONS, lessonBySlug } from '@/lib/learn/curriculum';
-import { MODULES } from '@/lib/learn/types';
-import { useCourseProgress, useVerifyContext, lessonAfter } from '@/lib/learn/progress';
+import { TRACKS, LEVELS } from '@/lib/learn/types';
+import { useCourseProgress, useVerifyContext, lessonAfter, verifyLesson } from '@/lib/learn/progress';
 import { Rich } from '@/lib/learn/render';
 import { LessonVisual } from '@/components/learn/anim';
 import { FormulaCard } from '@/components/learn/FormulaCard';
 import { useLearnStore } from '@/stores/learnStore';
 
-const KIND_LABEL: Record<string, string> = { book: 'Book', video: 'Video', article: 'Read', tool: 'Tool' };
+const KIND_LABEL: Record<string, string> = {
+    book: 'Book', video: 'Video', article: 'Read', tool: 'Tool',
+    regulator: 'Official', course: 'Course', dataset: 'Data',
+};
 
 /**
  * Stable empty array. Returning a fresh `[]` from a zustand selector makes
@@ -31,7 +34,7 @@ export default function LessonPage({ params }: { params: Promise<{ slug: string 
     const quizAnswers = useLearnStore((s) => s.quizAnswers[slug]) ?? NO_ANSWERS;
     const answerQuiz = useLearnStore((s) => s.answerQuiz);
 
-    const result = lesson?.exercise.verify(ctx);
+    const result = lesson ? verifyLesson(lesson, ctx, quizAnswers) : undefined;
     const isDone = Boolean(result?.done);
 
     // In an effect, not during render — recording completion while rendering was a
@@ -43,15 +46,17 @@ export default function LessonPage({ params }: { params: Promise<{ slug: string 
     if (!lesson || !result) notFound();
 
     const index = LESSONS.findIndex((l) => l.slug === slug);
-    const moduleInfo = MODULES.find((m) => m.key === lesson.module);
+    const trackInfo = TRACKS.find((t) => t.id === lesson.track);
+    const levelInfo = LEVELS.find((l) => l.key === lesson.level);
     const next = lessonAfter(slug);
     const missing = progress.byslug[slug]?.missingPrereqs ?? [];
 
     return (
         <PageShell width="narrow" title={lesson.title} subtitle={lesson.outcome}>
             <div className="mb-5 flex flex-wrap items-center gap-2">
-                <Badge>{moduleInfo?.title ?? 'Lesson'}</Badge>
-                <Badge>Lesson {index + 1} of {LESSONS.length}</Badge>
+                <Badge>{trackInfo?.title ?? 'Lesson'}</Badge>
+                <Badge>{levelInfo?.title ?? lesson.level}</Badge>
+                <Badge tone={lesson.kind === 'practice' ? 'accent' : 'neutral'}>{lesson.kind}</Badge>
                 <Badge>{lesson.minutes} min</Badge>
                 {isDone && <Badge tone="up">Complete</Badge>}
             </div>
@@ -101,6 +106,7 @@ export default function LessonPage({ params }: { params: Promise<{ slug: string 
                 </Link>
             </Panel>
 
+            {lesson.exercise ? (
             <Panel title={`Exercise — ${lesson.exercise.title}`} className="mt-5">
                 <Rich text={lesson.exercise.body} className="text-base text-foreground-muted" />
 
@@ -115,6 +121,19 @@ export default function LessonPage({ params }: { params: Promise<{ slug: string 
                     </div>
                 )}
             </Panel>
+            ) : (
+                <Panel title="How this lesson is checked" className="mt-5">
+                    <p className="text-sm text-foreground-muted">
+                        This is a <strong>study</strong> lesson. There is no way to verify that you understand a
+                        balance sheet by reading your trading history, so it is checked by the questions below —
+                        every one has to be right. That is a weaker guarantee than a practice lesson, and it is
+                        still a check rather than a button.
+                    </p>
+                    <div className={`mt-3 rounded-sm p-3 text-sm ${isDone ? 'bg-up-dim text-up' : 'bg-chip text-foreground-muted'}`}>
+                        {isDone ? '✓ ' : ''}{result.hint}
+                    </div>
+                </Panel>
+            )}
 
             {lesson.drills && lesson.drills.length > 0 && (
                 <Panel title="Practice drills" className="mt-5">

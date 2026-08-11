@@ -1,6 +1,10 @@
 import * as v from './verify';
 import { deriveFxRates, equity, estimateCharges, toBase } from '@/lib/paperEngine';
-import type { Lesson, VerifyContext } from './types';
+import type { Lesson, TrackId, VerifyContext } from './types';
+import { INDIA_EQUITY_LESSONS } from './tracks/indiaEquity';
+import { CRYPTO_LESSONS } from './tracks/crypto';
+import { AIRDROP_LESSONS } from './tracks/airdrops';
+import { IPO_LESSONS } from './tracks/ipo';
 
 // The course. Sixteen lessons across five modules.
 //
@@ -23,12 +27,14 @@ function lastFill(c: VerifyContext) {
     return c.state.fills[0] ?? null;
 }
 
-export const LESSONS: Lesson[] = [
+const CORE_LESSONS: Lesson[] = [
     /* ============================================================ FOUNDATIONS */
     {
         slug: 'what-you-are-looking-at',
         title: 'What you are looking at',
-        module: 'foundations',
+        track: 'markets',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 5,
         outcome: 'Name every part of the trading screen and say what it is for.',
         where: { href: '/terminal', label: 'Open the Terminal' },
@@ -81,7 +87,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'price-and-change',
         title: 'Price, change, and the 24-hour range',
-        module: 'foundations',
+        track: 'markets',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 6,
         outcome: 'Read a price row and know exactly what each number is measured against.',
         where: { href: '/terminal', label: 'Compare two instruments' },
@@ -134,7 +142,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'currency-and-fx',
         title: 'Currency: why your dollars become rupees',
-        module: 'foundations',
+        track: 'markets',
+        level: 'intermediate',
+        kind: 'practice',
         minutes: 7,
         outcome: 'Explain what currency an instrument is priced in, and how it reaches your rupee balance.',
         where: { href: '/terminal', label: 'Trade something in dollars' },
@@ -203,7 +213,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'your-first-order',
         title: 'Your first paper order',
-        module: 'orders',
+        track: 'markets',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Place a market order and understand exactly what you committed to.',
         where: { href: '/terminal', label: 'Place an order' },
@@ -243,7 +255,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'quantity-and-buying-power',
         title: 'Quantity, order value and buying power',
-        module: 'orders',
+        track: 'markets',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 7,
         outcome: 'Decide a position size deliberately instead of typing a round number.',
         where: { href: '/terminal', label: 'Size a trade' },
@@ -304,7 +318,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'limit-orders',
         title: 'Limit orders: naming your price',
-        module: 'orders',
+        track: 'markets',
+        level: 'intermediate',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Use a limit order to control your price, and know when it will cost you the trade.',
         where: { href: '/terminal', label: 'Place a limit order' },
@@ -353,7 +369,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'fees-and-slippage',
         title: 'Fees and slippage: why your fill is not the price you saw',
-        module: 'orders',
+        track: 'markets',
+        level: 'intermediate',
+        kind: 'practice',
         minutes: 7,
         outcome: 'Account for costs before you trade, not after.',
         where: { href: '/funds', label: 'Check your charges' },
@@ -422,7 +440,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'closing-a-trade',
         title: 'Closing a trade: realised vs unrealised',
-        module: 'risk',
+        track: 'markets',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 7,
         outcome: 'Know the difference between profit on screen and profit in your account.',
         where: { href: '/holdings', label: 'Close a position' },
@@ -478,7 +498,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'stops',
         title: 'Stops: deciding the loss in advance',
-        module: 'risk',
+        track: 'risk',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Place a stop that caps your loss at an amount you chose while calm.',
         where: { href: '/terminal', label: 'Protect a position' },
@@ -535,7 +557,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'position-sizing',
         title: 'Position sizing: the only free lunch',
-        module: 'risk',
+        track: 'risk',
+        level: 'intermediate',
+        kind: 'practice',
         minutes: 9,
         outcome: 'Compute a position size from the loss you are willing to take, not from the cash you happen to have.',
         where: { href: '/terminal', label: 'Size from your stop' },
@@ -620,7 +644,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'shorting-and-margin',
         title: 'Shorting and margin',
-        module: 'risk',
+        track: 'risk',
+        level: 'advanced',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Explain how a short makes money, and why it is the riskier side.',
         where: { href: '/holdings', label: 'Open a short' },
@@ -686,7 +712,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'reading-a-candle',
         title: 'Reading a candlestick',
-        module: 'reading',
+        track: 'technical',
+        level: 'foundation',
+        kind: 'practice',
         minutes: 9,
         outcome: 'Read a candle correctly, and treat patterns with the scepticism they deserve.',
         where: { href: '/terminal', label: 'Study the chart' },
@@ -739,7 +767,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'scanner-and-rsi',
         title: 'Scanners and RSI: finding candidates',
-        module: 'reading',
+        track: 'technical',
+        level: 'intermediate',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Use an indicator as a filter without mistaking it for a forecast.',
         where: { href: '/scanner', label: 'Run a scan' },
@@ -801,7 +831,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'journal-and-discipline',
         title: 'The journal: measuring your process',
-        module: 'professional',
+        track: 'risk',
+        level: 'intermediate',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Judge your trading by how you decided, not by whether it worked.',
         where: { href: '/insights', label: 'See your patterns' },
@@ -861,7 +893,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'rules-that-bind',
         title: 'Rules that actually bind you',
-        module: 'professional',
+        track: 'risk',
+        level: 'advanced',
+        kind: 'practice',
         minutes: 8,
         outcome: 'Convert an intention into a constraint that refuses to let you break it.',
         where: { href: '/insights', label: 'Apply a rule' },
@@ -909,7 +943,9 @@ export const LESSONS: Lesson[] = [
     {
         slug: 'going-live-safely',
         title: 'Going live safely',
-        module: 'professional',
+        track: 'risk',
+        level: 'expert',
+        kind: 'practice',
         minutes: 9,
         outcome: 'Know what changes when the money is real, and what you should have proved first.',
         where: { href: '/settings', label: 'Review connections' },
@@ -960,11 +996,30 @@ export const LESSONS: Lesson[] = [
     },
 ];
 
+/**
+ * The whole course.
+ *
+ * Order matters: a lesson's prerequisites must appear before it, and there is a test
+ * that fails if they do not. New tracks are appended, never spliced into the middle —
+ * the first ten slugs are load-bearing for existing progress.
+ */
+export const LESSONS: Lesson[] = [
+    ...CORE_LESSONS,
+    ...INDIA_EQUITY_LESSONS,
+    ...CRYPTO_LESSONS,
+    ...AIRDROP_LESSONS,
+    ...IPO_LESSONS,
+];
+
 export const lessonBySlug = (slug: string) => LESSONS.find((l) => l.slug === slug);
 
-/** Lessons grouped in module order, for the /learn landing page. */
-export function lessonsByModule() {
-    const groups = new Map<string, Lesson[]>();
-    for (const l of LESSONS) groups.set(l.module, [...(groups.get(l.module) ?? []), l]);
+/** Lessons grouped by track, for the /learn landing page. */
+export function lessonsByTrack(): Map<TrackId, Lesson[]> {
+    const groups = new Map<TrackId, Lesson[]>();
+    for (const l of LESSONS) groups.set(l.track, [...(groups.get(l.track) ?? []), l]);
     return groups;
+}
+
+export function lessonsInTrack(track: TrackId): Lesson[] {
+    return LESSONS.filter((l) => l.track === track);
 }

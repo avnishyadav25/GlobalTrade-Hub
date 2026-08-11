@@ -299,6 +299,77 @@ function RiskSizing() {
     );
 }
 
+/* ------------------------------------------------------------- token vesting */
+
+/**
+ * A token supply schedule: a cliff, then linear vesting, against a price that falls
+ * as each tranche of zero-cost supply arrives.
+ *
+ * The point is the shape — the two curves are drawn from the same timeline, so the
+ * unlock steps and the price steps line up visually rather than by assertion.
+ */
+function TokenVesting() {
+    const { ref, play } = useVisible<HTMLDivElement>();
+    const [t, setT] = useState(1);
+
+    useEffect(() => {
+        if (!play) return;
+        const id = setInterval(() => setT((x) => (x >= 1 ? 0 : Math.min(1, x + 0.012))), 60);
+        return () => clearInterval(id);
+    }, [play]);
+
+    const W = 320, H = 120, PAD = 8;
+    const CLIFF = 0.28;           // nothing unlocks before this point on the timeline
+    const AIRDROP = 0.12;         // fraction circulating at listing
+
+    /** Circulating fraction of total supply at time x. */
+    const circulating = (x: number) =>
+        x < CLIFF ? AIRDROP : AIRDROP + (1 - AIRDROP) * ((x - CLIFF) / (1 - CLIFF));
+
+    // Price falls as supply arrives — steeply at first (airdrop recipients selling),
+    // then in proportion to the supply still to come.
+    const price = (x: number) => {
+        const sold = Math.min(1, x / 0.1);                    // the listing dump
+        const dilution = circulating(x) - AIRDROP;
+        return 1 - 0.45 * sold - 0.42 * dilution;
+    };
+
+    const path = (f: (x: number) => number) => {
+        const pts: string[] = [];
+        for (let i = 0; i <= 60; i++) {
+            const x = (i / 60) * t;
+            const px = PAD + x * (W - PAD * 2);
+            const py = PAD + (1 - f(x)) * (H - PAD * 2);
+            pts.push(`${i === 0 ? 'M' : 'L'}${px.toFixed(1)} ${py.toFixed(1)}`);
+        }
+        return pts.join(' ');
+    };
+
+    const cliffX = PAD + CLIFF * (W - PAD * 2);
+    const pct = Math.round(circulating(t) * 100);
+    const drop = Math.round((1 - price(t)) * 100);
+
+    return (
+        <Frame caption="The cliff is public. So is the vesting schedule — which is why the price steps so often line up with it.">
+            <div ref={ref}>
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Token vesting schedule against price">
+                    {/* the cliff — nothing unlocks to its left */}
+                    <line x1={cliffX} y1={PAD} x2={cliffX} y2={H - PAD} stroke={FAINT} strokeWidth={1} strokeDasharray="3 3" />
+                    <text x={cliffX + 4} y={PAD + 9} fontSize={8} fill={FAINT}>cliff ends</text>
+
+                    <path d={path(circulating)} fill="none" stroke={ACCENT} strokeWidth={2} />
+                    <path d={path(price)} fill="none" stroke={DOWN} strokeWidth={2} />
+                </svg>
+
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-2xs">
+                    <span style={{ color: ACCENT }}>● circulating supply {pct}%</span>
+                    <span style={{ color: DOWN }}>● price −{drop}% from listing</span>
+                </div>
+            </div>
+        </Frame>
+    );
+}
+
 /* ------------------------------------------------------------------ registry */
 
 const VISUALS: Record<string, () => React.JSX.Element> = {
@@ -310,6 +381,7 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'rsi-gauge': RsiGauge,
     'equity-drawdown': EquityDrawdown,
     'risk-sizing': RiskSizing,
+    'token-vesting': TokenVesting,
 };
 
 export const VISUAL_KEYS = Object.keys(VISUALS);

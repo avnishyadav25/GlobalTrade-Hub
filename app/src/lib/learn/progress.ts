@@ -6,7 +6,7 @@ import { useMarketStore } from '@/stores/marketStore';
 import { useLearnStore } from '@/stores/learnStore';
 import { rsi as seriesRsi } from '@/stores/seriesStore';
 import { LESSONS } from './curriculum';
-import type { Lesson, VerifyContext, VerifyResult } from './types';
+import type { Lesson, Quiz, VerifyContext, VerifyResult } from './types';
 
 /**
  * The single source of the verification context.
@@ -35,6 +35,32 @@ export function useVerifyContext(): VerifyContext {
         }),
         [state, observedSymbols, observedMarkets]
     );
+}
+
+/**
+ * Verify a STUDY lesson from its quiz.
+ *
+ * There is no way to check that someone understands a balance sheet by reading their
+ * trading history, so these are verified by answering every question correctly. It is a
+ * weaker guarantee than a practice lesson and the UI says so — but it is still a check,
+ * not a "mark as done" button.
+ */
+export function verifyByQuiz(quiz: Quiz[], answers: number[] = []): VerifyResult {
+    const total = quiz.length;
+    if (total === 0) return { done: false, hint: 'This lesson has no questions yet.' };
+    const correct = quiz.reduce((n, q, i) => n + (answers[i] === q.answer ? 1 : 0), 0);
+    if (correct === total) return { done: true, progress: 1, hint: `All ${total} questions correct.` };
+    return {
+        done: false,
+        progress: correct / total,
+        hint: `${correct} of ${total} correct. Answer the rest — a wrong answer explains itself.`,
+    };
+}
+
+/** One entry point, whichever kind of lesson it is. */
+export function verifyLesson(lesson: Lesson, ctx: VerifyContext, answers: number[] = []): VerifyResult {
+    if (lesson.kind === 'study' || !lesson.exercise) return verifyByQuiz(lesson.quiz, answers);
+    return lesson.exercise.verify(ctx);
 }
 
 export interface LessonProgress {
@@ -67,10 +93,11 @@ export function useCourseProgress(): CourseProgress {
     const ctx = useVerifyContext();
     const completed = useLearnStore((s) => s.completed);
     const skipped = useLearnStore((s) => s.skipped);
+    const quizAnswers = useLearnStore((s) => s.quizAnswers);
 
     return useMemo(() => {
         const lessons: LessonProgress[] = LESSONS.map((lesson) => {
-            const result = lesson.exercise.verify(ctx);
+            const result = verifyLesson(lesson, ctx, quizAnswers[lesson.slug]);
             return {
                 lesson,
                 result,
@@ -98,7 +125,7 @@ export function useCourseProgress(): CourseProgress {
             total: lessons.length,
             next: lessons.find((p) => !p.done && !p.skipped) ?? null,
         };
-    }, [ctx, completed, skipped]);
+    }, [ctx, completed, skipped, quizAnswers]);
 }
 
 /**

@@ -1,16 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { LESSONS, lessonBySlug, lessonsByModule } from './curriculum';
-import { MODULES } from './types';
+import { LESSONS, lessonBySlug, lessonsByTrack } from './curriculum';
+import { TRACKS, LEVELS } from './types';
 import { VISUAL_KEYS } from './visuals';
 import { COACH_TOPICS } from './topics';
 import { parseInline, parseBlocks } from './markdownLite';
 import { newPaperState } from '@/lib/paperEngine';
 import type { VerifyContext } from './types';
 
+const tracksById = () => new Set(TRACKS.map((t) => t.id));
+
 /** Routes that exist in app/. A lesson pointing anywhere else is a dead link. */
 const ROUTES = new Set([
     '/terminal', '/orders', '/holdings', '/portfolio', '/funds', '/watchlists',
-    '/alerts', '/scanner', '/insights', '/agents', '/settings', '/backtest', '/paper', '/learn',
+    '/alerts', '/scanner', '/insights', '/agents', '/settings', '/backtest', '/paper',
+    '/learn', '/strategies', '/signals', '/research',
 ]);
 
 /** A fresh account with nothing done — every verifier must cope with this. */
@@ -22,9 +25,10 @@ const emptyCtx = (): VerifyContext => ({
 });
 
 describe('curriculum integrity', () => {
-    it('has sixteen lessons across five modules', () => {
-        expect(LESSONS).toHaveLength(16);
-        expect(MODULES).toHaveLength(5);
+    it('spans fifteen declared tracks and four levels', () => {
+        expect(LESSONS.length).toBeGreaterThanOrEqual(16);
+        expect(TRACKS).toHaveLength(15);
+        expect(LEVELS).toHaveLength(4);
     });
 
     it('has unique slugs', () => {
@@ -43,18 +47,36 @@ describe('curriculum integrity', () => {
         }
     });
 
-    it('assigns every lesson to a declared module, and leaves no module empty', () => {
-        const keys = new Set(MODULES.map((m) => m.key));
-        for (const l of LESSONS) expect(keys.has(l.module), `${l.slug} module`).toBe(true);
-
-        const grouped = lessonsByModule();
-        for (const m of MODULES) expect(grouped.get(m.key)?.length ?? 0, `${m.key} is empty`).toBeGreaterThan(0);
+    it('assigns every lesson to a declared track and level', () => {
+        const tracks = new Set(TRACKS.map((t) => t.id));
+        const levels = new Set(LEVELS.map((l) => l.key));
+        for (const l of LESSONS) {
+            expect(tracks.has(l.track), `${l.slug} track "${l.track}"`).toBe(true);
+            expect(levels.has(l.level), `${l.slug} level "${l.level}"`).toBe(true);
+        }
     });
 
-    it('groups lessons contiguously, so course order matches module order', () => {
-        const order = MODULES.map((m) => m.key);
-        const seen = LESSONS.map((l) => order.indexOf(l.module));
-        expect(seen).toEqual([...seen].sort((a, b) => a - b));
+    it('never lists a track that has no lessons as though it did', () => {
+        // Empty tracks are allowed while the course is being written — the UI says so
+        // rather than showing a placeholder. But whatever IS grouped must be reachable.
+        const grouped = lessonsByTrack();
+        for (const [track, lessons] of grouped) {
+            expect(tracksById().has(track), `unknown track ${track}`).toBe(true);
+            expect(lessons.length).toBeGreaterThan(0);
+        }
+    });
+
+    it('gives every practice lesson an exercise and every study lesson a quiz', () => {
+        for (const l of LESSONS) {
+            if (l.kind === 'practice') {
+                expect(l.exercise, `${l.slug} is practice but has no exercise`).toBeDefined();
+                expect(typeof l.exercise?.verify).toBe('function');
+            } else {
+                // A study lesson is verified BY its quiz, so an empty one could never
+                // be completed.
+                expect(l.quiz.length, `${l.slug} is study but has no questions`).toBeGreaterThan(0);
+            }
+        }
     });
 
     it('resolves every prerequisite to a real, EARLIER lesson', () => {
@@ -98,8 +120,10 @@ describe('curriculum integrity', () => {
         for (const l of LESSONS) {
             expect(l.outcome.length, `${l.slug} outcome`).toBeGreaterThan(10);
             expect(l.concept.length, `${l.slug} concept`).toBeGreaterThan(0);
-            expect(l.exercise.title.length).toBeGreaterThan(0);
-            expect(typeof l.exercise.verify).toBe('function');
+            if (l.exercise) {
+                expect(l.exercise.title.length).toBeGreaterThan(0);
+                expect(typeof l.exercise.verify).toBe('function');
+            }
             expect(l.minutes).toBeGreaterThan(0);
         }
     });
@@ -128,6 +152,7 @@ describe('curriculum integrity', () => {
 describe('verifiers on a fresh account', () => {
     it('every exercise is incomplete and gives an actionable hint', () => {
         for (const l of LESSONS) {
+            if (!l.exercise) continue;   // study lessons are quiz-verified
             const r = l.exercise.verify(emptyCtx());
             expect(r.done, `${l.slug} should not pass on an empty account`).toBe(false);
             expect(r.hint.length, `${l.slug} hint`).toBeGreaterThan(10);
@@ -140,7 +165,7 @@ describe('verifiers on a fresh account', () => {
 
     it('no verifier or drill counter throws on an empty account', () => {
         for (const l of LESSONS) {
-            expect(() => l.exercise.verify(emptyCtx()), l.slug).not.toThrow();
+            if (l.exercise) expect(() => l.exercise!.verify(emptyCtx()), l.slug).not.toThrow();
             for (const d of l.drills ?? []) expect(() => d.count(emptyCtx()), d.id).not.toThrow();
             for (const f of l.formulas ?? []) expect(() => f.worked?.(emptyCtx()), f.label).not.toThrow();
         }

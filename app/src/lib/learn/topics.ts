@@ -407,6 +407,63 @@ export const COACH_TOPICS: Record<string, CoachTopic> = {
         ],
     },
 
+    research: {
+        title: 'Research',
+        blurb: 'Company financials, live IPOs and crypto supply data.',
+        lesson: 'what-you-are-looking-at',
+        cards: [
+            {
+                title: 'A dash is not a zero',
+                body:
+                    'Where a figure is **not reported**, this screen shows a dash. A company with no debt and ' +
+                    'a company that did not disclose its debt look identical in a table that renders both as 0, ' +
+                    'and only one of them is a good investment.',
+            },
+            {
+                title: 'US companies only',
+                body:
+                    'Finnhub\'s free tier covers US listings. There is **no free API for Indian company ' +
+                    'financials** — the lessons use worked examples from published annual reports instead, ' +
+                    'clearly marked as static.',
+            },
+            {
+                title: 'IPO data comes from NSE directly',
+                body:
+                    'An unofficial endpoint that blocks programmatic access intermittently. "No issues open" ' +
+                    'and "the request failed" are shown differently, because collapsing them would let a ' +
+                    'network problem read as a quiet market.',
+            },
+        ],
+    },
+
+    strategies: {
+        title: 'Strategies',
+        blurb: 'Rule sets you can test, then run under supervision.',
+        lesson: 'rules-that-bind',
+        cards: [
+            {
+                title: 'Backtest before you enable',
+                body:
+                    'Every strategy runs against real historical candles and is scored against **buy and hold** ' +
+                    'over the same window. A result that does not beat simply holding the instrument is not an edge.',
+            },
+            {
+                title: 'Read the failure mode first',
+                body:
+                    'Each strategy states where it loses money as plainly as what it does. Trend following ' +
+                    'bleeds in ranges; mean reversion is destroyed by trends. Neither is broken — they are ' +
+                    'describing the regime they are wrong in.',
+            },
+            {
+                title: 'Some of them are reduced here',
+                body:
+                    'The engine holds one position at a time, so pairs, spreads and grids are **approximations** ' +
+                    'of the real thing. Each says so in its caveats rather than letting the number be read as ' +
+                    'a hedged strategy.',
+            },
+        ],
+    },
+
     signals: {
         title: 'Strategy signals',
         blurb: 'What your strategies want to do, before anything is placed.',

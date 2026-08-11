@@ -96,7 +96,7 @@ export function GuideBar() {
                 <Link href={`/learn/${lesson.slug}`} className="text-sm font-semibold hover:text-accent">
                     {lesson.title}
                 </Link>
-                <p className="mt-1 text-xs font-semibold text-foreground-muted">{lesson.exercise.title}</p>
+                <p className="mt-1 text-xs font-semibold text-foreground-muted">{lesson.exercise?.title ?? 'Answer the questions on this lesson'}</p>
 
                 {/* Straight from the verifier, so it always reflects reality. */}
                 <Rich text={result.hint} className="mt-1.5 text-xs text-faint" />

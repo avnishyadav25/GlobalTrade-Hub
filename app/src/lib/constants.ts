@@ -99,10 +99,18 @@ export const NAV_SECTIONS: NavItem[] = [
   },
   { key: 'funds', label: 'Funds', href: '/funds' },
   {
+    key: 'strategies', label: 'Strategies', href: '/strategies',
+    children: [
+      { key: 'library', label: 'Library', href: '/strategies' },
+      { key: 'signals', label: 'Signals', href: '/signals' },
+      { key: 'backtest', label: 'Backtest', href: '/backtest' },
+    ],
+  },
+  {
     key: 'insights', label: 'Insights', href: '/insights',
     children: [
       { key: 'coach', label: 'Coach', href: '/insights' },
-      { key: 'backtest', label: 'Backtest', href: '/backtest' },
+      { key: 'research', label: 'Research', href: '/research' },
       { key: 'agents', label: 'Agents', href: '/agents' },
     ],
   },
