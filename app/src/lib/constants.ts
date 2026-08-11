@@ -114,7 +114,13 @@ export const NAV_SECTIONS: NavItem[] = [
       { key: 'agents', label: 'Agents', href: '/agents' },
     ],
   },
-  { key: 'learn', label: 'Learn', href: '/learn' },
+  {
+    key: 'learn', label: 'Learn', href: '/learn',
+    children: [
+      { key: 'course', label: 'Course', href: '/learn' },
+      { key: 'reading', label: 'Library', href: '/library' },
+    ],
+  },
 ];
 
 /** Which primary a path belongs to, for highlighting. */
