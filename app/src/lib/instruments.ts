@@ -11,7 +11,7 @@
 // for no behavioural gain. Registration happens on store rehydrate, on add, and on
 // cloud hydrate — see stores/watchlistStore.ts.
 
-import { WATCHLIST_ASSETS, type Asset, type Currency } from './mockData';
+import { WATCHLIST_ASSETS, REFERENCE_ASSETS, type Asset, type Currency } from './mockData';
 import { MARKETS, type Market } from './constants';
 
 // Lazily seeded. mockData imports this module for getAsset(), so reading
@@ -24,7 +24,9 @@ let ready = false;
 function ensureSeeded() {
     if (ready) return;
     ready = true;
-    for (const a of WATCHLIST_ASSETS) {
+    // Both catalogues seed the registry so reference series resolve and can be fetched;
+    // only WATCHLIST_ASSETS builds the default watchlist.
+    for (const a of [...WATCHLIST_ASSETS, ...REFERENCE_ASSETS]) {
         registry.set(a.symbol, a);
         seeded.add(a.symbol);
     }

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
-import { getAsset, type Candle } from '@/lib/mockData';
+import { type Candle } from '@/lib/mockData';
 import { fetchCandles } from '@/lib/marketData/router';
+import { resolveOne, type InstrumentHint } from '@/lib/marketData/universe';
 
 // Historical OHLCV for the backtester and for seeding rolling indicators.
 //
@@ -51,10 +52,8 @@ function perBarVolatility(market: string, seconds: number): number {
     return vol * Math.sqrt(seconds / (days * (SESSION_SECONDS[market] ?? 23400)));
 }
 
-function synthetic(symbol: string, seconds: number, count: number, seed: number, asOf: number): Candle[] {
-    const asset = getAsset(symbol);
-    const base = asset?.price ?? 100;
-    const perBarVol = perBarVolatility(asset?.market ?? 'us', seconds);
+function synthetic(market: string, base: number, seconds: number, count: number, seed: number, asOf: number): Candle[] {
+    const perBarVol = perBarVolatility(market, seconds);
     let s = (Math.abs(Math.floor(seed)) % 2147483647) || 7;
     const rnd = () => ((s = (s * 48271) % 2147483647), s / 2147483647);
     const gauss = () => {
@@ -90,7 +89,17 @@ export async function GET(req: Request) {
     const limit = Math.min(5000, Math.max(50, Number(url.searchParams.get('limit') ?? 1000)));
     const seed = Number(url.searchParams.get('seed') ?? 1);
 
-    const asset = getAsset(symbol);
+    // The instrument registry is client-only, so a user-added symbol is unknown to this
+    // process. The client supplies its descriptor; a hint can never override a seed.
+    const market = url.searchParams.get('market');
+    const quoteCcy = url.searchParams.get('quoteCcy');
+    const hintPrice = Number(url.searchParams.get('price'));
+    const hint: InstrumentHint | undefined =
+        market && quoteCcy
+            ? { symbol, market, quoteCcy, price: Number.isFinite(hintPrice) ? hintPrice : undefined }
+            : undefined;
+
+    const asset = resolveOne(symbol, hint);
     if (!asset) return NextResponse.json({ error: 'unknown symbol' }, { status: 400 });
     const spec = INTERVALS[interval];
     if (!spec) return NextResponse.json({ error: 'unsupported interval' }, { status: 400 });
@@ -99,7 +108,7 @@ export async function GET(req: Request) {
     let source: CandleSource = 'synthetic';
     let delayMinutes = 0;
 
-    const routed = await fetchCandles(symbol, interval, limit);
+    const routed = await fetchCandles(asset, interval, limit);
     if (routed?.candles.length) {
         candles = routed.candles;
         source = routed.provider as CandleSource;
@@ -109,7 +118,10 @@ export async function GET(req: Request) {
     if (!candles?.length) {
         // Deterministic given (symbol, seed): no Date.now() inside the generator.
         const asOf = Math.floor(Date.UTC(2026, 7, 10) / 1000);
-        candles = synthetic(symbol, spec.seconds, Math.min(limit, 1500), seed, asOf);
+        // A user-added instrument has no seed price; the client passes its last known
+        // one. Without this the fallback series was a flat ₹100 base at US volatility.
+        const base = asset.price && asset.price > 0 ? asset.price : 100;
+        candles = synthetic(asset.market, base, spec.seconds, Math.min(limit, 1500), seed, asOf);
         source = 'synthetic';
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageShell, Panel, Button, Input, EmptyState, Sheet, Badge, PriceText, ConfirmDialog } from '@/components/ui';
@@ -10,17 +10,21 @@ import { useUIStore } from '@/stores/uiStore';
 import { getAsset } from '@/lib/mockData';
 import { makeAsset } from '@/lib/instruments';
 import { fmtPct } from '@/lib/format';
+import { freshness, ageLabel } from '@/lib/marketData/staleness';
 import type { Market } from '@/lib/constants';
 import type { Currency } from '@/lib/mockData';
 
-interface Hit { symbol: string; name: string; exchange: string; market: Market; quoteCcy: Currency; type?: string }
+interface Hit { symbol: string; name: string; exchange: string; market: Market; quoteCcy: Currency; type?: string; price?: number }
 
 export default function WatchlistsPage() {
     const router = useRouter();
     const { lists, activeListId, setActive, createList, renameList, deleteList, addSymbol, removeSymbol, moveSymbol, addInstrument } =
         useWatchlistStore();
     const quotes = useMarketStore((s) => s.quotes);
+    const feedStatus = useMarketStore((s) => s.feedStatus);
+    const deferredSymbols = useMarketStore((s) => s.deferredSymbols);
     const setSymbol = useUIStore((s) => s.setSymbol);
+    const deferred = useMemo(() => new Set(deferredSymbols), [deferredSymbols]);
 
     const [adding, setAdding] = useState(false);
     const [query, setQuery] = useState('');
@@ -53,11 +57,46 @@ export default function WatchlistsPage() {
         }
     };
 
-    const add = (h: Hit) => {
+    const add = async (h: Hit) => {
         // Registered before it can be quoted or traded — otherwise the engine rejects
         // it as unknown and would mis-price it as a USD crypto.
-        addInstrument(makeAsset({ symbol: h.symbol, name: h.name, market: h.market, exchange: h.exchange, quoteCcy: h.quoteCcy }));
-        toast.success(`${h.symbol} added`, { description: `${h.name} · prices arrive on the next refresh.` });
+        const asset = makeAsset({
+            symbol: h.symbol, name: h.name, market: h.market,
+            exchange: h.exchange, quoteCcy: h.quoteCcy,
+            // Carry the price through when search resolved one. It used to be dropped,
+            // so makeAsset defaulted to 0 and paperEngine.validate() then refused any
+            // order with "No price available for this instrument".
+            price: h.price,
+        });
+        addInstrument(asset);
+
+        // Fetch a quote immediately rather than leaving the row blank until the next
+        // 60s poll. The old toast promised "prices arrive on the next refresh" while
+        // the poll did not even request user-added symbols.
+        const t = toast.loading(`Adding ${h.symbol}…`);
+        try {
+            const res = await fetch('/api/marketdata', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                    symbols: [asset.symbol],
+                    instruments: [{ symbol: asset.symbol, market: asset.market, quoteCcy: asset.quoteCcy, price: asset.price }],
+                }),
+            });
+            const data = res.ok ? await res.json() : null;
+            const q = data?.quotes?.[0];
+            if (q) {
+                useMarketStore.getState().applyQuote({ ...q, ts: q.at, real: true });
+                toast.success(`${h.symbol} added`, { id: t, description: h.name });
+            } else {
+                toast.warning(`${h.symbol} added, but no price yet`, {
+                    id: t,
+                    description: 'No provider returned a quote. It will retry on the next refresh.',
+                });
+            }
+        } catch {
+            toast.success(`${h.symbol} added`, { id: t, description: `${h.name} · price will arrive on the next refresh.` });
+        }
     };
 
     return (
@@ -105,7 +144,22 @@ export default function WatchlistsPage() {
                     {active?.symbols.map((sym, i) => {
                         const a = getAsset(sym);
                         const q = quotes[sym];
-                        const chg = q?.changePercent ?? a?.changePercent ?? 0;
+                        // `a.price` is catalog mock data, not a price — it has RELIANCE at
+                        // ₹2,945 against a live ~₹1,327. Only a real quote counts.
+                        const state = freshness({
+                            ts: q?.real ? q.ts : null,
+                            market: a?.market ?? 'us',
+                            feedState: a ? feedStatus[a.market]?.state : undefined,
+                            deferred: deferred.has(sym),
+                        });
+                        const hasPrice = state !== 'none';
+                        const chg = hasPrice ? (q?.changePercent ?? 0) : 0;
+                        const note =
+                            state === 'none' ? 'no price yet'
+                            : state === 'queued' ? 'queued for refresh'
+                            : state === 'closed' ? 'market closed'
+                            : state === 'stale' ? ageLabel(q?.ts)
+                            : null;
                         return (
                             <div
                                 key={sym}
@@ -118,11 +172,18 @@ export default function WatchlistsPage() {
                                 <span className="text-faint" aria-hidden>⠿</span>
                                 <div className="min-w-0 flex-1">
                                     <div className="truncate text-sm font-semibold">{sym}</div>
-                                    <div className="truncate text-xs text-faint">{a?.name ?? 'Custom instrument'} · {a?.exchange ?? '—'}</div>
+                                    <div className="truncate text-xs text-faint">
+                                        {a?.name ?? 'Custom instrument'} · {note ?? a?.exchange ?? '—'}
+                                    </div>
                                 </div>
-                                <PriceText value={q?.price ?? a?.price ?? 0} />
-                                <span className="mono w-16 text-right text-sm font-semibold" style={{ color: chg >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                                    {fmtPct(chg)}
+                                {hasPrice ? (
+                                    <PriceText value={q!.price} />
+                                ) : (
+                                    <span className="mono text-sm text-faint">—</span>
+                                )}
+                                <span className="mono w-16 text-right text-sm font-semibold"
+                                      style={{ color: !hasPrice ? 'var(--faint)' : chg >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                                    {hasPrice ? fmtPct(chg) : '—'}
                                 </span>
                                 <Button size="sm" variant="ghost" onClick={() => { setSymbol(sym); router.push('/terminal'); }}>Trade</Button>
                                 <Button size="sm" variant="ghost" onClick={() => removeSymbol(active.id, sym)} aria-label={`Remove ${sym}`}>✕</Button>

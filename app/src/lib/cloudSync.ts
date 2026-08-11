@@ -115,8 +115,25 @@ const ENTRIES: Entry[] = [
     {
         key: 'learn',
         store: useLearnStore as unknown as AnyStore,
-        snapshot: (s) => ({ completed: s.completed, observedSymbols: s.observedSymbols, observedMarkets: s.observedMarkets, seenCoachMarks: s.seenCoachMarks }),
+        snapshot: (s) => ({
+            completed: s.completed,
+            observedSymbols: s.observedSymbols,
+            observedMarkets: s.observedMarkets,
+            seenCoachMarks: s.seenCoachMarks,
+            skipped: s.skipped,
+            quizAnswers: s.quizAnswers,
+            guideEnabled: s.guideEnabled,
+            rev: s.rev,
+        }),
         validate: (v) => v.completed === undefined || isObj(v.completed),
+        // Without this guard a stale server row overwrites newer local progress, so a
+        // dismissed coach mark or a skipped lesson comes back after a remount. `rev`
+        // increments on every learn mutation, exactly as `seq` does for paper.
+        isNewer: (server, local) => {
+            const s = typeof server.rev === 'number' ? server.rev : -1;
+            const l = typeof local.rev === 'number' ? local.rev : -1;
+            return s > l;
+        },
     },
     {
         key: 'ui',

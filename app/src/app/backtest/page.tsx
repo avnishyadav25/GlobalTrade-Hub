@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AreaChart, DrawdownChart, Heatmap } from '@/components/charts';
 import { runBacktest, DEFAULT_PARAMS, sanitiseParams, type BacktestResult } from '@/lib/backtestEngine';
-import { WATCHLIST_ASSETS, type Candle } from '@/lib/mockData';
+import { type Candle } from '@/lib/mockData';
+import { allInstruments } from '@/lib/instruments';
+import { useMarketStore } from '@/stores/marketStore';
+import { candlesUrl } from '@/lib/marketData/candlesUrl';
 import { TIMEFRAMES } from '@/lib/constants';
 import { fmtMoney } from '@/lib/format';
 
@@ -37,7 +40,7 @@ export default function BacktestPage() {
         setRunState('loading');
         setError('');
         try {
-            const res = await fetch(`/api/marketdata/candles?symbol=${encodeURIComponent(symbol)}&interval=${timeframe}&limit=1000`);
+            const res = await fetch(candlesUrl(symbol, timeframe, 1000, useMarketStore.getState().quotes[symbol]?.price));
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `request failed (${res.status})`);
             const data: CandleResponse = await res.json();
             if (!data.candles?.length) throw new Error('no candles returned');
@@ -92,7 +95,7 @@ export default function BacktestPage() {
                     <div>
                         <Label>MARKET / SYMBOL</Label>
                         <select value={symbol} onChange={(e) => touched(setSymbol)(e.target.value)} className="mt-1.5 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]">
-                            {WATCHLIST_ASSETS.map((a) => <option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
+                            {allInstruments().map((a) => <option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
                         </select>
                     </div>
                     <div>

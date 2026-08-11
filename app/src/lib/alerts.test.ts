@@ -3,7 +3,7 @@ import { evaluateAlerts, describeAlert, ALERT_COOLDOWN_MS, type Alert, type Aler
 import type { LiveQuote } from '@/stores/marketStore';
 
 const q = (symbol: string, price: number, changePercent = 0): LiveQuote => ({
-    symbol, price, prevClose: price, change: 0, changePercent, high: price, low: price, volume: 0, ts: 0, dir: null,
+    symbol, price, prevClose: price, change: 0, changePercent, high: price, low: price, volume: 0, ts: 0, dir: null, real: true,
 });
 const ctx = (price: number, opts: { rsi?: number | null; changePct?: number } = {}): AlertContext => ({
     quotes: { 'BTC/USDT': q('BTC/USDT', price, opts.changePct ?? 0) },

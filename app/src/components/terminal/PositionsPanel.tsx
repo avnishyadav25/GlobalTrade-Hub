@@ -5,6 +5,7 @@ import { usePaperStore } from '@/stores/paperStore';
 import { useMarketStore } from '@/stores/marketStore';
 import { unrealizedPnlBase } from '@/lib/paperEngine';
 import { fmtPrice, fmtSigned, fmtNum } from '@/lib/format';
+import { CoachMark } from '@/components/learn/CoachMark';
 
 type Tab = 'positions' | 'orders' | 'history';
 
@@ -20,7 +21,7 @@ export function PositionsPanel() {
 
     return (
         <div className="border-t border-border">
-            <div className="flex gap-5 px-4 pt-2.5 text-sm font-semibold" role="tablist">
+            <div className="flex items-center gap-5 px-4 pt-2.5 text-sm font-semibold" role="tablist">
                 {(['positions', 'orders', 'history'] as Tab[]).map((t) => (
                     <button
                         key={t}
@@ -34,6 +35,9 @@ export function PositionsPanel() {
                         </span>
                     </button>
                 ))}
+                <span className="ml-auto pb-1.5">
+                    <CoachMark topic="terminal.positions" />
+                </span>
             </div>
 
             <div className="max-h-[220px] overflow-auto">

@@ -110,27 +110,45 @@ export interface FetchOptions {
     limit: RateLimit;
 }
 
+export interface FetchMeta<T> {
+    value: T;
+    /**
+     * When the value was actually fetched UPSTREAM — not when it was served.
+     *
+     * This distinction is the whole point. Because this module deliberately serves
+     * stale data once the token bucket is empty (below), stamping the serve time
+     * would present a price that is minutes old as if it had just arrived. The UI
+     * cannot be honest about staleness without this number.
+     */
+    at: number;
+    fromCache: boolean;
+}
+
 /**
- * Cached, single-flighted, rate-limited, circuit-broken fetch.
+ * Cached, single-flighted, rate-limited, circuit-broken fetch, with provenance.
  * Returns null when the call is not permitted or the fetcher fails — callers are
  * expected to fall through to the next provider rather than surface an error.
  */
-export async function cachedFetch<T>(opts: FetchOptions, fetcher: () => Promise<T | null>): Promise<T | null> {
+export async function cachedFetchWithMeta<T>(
+    opts: FetchOptions,
+    fetcher: () => Promise<T | null>
+): Promise<FetchMeta<T> | null> {
     const { provider, key, ttlMs, limit } = opts;
     const full = `${provider}:${key}`;
 
     const hit = cache.get(full);
-    if (hit && Date.now() - hit.at < ttlMs) return hit.value as T;
+    if (hit && Date.now() - hit.at < ttlMs) return { value: hit.value as T, at: hit.at, fromCache: true };
 
     const pending = inflight.get(full);
-    if (pending) return (await pending) as T | null;
+    if (pending) return (await pending) as FetchMeta<T> | null;
 
     if (!canCall(provider, limit)) {
-        // Serve stale rather than nothing — a slightly old price beats a gap.
-        return hit ? (hit.value as T) : null;
+        // Serve stale rather than nothing — a slightly old price beats a gap. `at`
+        // stays at the original fetch time so the caller can see how old it is.
+        return hit ? { value: hit.value as T, at: hit.at, fromCache: true } : null;
     }
 
-    const p = (async () => {
+    const p = (async (): Promise<FetchMeta<T> | null> => {
         noteCall(provider);
         try {
             const value = await fetcher();
@@ -140,8 +158,9 @@ export async function cachedFetch<T>(opts: FetchOptions, fetcher: () => Promise<
             }
             noteSuccess(provider);
             if (cache.size >= MAX_ENTRIES) cache.delete(cache.keys().next().value as string);
-            cache.set(full, { at: Date.now(), value });
-            return value;
+            const at = Date.now();
+            cache.set(full, { at, value });
+            return { value, at, fromCache: false };
         } catch (e) {
             noteFailure(provider);
             console.warn(`[marketdata] ${provider} failed:`, e instanceof Error ? e.message : e);
@@ -152,5 +171,10 @@ export async function cachedFetch<T>(opts: FetchOptions, fetcher: () => Promise<
     })();
 
     inflight.set(full, p as Promise<unknown>);
-    return (await p) as T | null;
+    return p;
+}
+
+/** Value-only form, for callers that don't need the fetch time. */
+export async function cachedFetch<T>(opts: FetchOptions, fetcher: () => Promise<T | null>): Promise<T | null> {
+    return (await cachedFetchWithMeta<T>(opts, fetcher))?.value ?? null;
 }

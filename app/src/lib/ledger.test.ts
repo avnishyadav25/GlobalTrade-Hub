@@ -6,7 +6,7 @@ import type { LiveQuote } from '@/stores/marketStore';
 
 const FX: FxRates = { INR: 1, USD: 83.2, JPY: 83.2 / 156.82, stale: false };
 const quote = (symbol: string, price: number): LiveQuote => ({
-    symbol, price, prevClose: price, change: 0, changePercent: 0, high: price, low: price, volume: 0, ts: 0, dir: null,
+    symbol, price, prevClose: price, change: 0, changePercent: 0, high: price, low: price, volume: 0, ts: 0, dir: null, real: true,
 });
 let clock = 1000;
 const buy = (s: PaperState, sym: string, qty: number, px: number) =>
@@ -41,12 +41,22 @@ describe('ledger', () => {
     });
 
     it('starts from the opening balance and records every fee', () => {
+        // RELIANCE, not AAPL: an Indian buy pays brokerage, stamp duty, the exchange
+        // transaction charge, the SEBI fee and GST. A US buy is genuinely free — the
+        // SEC and FINRA fees are sell-side only — so it produces no fee row at all.
         let s = newPaperState();
-        s = buy(s, 'AAPL', 2, 200);
+        s = buy(s, 'RELIANCE', 2, 200);
         const rows = buildLedger(s, FX);
         expect(rows[0].kind).toBe('opening');
         expect(rows[0].balance).toBe(s.account.startingCash);
         expect(rows.filter((r) => r.kind === 'fee')).toHaveLength(1);
+    });
+
+    it('records no fee for a US buy, because there genuinely is none', () => {
+        let s = newPaperState();
+        s = buy(s, 'AAPL', 2, 200);
+        expect(buildLedger(s, FX).filter((r) => r.kind === 'fee')).toHaveLength(0);
+        expect(s.account.feesPaid).toBe(0);
     });
 
     it('reconciles even when two fills share a timestamp', () => {

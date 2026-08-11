@@ -92,17 +92,57 @@ export function Tabs<T extends string>({
 
 /* ---------- Sheet (right slide-over) ---------- */
 
+const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Sheet({ open, onClose, title, children, width = 460 }: {
     open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; width?: number;
 }) {
     const ref = useRef<HTMLDivElement>(null);
+    const returnTo = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         if (!open) return;
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+
+        // Remember what had focus so it can be restored — without this, closing the
+        // sheet drops focus to the document and keyboard users lose their place.
+        returnTo.current = document.activeElement as HTMLElement | null;
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+                return;
+            }
+            // Trap Tab inside the dialog. aria-modal alone does not stop the browser
+            // tabbing into the page behind the scrim.
+            if (e.key !== 'Tab' || !ref.current) return;
+            const items = Array.from(ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+                (el) => el.offsetParent !== null
+            );
+            if (!items.length) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+
         document.addEventListener('keydown', onKey);
         ref.current?.focus();
-        return () => document.removeEventListener('keydown', onKey);
+
+        // Stop the page behind scrolling under the overlay.
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = previousOverflow;
+            returnTo.current?.focus?.();
+        };
     }, [open, onClose]);
 
     if (!open) return null;

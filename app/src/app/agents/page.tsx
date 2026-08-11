@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useMarketStore } from '@/stores/marketStore';
 import { usePaperStore } from '@/stores/paperStore';
 import { useAgentStore, type TradeMode } from '@/stores/agentStore';
-import { WATCHLIST_ASSETS } from '@/lib/mockData';
+import { allInstruments } from '@/lib/instruments';
 import { deriveFxRates } from '@/lib/paperEngine';
 import { checkGuardrails, sizeFromGuardrails, signalKey, priceForSignal } from '@/lib/agentGuardrails';
 import { fmtPrice, fmtMoney } from '@/lib/format';
@@ -23,7 +23,9 @@ const PROVIDERS = [
 
 function snapshot() {
     const quotes = useMarketStore.getState().quotes;
-    const market = WATCHLIST_ASSETS.map((a) => ({ symbol: a.symbol, price: quotes[a.symbol]?.price ?? a.price, changePercent: quotes[a.symbol]?.changePercent ?? a.changePercent }));
+    const market = allInstruments()
+        .filter((a) => quotes[a.symbol] != null)
+        .map((a) => ({ symbol: a.symbol, price: quotes[a.symbol].price, changePercent: quotes[a.symbol].changePercent }));
     const positions = Object.values(usePaperStore.getState().state.positions).map((p) => ({ symbol: p.symbol, qty: p.qty, avgPrice: p.avgPrice }));
     return { market, positions };
 }

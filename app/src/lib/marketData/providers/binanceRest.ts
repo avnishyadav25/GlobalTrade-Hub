@@ -1,5 +1,5 @@
 import 'server-only';
-import { cachedFetch } from '../cache';
+import { cachedFetch, cachedFetchWithMeta } from '../cache';
 import { BINANCE_SYMBOLS } from './symbols';
 import type { Provider, ProviderQuote } from './types';
 import type { Candle } from '@/lib/mockData';
@@ -20,7 +20,7 @@ export const binanceRest: Provider = {
             symbols
                 .filter((s) => BINANCE_SYMBOLS[s])
                 .map((appSymbol) =>
-                    cachedFetch<ProviderQuote>(
+                    cachedFetchWithMeta<ProviderQuote>(
                         { provider: 'binance', key: `q:${appSymbol}`, ttlMs: 10_000, limit: LIMIT },
                         async () => {
                             const res = await fetch(
@@ -41,7 +41,7 @@ export const binanceRest: Provider = {
                                 currency: 'USD',
                             };
                         }
-                    )
+                    ).then((m): ProviderQuote | null => (m ? { ...m.value, at: m.at } : null))
                 )
         );
         const hits = out.filter((q): q is ProviderQuote => q !== null);

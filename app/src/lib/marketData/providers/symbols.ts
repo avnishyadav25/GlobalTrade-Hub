@@ -25,6 +25,11 @@ export const YAHOO_SYMBOLS: Record<string, string> = {
     'XAG/USD': 'SI=F',       // COMEX silver future
     'WTI/USD': 'CL=F',       // NYMEX crude future
     'USD/INR': 'USDINR=X',   // not tradeable here — used for ₹ conversion
+
+    // Reference series: fetched and charted, never in the default watchlist.
+    '^INDIAVIX': '^INDIAVIX', // verified: 400 daily bars, 595 days of history
+    'RBOB/USD': 'RB=F',       // NYMEX gasoline — the crack spread's product leg
+    'HO/USD': 'HO=F',         // NYMEX heating oil
 };
 
 /** Binance spot pairs. */

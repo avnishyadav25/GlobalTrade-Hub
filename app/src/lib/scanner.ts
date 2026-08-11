@@ -7,7 +7,7 @@
 // live price against a hardcoded `high24h`, which the random walk drifted past within
 // minutes, making every instrument permanently a "breakout".
 
-import { WATCHLIST_ASSETS } from './mockData';
+import { allInstruments } from './instruments';
 import { rsi as seriesRsi, rolling24h, barCount } from '@/stores/seriesStore';
 import type { LiveQuote } from '@/stores/marketStore';
 import type { Market } from './constants';
@@ -59,9 +59,10 @@ export function presetByKey(key: string) {
 
 /** How many symbols have enough history for RSI yet. Used to explain an empty table. */
 export function warmupStatus(): { ready: number; total: number } {
+    const universe = allInstruments();
     let ready = 0;
-    for (const a of WATCHLIST_ASSETS) if (barCount(a.symbol) >= RSI_PERIOD + 1) ready++;
-    return { ready, total: WATCHLIST_ASSETS.length };
+    for (const a of universe) if (barCount(a.symbol) >= RSI_PERIOD + 1) ready++;
+    return { ready, total: universe.length };
 }
 
 const finite = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -73,11 +74,14 @@ export function scan(
 ): ScanRow[] {
     const rows: ScanRow[] = [];
 
-    for (const a of WATCHLIST_ASSETS) {
+    for (const a of allInstruments()) {
         if (criteria.markets !== 'all' && !criteria.markets.includes(a.market)) continue;
         const q = quotes[a.symbol];
-        const price = q?.price ?? a.price;
-        const changePercent = q?.changePercent ?? a.changePercent;
+        // No quote means no row. The catalog's `a.price` is stale mock data, and a scan
+        // result built from it is a signal about a number that was never real.
+        if (!q) continue;
+        const price = q.price;
+        const changePercent = q.changePercent;
         const volume = q?.volume ?? a.volume;
         const rsi = seriesRsi(a.symbol, RSI_PERIOD);
         const range = rolling24h(a.symbol);

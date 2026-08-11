@@ -1,10 +1,11 @@
 import 'server-only';
-import { getAsset, type Candle } from '@/lib/mockData';
+import type { Candle } from '@/lib/mockData';
 import type { Market } from '@/lib/constants';
 import { yahoo } from './providers/yahoo';
 import { finnhub } from './providers/finnhub';
 import { binanceRest } from './providers/binanceRest';
 import type { FeedState, Provider, ProviderQuote } from './providers/types';
+import type { ResolvedInstrument } from './universe';
 
 /**
  * Market -> ordered provider chain, with fall-through.
@@ -32,14 +33,41 @@ export interface QuoteBatch {
     quotes: ProviderQuote[];
     /** Per-market provenance so the UI can be honest about staleness. */
     status: Partial<Record<Market, { provider: string; state: FeedState; delayMinutes: number }>>;
+    /** Resolved but not fetched this cycle, because of the per-request cap. */
+    deferred: string[];
 }
 
-export async function fetchQuotes(symbols: string[]): Promise<QuoteBatch> {
+/**
+ * Hard ceiling on symbols fetched in one request, independent of whatever the client
+ * asked for. `cachedFetch` already makes over-budget *safe* (it serves stale rather
+ * than calling upstream once the token bucket is empty), but a large request would
+ * still waste the whole Yahoo minute on low-priority symbols.
+ */
+export const MAX_FETCH_PER_REQUEST = 40;
+
+export interface FetchOpts {
+    maxSymbols?: number;
+    /** Test seam — override the provider chain without touching module state. */
+    chain?: Record<Market, Provider[]>;
+}
+
+/**
+ * Takes instruments already resolved by `universe.ts`, in priority order.
+ *
+ * It used to take bare symbols and call `getAsset()` itself, which silently dropped
+ * every user-added instrument: the registry is client-only, so on the server that
+ * lookup always failed for anything outside the 16 seeds.
+ */
+export async function fetchQuotes(universe: ResolvedInstrument[], opts: FetchOpts = {}): Promise<QuoteBatch> {
+    const chain = opts.chain ?? CHAIN;
+    const cap = opts.maxSymbols ?? MAX_FETCH_PER_REQUEST;
+
+    const fetchable = universe.slice(0, cap);
+    const deferred = universe.slice(cap).map((i) => i.symbol);
+
     const byMarket = new Map<Market, string[]>();
-    for (const s of symbols) {
-        const m = getAsset(s)?.market;
-        if (!m) continue;
-        byMarket.set(m, [...(byMarket.get(m) ?? []), s]);
+    for (const i of fetchable) {
+        byMarket.set(i.market, [...(byMarket.get(i.market) ?? []), i.symbol]);
     }
 
     const quotes: ProviderQuote[] = [];
@@ -47,7 +75,7 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteBatch> {
 
     await Promise.all(
         [...byMarket.entries()].map(async ([market, syms]) => {
-            for (const p of CHAIN[market] ?? []) {
+            for (const p of chain[market] ?? []) {
                 if (!p.quotes) continue;
                 const usable = syms.filter((s) => p.supports(s, market));
                 if (!usable.length) continue;
@@ -66,7 +94,7 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteBatch> {
         })
     );
 
-    return { quotes, status };
+    return { quotes, status, deferred };
 }
 
 export interface CandleResult {
@@ -76,10 +104,14 @@ export interface CandleResult {
     delayMinutes: number;
 }
 
-export async function fetchCandles(symbol: string, interval: string, limit: number): Promise<CandleResult | null> {
-    const market = getAsset(symbol)?.market;
-    if (!market) return null;
-    for (const p of CHAIN[market] ?? []) {
+export async function fetchCandles(
+    instrument: Pick<ResolvedInstrument, 'symbol' | 'market'>,
+    interval: string,
+    limit: number,
+    opts: Pick<FetchOpts, 'chain'> = {}
+): Promise<CandleResult | null> {
+    const { symbol, market } = instrument;
+    for (const p of (opts.chain ?? CHAIN)[market] ?? []) {
         if (!p.candles || !p.supports(symbol, market)) continue;
         const candles = await p.candles(symbol, interval, limit);
         if (candles?.length) {

@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { registerInstruments, unregisterInstrument, isSeeded } from '@/lib/instruments';
+import { registerInstruments, unregisterInstrument, isSeeded, lookup } from '@/lib/instruments';
 import { WATCHLIST_ASSETS, type Asset } from '@/lib/mockData';
 
 // Editable watchlists.
@@ -67,12 +67,24 @@ export const useWatchlistStore = create<WatchlistStore>()(
                     return { lists, activeListId: s.activeListId === id ? lists[0].id : s.activeListId };
                 }),
 
+            /**
+             * Add a symbol that is ALREADY in the registry. It cannot register one,
+             * because a bare string carries no market or currency — and defaulting
+             * those is what would misprice an NSE stock as USD crypto. Use
+             * `addInstrument` for anything new.
+             */
             addSymbol: (listId, symbol) =>
-                set((s) => ({
-                    lists: s.lists.map((l) =>
-                        l.id === listId && !l.symbols.includes(symbol) ? { ...l, symbols: [...l.symbols, symbol] } : l
-                    ),
-                })),
+                set((s) => {
+                    if (!lookup(symbol)) {
+                        console.warn(`[watchlist] refusing to add unregistered symbol ${symbol}; use addInstrument()`);
+                        return s;
+                    }
+                    return {
+                        lists: s.lists.map((l) =>
+                            l.id === listId && !l.symbols.includes(symbol) ? { ...l, symbols: [...l.symbols, symbol] } : l
+                        ),
+                    };
+                }),
 
             removeSymbol: (listId, symbol) =>
                 set((s) => {

@@ -16,7 +16,7 @@ import { usePaperStore } from '@/stores/paperStore';
 import { useAgentStore } from '@/stores/agentStore';
 import { deriveFxRates } from '@/lib/paperEngine';
 import { checkGuardrails, sizeFromGuardrails, signalKey, priceForSignal } from '@/lib/agentGuardrails';
-import { WATCHLIST_ASSETS } from '@/lib/mockData';
+import { allInstruments } from '@/lib/instruments';
 import type { TradeSignal } from '@/lib/ai/types';
 
 const CYCLE_MS = 60000;
@@ -44,10 +44,12 @@ export function AgentEngine() {
             const quotes = useMarketStore.getState().quotes;
             const paper = usePaperStore.getState();
 
-            const market = WATCHLIST_ASSETS.map((asset) => {
-                const q = quotes[asset.symbol];
-                return { symbol: asset.symbol, price: q?.price ?? asset.price, changePercent: q?.changePercent ?? asset.changePercent };
-            });
+            // Only instruments with a real quote. Feeding the agent catalog seed prices
+            // would have it reason about numbers that were never market data.
+            const market = allInstruments()
+                .map((asset) => ({ asset, q: quotes[asset.symbol] }))
+                .filter(({ q }) => q != null)
+                .map(({ asset, q }) => ({ symbol: asset.symbol, price: q.price, changePercent: q.changePercent }));
             const positions = Object.values(paper.state.positions).map((p) => ({ symbol: p.symbol, qty: p.qty, avgPrice: p.avgPrice }));
 
             let signals: TradeSignal[] = [];

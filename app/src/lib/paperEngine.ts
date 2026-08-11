@@ -24,6 +24,7 @@
 // `reservedCash` is a soft hold on `cash` used for buying-power checks against resting
 // orders; cash is not debited at reservation time, so it is not part of the identity.
 
+import { chargesFor, chargeTotal } from './charges';
 import { getAsset, type Currency } from './mockData';
 import { type Market } from './constants';
 import type { LiveQuote } from '@/stores/marketStore';
@@ -211,18 +212,49 @@ export function isFractional(symbol: string): boolean {
     return getAsset(symbol)?.fractional ?? true;
 }
 
-function feeFor(symbol: string, notionalBase: number, maker: boolean): number {
-    const m = marketOf(symbol);
-    const table = maker ? FEE_BPS_MAKER : FEE_BPS_TAKER;
-    return (Math.abs(notionalBase) * (table[m] ?? 2)) / 10000;
+/**
+ * The paper book is modelled as an INTRADAY product.
+ *
+ * It matters: Indian equity pays STT of 0.025% on the sell leg only when intraday, but
+ * 0.1% on BOTH legs when held for delivery — four times the rate, twice over. Assuming
+ * the cheaper of the two is the honest default for a simulator whose positions are
+ * usually opened and closed in a session, and it is stated rather than hidden.
+ */
+const PAPER_PRODUCT = 'intraday';
+
+function feeFor(symbol: string, notionalBase: number, maker: boolean, side: PaperSide, qty?: number): number {
+    return chargeTotal({
+        market: marketOf(symbol),
+        side,
+        product: PAPER_PRODUCT,
+        notionalBase,
+        maker,
+        qty,
+    });
 }
 
-export function estimateCharges(symbol: string, qty: number, price: number, fx: FxRates = DEFAULT_FX) {
+export function estimateCharges(
+    symbol: string,
+    qty: number,
+    price: number,
+    fx: FxRates = DEFAULT_FX,
+    side: PaperSide = 'buy'
+) {
     const orderValue = toBase(symbol, qty * price, fx);
+    const breakdown = chargesFor({
+        market: marketOf(symbol),
+        side,
+        product: PAPER_PRODUCT,
+        notionalBase: orderValue,
+        maker: false,
+        qty,
+    });
     return {
         orderValue,
         margin: orderValue * MARGIN_FACTOR,
-        charges: feeFor(symbol, orderValue, false),
+        charges: breakdown.total,
+        /** Itemised — brokerage, STT, stamp duty, GST and the rest, separately. */
+        breakdown,
     };
 }
 
@@ -425,7 +457,7 @@ function fillOrder(
     if (!(fillQty > 1e-8) || !Number.isFinite(fillPrice) || fillPrice <= 0) return state;
 
     const notionalBase = toBase(order.symbol, fillQty * fillPrice, fx);
-    const fee = feeFor(order.symbol, notionalBase, maker);
+    const fee = feeFor(order.symbol, notionalBase, maker, order.side, Math.abs(fillQty));
     const applied = applyToPosition(state.positions, order.symbol, order.side, fillQty, fillPrice, fx);
 
     const prevFilled = order.filledQty;
@@ -534,7 +566,7 @@ function validate(state: PaperState, input: PlaceOrderInput, refPrice: number, f
     if (!Number.isFinite(refPrice) || refPrice <= 0) return 'No price available for this instrument';
 
     const notionalBase = toBase(input.symbol, input.qty * refPrice, fx);
-    const fee = feeFor(input.symbol, notionalBase, input.type !== 'market');
+    const fee = feeFor(input.symbol, notionalBase, input.type !== 'market', input.side, Math.abs(input.qty));
     const pos = state.positions[input.symbol];
     const posQty = pos?.qty ?? 0;
     const dir = input.side === 'buy' ? 1 : -1;

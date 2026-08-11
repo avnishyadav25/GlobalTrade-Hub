@@ -11,6 +11,12 @@ export interface ProviderQuote {
     low?: number;
     volume?: number;
     currency?: string;
+    /**
+     * When this price was fetched upstream. Not the time it was served: the cache
+     * serves stale values once a provider's token bucket is empty, and without this
+     * the client would stamp a ten-minute-old price with the current time.
+     */
+    at?: number;
 }
 
 export type FeedState = 'live' | 'delayed' | 'sim';

@@ -1,5 +1,5 @@
 import type { VerifyContext, VerifyResult } from './types';
-import { equity, toBase, deriveFxRates } from '@/lib/paperEngine';
+import { equity, toBase, deriveFxRates, quoteCcyOf, marketOf } from '@/lib/paperEngine';
 
 // Every exercise is checked against PERSISTED ENGINE STATE — never a "mark as done"
 // button. That is what stops the curriculum and your actual ledger drifting apart.
@@ -84,3 +84,100 @@ export const wasBlockedByARule = (c: VerifyContext): VerifyResult => {
         ? ok(`Blocked as intended: "${blocked.rejectReason}"`)
         : { done: false, hint: 'Apply a rule on Insights, then try to place an order that breaks it. Check Orders → Rejected.' };
 };
+
+/* ---------------------------------------------------------------- new lessons */
+
+/** Held something quoted in a currency other than rupees, so FX actually applied. */
+export const tradedForeignCurrency = (c: VerifyContext): VerifyResult => {
+    const f = c.state.fills.find((x) => quoteCcyOf(x.symbol) !== 'INR');
+    if (!f) {
+        return {
+            done: false,
+            hint: 'Trade something priced in dollars or yen — `AAPL`, `BTC/USDT` or `USD/JPY`. Watch the order value convert into rupees on the ticket.',
+        };
+    }
+    return ok(`${f.symbol} is quoted in ${quoteCcyOf(f.symbol)}, and your book converted it to rupees at the fill-time rate.`);
+};
+
+/** A position whose stop caps the loss at no more than `maxPct` of equity. */
+export const riskedAtMost = (maxPct: number) => (c: VerifyContext): VerifyResult => {
+    const fx = deriveFxRates(c.quotes);
+    const eq = equity(c.state, c.quotes, fx);
+    if (eq <= 0) return { done: false, hint: 'Reset your paper account first.' };
+
+    for (const p of Object.values(c.state.positions)) {
+        const opposite = p.qty > 0 ? 'sell' : 'buy';
+        const stop = c.state.orders.find(
+            (o) => o.symbol === p.symbol && o.side === opposite && o.type === 'stop' && (o.status === 'open' || o.status === 'partial')
+        );
+        if (!stop?.stopPrice) continue;
+        const perUnit = Math.abs(p.avgPrice - stop.stopPrice);
+        const riskBase = toBase(p.symbol, perUnit * Math.abs(p.qty), fx);
+        const pct = riskBase / eq;
+        if (pct <= maxPct) {
+            return ok(`${p.symbol}: your stop caps the loss at ${(pct * 100).toFixed(2)}% of equity.`);
+        }
+    }
+    return {
+        done: false,
+        hint: `Open a position, place a stop, and size it so that (entry − stop) × quantity is at most ${(maxPct * 100).toFixed(0)}% of your equity.`,
+    };
+};
+
+/** Looked at enough charts to have seen candles behave. */
+export const studiedCharts = (n: number) => (c: VerifyContext): VerifyResult => {
+    const seen = c.observed.symbols.length;
+    if (seen >= n) return ok(`You have opened ${seen} instruments' charts.`);
+    return { done: false, progress: Math.min(1, seen / n), hint: `Open ${n - seen} more instrument${n - seen === 1 ? '' : 's'} on the Terminal and look at the candles.` };
+};
+
+/** RSI has warmed up on enough instruments for the scanner to be meaningful. */
+export const rsiWarmedUp = (n: number) => (c: VerifyContext): VerifyResult => {
+    const ready = Object.keys(c.quotes).filter((s) => c.rsi(s) != null);
+    if (ready.length >= n) {
+        const sample = ready.slice(0, 3).map((s) => `${s} ${c.rsi(s)!.toFixed(0)}`).join(', ');
+        return ok(`RSI is live on ${ready.length} instruments — ${sample}.`);
+    }
+    return {
+        done: false,
+        progress: Math.min(1, ready.length / n),
+        hint: `RSI needs price history before it means anything. Leave the app open on the Terminal or Scanner for a few minutes — ${ready.length} of ${n} instruments are ready.`,
+    };
+};
+
+/** Enough completed trades for the discipline read to say something real. */
+export const builtATrackRecord = (n: number) => (c: VerifyContext): VerifyResult => {
+    const done = c.state.account.roundTrips;
+    if (done >= n) return ok(`${done} completed round trips — enough for the coach to see patterns.`);
+    return {
+        done: false,
+        progress: Math.min(1, done / n),
+        hint: `${done} of ${n} round trips. A discipline score built on fewer trades than this is noise, not a signal.`,
+    };
+};
+
+/* --------------------------------------------------------------------- drills */
+// Counted from state, never incremented — so there is nothing to double-count and
+// no way to tick one off without doing it.
+
+export const countCancelledLimits = (c: VerifyContext): number =>
+    c.state.orders.filter((o) => o.type === 'limit' && o.status === 'cancelled').length;
+
+export const countRoundTrips = (c: VerifyContext): number => c.state.account.roundTrips;
+
+export const countShortsOpened = (c: VerifyContext): number =>
+    c.state.fills.filter((f) => f.side === 'sell' && f.kind === 'open').length;
+
+export const countRuleRejections = (c: VerifyContext): number =>
+    c.state.orders.filter((o) => o.status === 'rejected' && /rule|cooldown|daily/i.test(o.rejectReason ?? '')).length;
+
+export const countStopsPlaced = (c: VerifyContext): number =>
+    c.state.orders.filter((o) => o.type === 'stop').length;
+
+export const countMarketsTraded = (c: VerifyContext): number =>
+    new Set(c.state.fills.map((f) => marketOf(f.symbol))).size;
+
+export const countLosingTradesClosed = (c: VerifyContext): number =>
+    c.state.fills.filter((f) => (f.kind === 'close' || f.kind === 'reduce') && f.pnl < 0).length;
+
+export const countInstrumentsObserved = (c: VerifyContext): number => c.observed.symbols.length;

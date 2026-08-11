@@ -1,134 +1,232 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageShell, Panel, Badge, Button, Callout } from '@/components/ui';
 import { LESSONS, lessonBySlug } from '@/lib/learn/curriculum';
+import { MODULES } from '@/lib/learn/types';
+import { useCourseProgress, useVerifyContext, lessonAfter } from '@/lib/learn/progress';
+import { Rich } from '@/lib/learn/render';
+import { LessonVisual } from '@/components/learn/anim';
+import { FormulaCard } from '@/components/learn/FormulaCard';
 import { useLearnStore } from '@/stores/learnStore';
-import { usePaperStore } from '@/stores/paperStore';
-import { useMarketStore } from '@/stores/marketStore';
 
-/** Minimal **bold** rendering so lesson prose can carry emphasis without a markdown dep. */
-function Rich({ text }: { text: string }) {
-    return (
-        <p className="mb-3 text-base leading-relaxed text-foreground-muted last:mb-0">
-            {text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-                part.startsWith('**') && part.endsWith('**')
-                    ? <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
-                    : <span key={i}>{part}</span>
-            )}
-        </p>
-    );
-}
+const KIND_LABEL: Record<string, string> = { book: 'Book', video: 'Video', article: 'Read', tool: 'Tool' };
+
+/**
+ * Stable empty array. Returning a fresh `[]` from a zustand selector makes
+ * useSyncExternalStore re-render forever — the bug that once hung /alerts.
+ */
+const NO_ANSWERS: number[] = [];
 
 export default function LessonPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
     const lesson = lessonBySlug(slug);
-    const complete = useLearnStore((s) => s.complete);
+
+    const ctx = useVerifyContext();
+    const progress = useCourseProgress();
     const completed = useLearnStore((s) => s.completed);
-    const observedSymbols = useLearnStore((s) => s.observedSymbols);
-    const observedMarkets = useLearnStore((s) => s.observedMarkets);
-    const state = usePaperStore((s) => s.state);
-    const quotes = useMarketStore((s) => s.quotes);
-    const [answers, setAnswers] = useState<Record<number, number>>({});
+    const complete = useLearnStore((s) => s.complete);
+    const quizAnswers = useLearnStore((s) => s.quizAnswers[slug]) ?? NO_ANSWERS;
+    const answerQuiz = useLearnStore((s) => s.answerQuiz);
 
-    if (!lesson) notFound();
+    const result = lesson?.exercise.verify(ctx);
+    const isDone = Boolean(result?.done);
 
-    const idx = LESSONS.findIndex((l) => l.slug === slug);
-    const next = LESSONS[idx + 1];
-    const result = lesson.exercise.verify({ state, quotes, observed: { symbols: observedSymbols, markets: observedMarkets } });
-    const isDone = result.done || !!completed[slug];
-
-    // Recording completion is a side effect — doing it during render updates another
-    // component mid-render, which React warns about.
+    // In an effect, not during render — recording completion while rendering was a
+    // real bug here once.
     useEffect(() => {
-        if (result.done && !completed[slug]) complete(slug);
-    }, [result.done, completed, slug, complete]);
+        if (isDone && !completed[slug]) complete(slug);
+    }, [isDone, completed, slug, complete]);
+
+    if (!lesson || !result) notFound();
+
+    const index = LESSONS.findIndex((l) => l.slug === slug);
+    const moduleInfo = MODULES.find((m) => m.key === lesson.module);
+    const next = lessonAfter(slug);
+    const missing = progress.byslug[slug]?.missingPrereqs ?? [];
 
     return (
-        <PageShell
-            width="narrow"
-            title={lesson.title}
-            subtitle={lesson.outcome}
-            actions={<Link href="/learn" className="text-sm font-semibold text-accent">← All lessons</Link>}
-        >
-            <div className="mb-4 flex items-center gap-2">
-                <Badge tone="accent">Lesson {idx + 1} of {LESSONS.length}</Badge>
+        <PageShell width="narrow" title={lesson.title} subtitle={lesson.outcome}>
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+                <Badge>{moduleInfo?.title ?? 'Lesson'}</Badge>
+                <Badge>Lesson {index + 1} of {LESSONS.length}</Badge>
                 <Badge>{lesson.minutes} min</Badge>
-                {isDone && <Badge tone="up">Exercise complete</Badge>}
+                {isDone && <Badge tone="up">Complete</Badge>}
             </div>
 
-            <Panel title="The idea" className="mb-4">
-                {lesson.concept.map((c, i) => <Rich key={i} text={c} />)}
+            {missing.length > 0 && (
+                <Callout tone="neutral">
+                    This builds on{' '}
+                    {missing.map((l, i) => (
+                        <span key={l.slug}>
+                            {i > 0 && ', '}
+                            <Link href={`/learn/${l.slug}`} className="text-accent underline underline-offset-2">
+                                {l.title}
+                            </Link>
+                        </span>
+                    ))}
+                    . You can carry on regardless — nothing is locked.
+                </Callout>
+            )}
+
+            <Panel title="The idea" className="mt-5">
+                <Rich text={lesson.concept.join('\n\n')} className="text-base leading-relaxed text-foreground-muted" />
             </Panel>
 
-            <Panel title="Where it lives in this app" className="mb-4">
-                <Rich text={lesson.inApp} />
+            {lesson.visual && (
+                <div className="mt-5">
+                    <LessonVisual name={lesson.visual} />
+                </div>
+            )}
+
+            {lesson.formulas && lesson.formulas.length > 0 && (
+                <Panel title="The arithmetic" className="mt-5">
+                    <div className="flex flex-col gap-3">
+                        {lesson.formulas.map((f) => (
+                            <FormulaCard key={f.label} formula={f} ctx={ctx} />
+                        ))}
+                    </div>
+                </Panel>
+            )}
+
+            <Panel title="Where it lives in this app" className="mt-5">
+                <Rich text={lesson.inApp} className="text-base text-foreground-muted" />
+                <Link
+                    href={lesson.where.href}
+                    className="mt-3 inline-block rounded-sm bg-accent px-3 py-1.5 text-sm font-semibold text-[color:var(--cp-text)] hover:opacity-90"
+                >
+                    {lesson.where.label} →
+                </Link>
             </Panel>
 
-            <Panel title={`Exercise — ${lesson.exercise.title}`} className="mb-4">
-                <Rich text={lesson.exercise.body} />
-                <div className={`mt-3 rounded-sm px-3.5 py-2.5 text-sm ${isDone ? 'bg-up-dim text-up' : 'bg-chip text-foreground-muted'}`}>
-                    <strong className="font-semibold">{isDone ? '✓ Done. ' : 'Not yet. '}</strong>
+            <Panel title={`Exercise — ${lesson.exercise.title}`} className="mt-5">
+                <Rich text={lesson.exercise.body} className="text-base text-foreground-muted" />
+
+                <div className={`mt-3 rounded-sm p-3 text-sm ${isDone ? 'bg-up-dim text-up' : 'bg-chip text-foreground-muted'}`}>
+                    {isDone ? '✓ ' : ''}
                     {result.hint}
                 </div>
-                {result.progress != null && !isDone && (
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-chip">
-                        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${result.progress * 100}%` }} />
+
+                {!isDone && result.progress != null && result.progress > 0 && (
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-chip">
+                        <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(result.progress * 100)}%` }} />
                     </div>
-                )}
-                {!isDone && (
-                    <p className="mt-2 text-xs text-faint">
-                        This checks your actual paper account — there is no way to tick it off without doing it.
-                    </p>
                 )}
             </Panel>
 
-            <Panel title="Check yourself" className="mb-4">
+            {lesson.drills && lesson.drills.length > 0 && (
+                <Panel title="Practice drills" className="mt-5">
+                    <p className="mb-3 text-sm text-faint">
+                        Repeatable, and counted from your account — there is nothing to tick off.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                        {lesson.drills.map((d) => {
+                            const count = Math.min(d.count(ctx), d.target);
+                            const complete = count >= d.target;
+                            return (
+                                <div key={d.id} className="rounded-sm border border-border2 bg-panel2 p-3">
+                                    <div className="flex items-baseline justify-between gap-3">
+                                        <h4 className="text-sm font-semibold">{d.title}</h4>
+                                        <span className={`mono shrink-0 text-xs ${complete ? 'text-up' : 'text-faint'}`}>
+                                            {count}/{d.target}
+                                        </span>
+                                    </div>
+                                    <Rich text={d.body} className="mt-1 text-xs text-foreground-muted" />
+                                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-chip">
+                                        <div
+                                            className={`h-full rounded-full ${complete ? 'bg-up' : 'bg-accent'}`}
+                                            style={{ width: `${(count / d.target) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Panel>
+            )}
+
+            <Panel title="Check yourself" className="mt-5">
                 {lesson.quiz.map((q, qi) => {
-                    const picked = answers[qi];
+                    const chosen = quizAnswers[qi];
+                    const answered = chosen != null;
                     return (
-                        <div key={qi} className="mb-4 last:mb-0">
-                            <div className="mb-2 text-sm font-semibold">{q.question}</div>
-                            <div className="flex flex-col gap-1.5">
-                                {q.options.map((o, oi) => {
-                                    const chosen = picked === oi;
-                                    const right = oi === q.answer;
+                        <div key={qi} className={qi > 0 ? 'mt-5 border-t border-border2 pt-5' : ''}>
+                            <p className="text-sm font-semibold">{q.question}</p>
+                            <div className="mt-2 flex flex-col gap-1.5">
+                                {q.options.map((opt, oi) => {
+                                    const isChosen = chosen === oi;
+                                    const isRight = oi === q.answer;
+                                    const tone = !answered
+                                        ? 'border-border hover:border-accent'
+                                        : isRight
+                                          ? 'border-up bg-up-dim'
+                                          : isChosen
+                                            ? 'border-down bg-down-dim'
+                                            : 'border-border2 opacity-60';
                                     return (
                                         <button
                                             key={oi}
-                                            onClick={() => setAnswers((a) => ({ ...a, [qi]: oi }))}
-                                            className={`rounded-sm border px-3 py-2 text-left text-sm transition-colors ${
-                                                picked == null
-                                                    ? 'border-border hover:border-border-hover'
-                                                    : right
-                                                      ? 'border-up/50 bg-up-dim text-up'
-                                                      : chosen
-                                                        ? 'border-down/50 bg-down-dim text-down'
-                                                        : 'border-border opacity-60'
-                                            }`}
+                                            onClick={() => answerQuiz(slug, qi, oi)}
+                                            disabled={answered}
+                                            className={`rounded-sm border px-3 py-2 text-left text-sm transition-colors ${tone}`}
                                         >
-                                            {o}
+                                            {opt}
                                         </button>
                                     );
                                 })}
                             </div>
-                            {picked != null && <p className="mt-2 text-xs text-faint">{q.why}</p>}
+                            {answered && <Rich text={q.why} className="mt-2 text-xs text-faint" />}
                         </div>
                     );
                 })}
             </Panel>
 
-            {!isDone && <Callout tone="accent">Do the exercise in the app, then come back — this page updates itself.</Callout>}
+            {lesson.resources && lesson.resources.length > 0 && (
+                <Panel title="Go deeper" className="mt-5">
+                    <div className="flex flex-col gap-2.5">
+                        {lesson.resources.map((r) => {
+                            const inner = (
+                                <>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge>{KIND_LABEL[r.kind] ?? r.kind}</Badge>
+                                        <span className="text-sm font-semibold">{r.title}</span>
+                                        {r.by && <span className="text-xs text-faint">{r.by}</span>}
+                                    </div>
+                                    <p className="mt-1 text-xs text-foreground-muted">{r.why}</p>
+                                </>
+                            );
+                            return r.url ? (
+                                <a
+                                    key={r.title}
+                                    href={r.url}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    className="rounded-sm border border-border2 bg-panel2 p-3 transition-colors hover:border-accent"
+                                >
+                                    {inner}
+                                </a>
+                            ) : (
+                                <div key={r.title} className="rounded-sm border border-border2 bg-panel2 p-3">
+                                    {inner}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Panel>
+            )}
 
-            {next && (
-                <div className="mt-5 flex justify-end">
+            <div className="mt-6 flex items-center justify-between gap-3">
+                <Link href="/learn" className="text-sm text-foreground-muted hover:text-foreground">
+                    ← All lessons
+                </Link>
+                {next && (
                     <Link href={`/learn/${next.slug}`}>
                         <Button variant="primary">Next: {next.title} →</Button>
                     </Link>
-                </div>
-            )}
+                )}
+            </div>
         </PageShell>
     );
 }

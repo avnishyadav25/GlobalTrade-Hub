@@ -55,12 +55,72 @@ The old code polled Twelve Data every 15 seconds — **5,760 requests/day agains
 — and only stopped when the provider was unconfigured, never on a 429. That is fixed:
 
 - **60-second poll**, paused entirely while the browser tab is hidden, refreshing on return.
-- **TTL cache** per provider (crypto 10s, US 15s, Yahoo quotes 60s, candles 5min, FX 15min).
+- **TTL cache** per provider (crypto 10s, US 15s, Yahoo quotes 90s, candles 5min, FX 15min).
 - **Single-flight** — three open tabs make one upstream call, not three.
 - **Token bucket** per provider (Yahoo 30/min, Finnhub 50/min, Binance 120/min).
 - **Circuit breaker** — three consecutive failures pauses that provider for 5 minutes and the
   router falls through to the next one.
 - **Stale-while-limited** — if the bucket is empty, the last cached price is served rather than a gap.
+
+## Watchlists larger than the budget
+
+Yahoo's bucket is 30/min and `yahoo.quotes` makes **one upstream call per symbol**. That bucket is
+shared with candle loads and instrument search, and ~11/min already goes on the seeded instruments
+plus USD/INR — so real headroom is around **16/min, not 30**. A 40-symbol watchlist polled every
+60 seconds would ask for 40.
+
+Raising the limit is not an option: Yahoo is unofficial and blocks by IP, and one ban takes out
+India, FX, commodities, USD/INR *and* the US fallback at once. Instead `lib/marketData/priority.ts`
+splits the universe:
+
+| Tier | Contents | Refresh |
+|---|---|---|
+| **Hot** | selected symbol, open positions, resting orders, armed alerts | every cycle, always |
+| **Rotation** | active list first, then everything else | sequential, 18 Yahoo-bound symbols per cycle |
+
+A full rotation therefore takes `ceil(scarce symbols ÷ 18)` minutes — 2 minutes at 36 symbols,
+4 at 60. Rotation is strictly sequential rather than "skip what doesn't fit", so no symbol can
+starve. A server-side clamp of 40 symbols per request guards against a buggy client independently.
+
+## Saying how old a price is
+
+`ProviderQuote` carries `at` — when the value was fetched **upstream**, not when it was served.
+This matters because `cachedFetch` deliberately serves stale data once a bucket is empty; without
+`at`, a ten-minute-old price arrived stamped with the current time.
+
+`lib/marketData/staleness.ts` turns that into one of five states:
+
+| State | Meaning | Rendered as |
+|---|---|---|
+| `live` | real-time feed, recently updated | normal |
+| `delayed` | provider is delayed by design (Yahoo equities) | normal; the header badge carries the lag |
+| `stale` | older than 3 poll cycles (30s for crypto) | dimmed, captioned `4m ago` |
+| `queued` | rotation deliberately skipped it this cycle | dimmed, captioned `queued` |
+| `none` | **no real price has ever arrived** | em-dash — never a number |
+
+That last row is the important one. The watchlist used to fall back to `asset.price` from the
+catalog constant, which has RELIANCE at **₹2,945.60** against a live ~₹1,327 — a confident wrong
+number rather than an honest gap. Nothing renders a catalog price as if it were market data now,
+and `marketStore`'s 1 Hz simulation refuses to animate over any symbol that has a real quote.
+
+## User-added instruments
+
+The instrument registry (`lib/instruments.ts`) is **client-only module state** — every
+`registerInstruments()` call site runs in the browser. On the server it holds exactly the 16 seeds,
+so `router.fetchQuotes` silently dropped anything else and `/api/marketdata/candles` answered
+`400 unknown symbol`.
+
+`lib/marketData/universe.ts` resolves per request instead: the client sends its symbols plus
+descriptors for non-seeded instruments, and the server validates them without ever writing to the
+shared registry. Rules that matter:
+
+- a descriptor can **never override a seed** — a request cannot relabel RELIANCE as crypto/USD;
+- an unknown symbol with no descriptor is **dropped and reported**, never defaulted to crypto/USD;
+- bad symbols degrade into a `skipped` map rather than failing the whole request, so one malformed
+  row from stale localStorage cannot blank the board or kill the USD/INR rate.
+
+The cron tick has no browser to ask, so it reads the persisted watchlist from `gth_app_state`
+(`lib/marketData/watchlistState.ts`) and falls back to the seeds for a user who has never synced.
 
 ## Fallback order
 

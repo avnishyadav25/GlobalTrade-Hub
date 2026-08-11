@@ -26,7 +26,7 @@ import type { LiveQuote } from '@/stores/marketStore';
 function quote(symbol: string, price: number): LiveQuote {
     return {
         symbol, price, prevClose: price, change: 0, changePercent: 0,
-        high: price, low: price, volume: 0, ts: 0, dir: null,
+        high: price, low: price, volume: 0, ts: 0, dir: null, real: true,
     };
 }
 const quotes = (m: Record<string, number>): Record<string, LiveQuote> =>

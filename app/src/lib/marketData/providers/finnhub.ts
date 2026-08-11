@@ -1,5 +1,5 @@
 import 'server-only';
-import { cachedFetch } from '../cache';
+import { cachedFetchWithMeta } from '../cache';
 import { FINNHUB_SYMBOLS } from './symbols';
 import type { Provider, ProviderQuote } from './types';
 
@@ -21,7 +21,7 @@ export const finnhub: Provider = {
             symbols
                 .filter((s) => FINNHUB_SYMBOLS[s])
                 .map((appSymbol) =>
-                    cachedFetch<ProviderQuote>(
+                    cachedFetchWithMeta<ProviderQuote>(
                         { provider: 'finnhub', key: `q:${appSymbol}`, ttlMs: 15_000, limit: LIMIT },
                         async () => {
                             const res = await fetch(
@@ -40,7 +40,7 @@ export const finnhub: Provider = {
                                 currency: 'USD',
                             };
                         }
-                    )
+                    ).then((m): ProviderQuote | null => (m ? { ...m.value, at: m.at } : null))
                 )
         );
         const hits = out.filter((q): q is ProviderQuote => q !== null);

@@ -55,6 +55,24 @@ export const WATCHLIST_ASSETS: Asset[] = [
 ];
 
 /**
+ * Reference instruments: data sources, not things you trade.
+ *
+ * These are seeded into the registry so they can be fetched, charted and fed to a
+ * strategy — but they are deliberately NOT in WATCHLIST_ASSETS, because that array
+ * also builds every new user's default watchlist. India VIX is an index you cannot
+ * buy, and the crack-spread legs are inputs to a spread rather than positions anyone
+ * takes on their own.
+ *
+ * The `price` values here are placeholders that the live feed replaces; nothing renders
+ * them, because the UI only shows a price once a real quote has arrived.
+ */
+export const REFERENCE_ASSETS: Asset[] = [
+    { symbol: '^INDIAVIX', name: 'India VIX', market: MARKETS.INDIA, exchange: 'NSE', quoteCcy: 'INR', fractional: false, price: 0, change: 0, changePercent: 0, volume: 0, high24h: 0, low24h: 0 },
+    { symbol: 'RBOB/USD', name: 'RBOB Gasoline', market: MARKETS.COMMODITY, exchange: 'NYMEX', quoteCcy: 'USD', fractional: true, price: 0, change: 0, changePercent: 0, volume: 0, high24h: 0, low24h: 0 },
+    { symbol: 'HO/USD', name: 'Heating Oil', market: MARKETS.COMMODITY, exchange: 'NYMEX', quoteCcy: 'USD', fractional: true, price: 0, change: 0, changePercent: 0, volume: 0, high24h: 0, low24h: 0 },
+];
+
+/**
  * Resolve an instrument. Backed by the registry in ./instruments so user-added
  * symbols are tradeable; the seed set is identical, so behaviour is unchanged for
  * everything that shipped in WATCHLIST_ASSETS.

@@ -6,6 +6,7 @@ import { Watchlist } from '@/components/terminal/Watchlist';
 import { OrderTicket } from '@/components/terminal/OrderTicket';
 import { PositionsPanel } from '@/components/terminal/PositionsPanel';
 import { TerminalChart } from '@/components/terminal/TerminalChart';
+import { CoachMark } from '@/components/learn/CoachMark';
 import { useUIStore } from '@/stores/uiStore';
 import { useMarketStore } from '@/stores/marketStore';
 import { getAsset } from '@/lib/mockData';
@@ -81,6 +82,7 @@ export default function TerminalPage() {
                     {/* "＋ Indicators" and "⬚ Candles" used to sit here as plain spans
                         that looked like controls but had no handler. Removed rather
                         than left as decoys. */}
+                    <CoachMark topic="terminal.chart" />
                 </div>
 
                 <TerminalChart symbol={symbol} timeframe={timeframe} />
@@ -89,6 +91,10 @@ export default function TerminalPage() {
 
             {/* order ticket */}
             <div className="order-3 border-t border-border bg-panel p-4 lg:order-none lg:overflow-auto lg:border-l lg:border-t-0">
+                <div className="mb-2 flex items-center justify-between">
+                    <span className="text-2xs font-bold tracking-wide text-faint">ORDER TICKET</span>
+                    <CoachMark topic="terminal.ticket" />
+                </div>
                 <div className="mb-4 flex gap-1 rounded-sm border border-border bg-chip p-0.5 text-sm" role="radiogroup" aria-label="Trade mode">
                     {(['paper', 'live'] as const).map((m) => (
                         <button

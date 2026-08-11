@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server';
 import { dailyBriefing } from '@/lib/ai/agents';
 import { notify } from '@/lib/notify';
 import { WATCHLIST_ASSETS } from '@/lib/mockData';
+import { resolveUniverse } from '@/lib/marketData/universe';
+import { loadPersistedWatchlist } from '@/lib/marketData/watchlistState';
+import { fetchQuotes } from '@/lib/marketData/router';
 
 // Scheduled tick — point Vercel Cron or Supabase pg_cron at
 //   GET /api/cron/tick?secret=CRON_SECRET
 // Generates the daily briefing and pushes it to the configured notification channels.
 
 export const runtime = 'nodejs';
+
+/**
+ * Cap the cron's fan-out. A 200-symbol watchlist would otherwise drain the Yahoo
+ * bucket in one burst and trip the circuit breaker for the interactive path.
+ */
+const CRON_MAX_SYMBOLS = 40;
 
 function authorized(req: Request): boolean {
     const secret = process.env.CRON_SECRET;
@@ -21,8 +30,38 @@ function authorized(req: Request): boolean {
 export async function GET(req: Request) {
     if (!authorized(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-    const market = WATCHLIST_ASSETS.map((a) => ({ symbol: a.symbol, price: a.price, changePercent: a.changePercent }));
+    // Cover the user's own instruments, not just the seeded catalog.
+    const persisted = await loadPersistedWatchlist();
+    const { universe } = persisted
+        ? resolveUniverse(persisted.symbols, persisted.hints)
+        : resolveUniverse(WATCHLIST_ASSETS.map((a) => a.symbol));
+
+    const batch = await fetchQuotes(universe, { maxSymbols: CRON_MAX_SYMBOLS });
+
+    // This used to hand the LLM the catalog's STATIC seed prices — the daily briefing
+    // was generated from mock data and read as though it were market commentary.
+    // dailyBriefing() slices to 16, so lead with the biggest movers.
+    const market = batch.quotes
+        .map((q) => ({
+            symbol: q.symbol,
+            price: q.price,
+            changePercent: q.prevClose ? ((q.price - q.prevClose) / q.prevClose) * 100 : 0,
+        }))
+        .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
+
+    if (!market.length) {
+        // Say nothing rather than narrate an empty market as if it were calm.
+        return NextResponse.json({ ok: false, reason: 'no quotes available', universe: universe.length, sent: [] });
+    }
+
     const brief = await dailyBriefing(market, []);
     const sent = await notify(brief.text, 'GlobalTrade Hub — Daily Briefing');
-    return NextResponse.json({ ok: true, source: brief.source, sent });
+
+    return NextResponse.json({
+        ok: true,
+        source: brief.source,
+        universe: persisted ? 'watchlist' : 'seeds',
+        symbolCount: market.length,
+        sent,
+    });
 }

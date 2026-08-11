@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CandleSvg } from '@/components/charts';
 import { generateCandleData } from '@/lib/mockData';
 import { useMarketStore } from '@/stores/marketStore';
+import { candlesUrl } from '@/lib/marketData/candlesUrl';
 import { TIMEFRAMES } from '@/lib/constants';
 
 interface Candle { open: number; high: number; low: number; close: number }
@@ -20,7 +21,7 @@ export function TerminalChart({ symbol, timeframe }: { symbol: string; timeframe
     const key = `${symbol}|${timeframe}`;
     useEffect(() => {
         let cancelled = false;
-        fetch(`/api/marketdata/candles?symbol=${encodeURIComponent(symbol)}&interval=${timeframe}&limit=64`)
+        fetch(candlesUrl(symbol, timeframe, 64, useMarketStore.getState().quotes[symbol]?.price))
             .then((r) => (r.ok ? r.json() : null))
             .then((d) => {
                 if (cancelled || !d?.candles?.length) return;

@@ -17,7 +17,9 @@
 //    list reconciles with the equity curve.
 
 import { type Candle } from './mockData';
-import { FEE_BPS_TAKER, TAKER_SLIPPAGE_BPS, marketOf } from './paperEngine';
+import { ema, rsi } from './indicators';
+import { TAKER_SLIPPAGE_BPS, marketOf } from './paperEngine';
+import { chargeTotal } from './charges';
 import type { HeatRow } from '@/components/charts';
 
 export interface BacktestParams {
@@ -92,52 +94,22 @@ export function sanitiseParams(p: BacktestParams): BacktestParams {
     };
 }
 
-/** EMA seeded from the SMA of the first `period` values; null until then. */
-export function ema(values: number[], period: number): (number | null)[] {
-    const out: (number | null)[] = new Array(values.length).fill(null);
-    if (values.length < period || period < 1) return out;
-    const k = 2 / (period + 1);
-    let seed = 0;
-    for (let i = 0; i < period; i++) seed += values[i];
-    let prev = seed / period;
-    out[period - 1] = prev;
-    for (let i = period; i < values.length; i++) {
-        prev = values[i] * k + prev * (1 - k);
-        out[i] = prev;
-    }
-    return out;
-}
-
-/** Wilder RSI; null until `period` deltas exist. Never a neutral placeholder. */
-export function rsi(values: number[], period: number): (number | null)[] {
-    const out: (number | null)[] = new Array(values.length).fill(null);
-    if (values.length <= period || period < 1) return out;
-    let gain = 0;
-    let loss = 0;
-    for (let i = 1; i <= period; i++) {
-        const d = values[i] - values[i - 1];
-        gain += Math.max(0, d);
-        loss += Math.max(0, -d);
-    }
-    gain /= period;
-    loss /= period;
-    out[period] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
-    for (let i = period + 1; i < values.length; i++) {
-        const d = values[i] - values[i - 1];
-        gain = (gain * (period - 1) + Math.max(0, d)) / period;
-        loss = (loss * (period - 1) + Math.max(0, -d)) / period;
-        out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
-    }
-    return out;
-}
+// Indicators moved to lib/indicators.ts so the backtester, the live series store and
+// the strategy library all share one implementation. Re-exported here because callers
+// and tests already import them from this module.
+export { ema, rsi };
 
 const BARS_PER_YEAR = (seconds: number) => (365 * 24 * 3600) / Math.max(1, seconds);
 
 export function runBacktest(params: BacktestParams, candles: Candle[], barSeconds: number): BacktestResult {
     const p = sanitiseParams(params);
     const warnings: string[] = [];
-    const feeBps = FEE_BPS_TAKER[marketOf(p.symbol)] ?? 2;
-    const feeRate = feeBps / 10000;
+    // The SAME cost model the paper engine charges — itemised brokerage, STT, stamp
+    // duty, GST and the rest, not a blended constant. Without this the backtest and the
+    // simulator model different worlds and neither number means anything about the other.
+    const market = marketOf(p.symbol);
+    const costOf = (notional: number, side: 'buy' | 'sell', qty: number) =>
+        chargeTotal({ market, side, product: 'intraday', notionalBase: Math.abs(notional), maker: false, qty });
     const slip = TAKER_SLIPPAGE_BPS / 10000;
 
     const closes = candles.map((c) => c.close);
@@ -151,6 +123,7 @@ export function runBacktest(params: BacktestParams, candles: Candle[], barSecond
     let entryPrice = 0;
     let entryTime = 0;
     let qty = 0;
+    let entryFee = 0;
 
     const trades: BacktestTrade[] = [];
     const equity: number[] = [];
@@ -163,15 +136,17 @@ export function runBacktest(params: BacktestParams, candles: Candle[], barSecond
         const alloc = equityVal * (p.sizePct / 100);
         qty = alloc / fill;
         if (!(qty > 0) || !Number.isFinite(qty)) { qty = 0; return false; }
-        cash -= qty * fill + qty * fill * feeRate;
+        entryFee = costOf(qty * fill, 'buy', qty);
+        cash -= qty * fill + entryFee;
         entryPrice = fill;
         inPos = true;
         return true;
     };
     const sell = (price: number, time: number, reason: BacktestTrade['reason']) => {
         const fill = price * (1 - slip);
-        cash += qty * fill - qty * fill * feeRate;
-        const pnl = qty * (fill - entryPrice) - qty * fill * feeRate - qty * entryPrice * feeRate;
+        const exitFee = costOf(qty * fill, 'sell', qty);
+        cash += qty * fill - exitFee;
+        const pnl = qty * (fill - entryPrice) - exitFee - entryFee;
         trades.push({ entryTime, exitTime: time, entry: entryPrice, exit: fill, pnl, ret: (fill - entryPrice) / entryPrice, reason });
         inPos = false;
         qty = 0;

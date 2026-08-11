@@ -1,5 +1,5 @@
 import 'server-only';
-import { cachedFetch } from '../cache';
+import { cachedFetch, cachedFetchWithMeta } from '../cache';
 import { YAHOO_SYMBOLS } from './symbols';
 import type { Provider, ProviderQuote } from './types';
 import type { Candle } from '@/lib/mockData';
@@ -48,8 +48,11 @@ function toYahoo(appSymbol: string): string | null {
 export async function yahooQuote(appSymbol: string): Promise<ProviderQuote | null> {
     const sym = toYahoo(appSymbol);
     if (!sym) return null;
-    return cachedFetch<ProviderQuote>(
-        { provider: 'yahoo', key: `q:${sym}`, ttlMs: 60_000, limit: LIMIT },
+    // 90s, not 60s: the client polls every 60s, so a 60s TTL means essentially every
+    // poll misses, and two tabs offset by 30s double-spend the bucket. Yahoo equity
+    // quotes are ~15 min delayed anyway, so 90s costs no real freshness.
+    const meta = await cachedFetchWithMeta<ProviderQuote>(
+        { provider: 'yahoo', key: `q:${sym}`, ttlMs: 90_000, limit: LIMIT },
         async () => {
             const r = await chart(sym, '1d', '5d');
             const m: YahooMeta | undefined = r?.meta;
@@ -66,6 +69,7 @@ export async function yahooQuote(appSymbol: string): Promise<ProviderQuote | nul
             };
         }
     );
+    return meta ? { ...meta.value, at: meta.at } : null;
 }
 
 export const yahoo: Provider = {
