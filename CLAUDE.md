@@ -14,6 +14,7 @@ supabase/       migrations (gth_* tables, RLS)
 ```
 
 ```bash
+nvm use          # Node 22+. @supabase/supabase-js declares engines >=22.0.0 and warns below it.
 cd app
 npm install
 npm run dev     # http://localhost:3000 → redirects to /terminal
