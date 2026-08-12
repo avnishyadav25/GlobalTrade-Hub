@@ -2,7 +2,7 @@
 // Used directly for the deterministic fallback and as the shape the Claude-powered
 // /api/coach route returns. Also holds the enforceable-rule catalog + checker.
 
-import { equity, toBase, deriveFxRates, type PaperState } from './paperEngine';
+import { equity, toBase, deriveFxRates, type PaperState, type FillKind } from './paperEngine';
 import type { LiveQuote } from '@/stores/marketStore';
 
 export interface CoachPattern {
@@ -55,7 +55,9 @@ export interface FillLite {
     pnl: number;
     ts: number;
     /** Emitted by the paper engine; lets the coach tell opens from closes properly. */
-    kind?: 'open' | 'add' | 'reduce' | 'close' | 'flip';
+    // Imported rather than re-declared: a duplicated literal union silently stops
+    // accepting a PaperFill the moment a new kind is added.
+    kind?: FillKind;
 }
 
 function inr(n: number): string {

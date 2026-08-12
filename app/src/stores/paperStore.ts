@@ -8,6 +8,7 @@ import {
     recordRejection as engineReject,
     cancelOrder as engineCancel,
     processTick,
+    settleExpiries,
     deriveFxRates,
     migratePaperState,
     equity as engineEquity,
@@ -95,7 +96,13 @@ export const usePaperStore = create<PaperStore>()(
 
             tick: (quotes) => {
                 const before = get().state;
-                const after = processTick(before, quotes, deriveFxRates(quotes), Date.now());
+                const now = Date.now();
+                const fx = deriveFxRates(quotes);
+
+                // Settlement runs BEFORE matching, so a resting order on an expired
+                // contract cannot fill after the contract has already settled.
+                const { state: settled } = settleExpiries(before, quotes, fx, now);
+                const after = processTick(settled, quotes, fx, now);
                 if (after !== before) set({ state: after });
             },
 

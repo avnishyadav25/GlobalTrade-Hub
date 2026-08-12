@@ -36,7 +36,10 @@ export type PaperOrderType = 'market' | 'limit' | 'stop' | 'stop_limit';
 export type PaperOrderStatus = 'open' | 'partial' | 'filled' | 'cancelled' | 'rejected';
 
 /** How a fill changed the position. The coach needs open-vs-close to detect revenge trades. */
-export type FillKind = 'open' | 'add' | 'reduce' | 'close' | 'flip';
+export type FillKind = 'open' | 'add' | 'reduce' | 'close' | 'flip' | 'settle';
+
+/** How the legs of a group relate to each other. */
+export type OrderGroupKind = 'multileg' | 'oco' | 'bracket';
 
 export const PAPER_STATE_VERSION = 2;
 
@@ -69,6 +72,34 @@ export interface PaperOrder {
     rejectReason?: string;
     /** Base-currency cash held against this resting order; released on fill/cancel. */
     reservedBase: number;
+
+    /* ---- group membership. All optional: an order without them is a singleton, which
+       is exactly what every order was before multi-leg existed. ---- */
+
+    /** Orders placed as one structure share this. `grp-<seq>`. */
+    groupId?: string;
+    /** Position within the group, in placement order. */
+    legIndex?: number;
+    groupKind?: OrderGroupKind;
+    /** Bracket child: the order whose fill arms and sizes it. */
+    parentId?: string;
+    /**
+     * Bracket child, inert until its parent fills.
+     *
+     * `false` means "waiting"; absent means "not a child" and rests normally. The
+     * distinction matters — `!armed` would freeze every ordinary order ever placed.
+     */
+    armed?: boolean;
+    /**
+     * May only reduce an existing position, and reserves NOTHING.
+     *
+     * `validate` already short-circuits a pure reduction, so reserving against an exit
+     * was always a hold with no purpose — and for a bracket pair it is a double hold
+     * that can make the structure reject itself.
+     */
+    reduceOnly?: boolean;
+    /** Engine-generated at expiry rather than placed by anyone. */
+    origin?: 'user' | 'settlement';
 }
 
 export interface PaperFill {
@@ -630,7 +661,7 @@ function fillOrder(
 
     const isRoundTrip = applied.closedQty > 1e-8;
 
-    return {
+    let next: PaperState = {
         ...state,
         seq,
         account: {
@@ -651,6 +682,41 @@ function fillOrder(
         fills: fills.slice(0, MAX_FILLS_RETAINED),
         fillsTruncated: state.fillsTruncated || truncated,
     };
+
+    // GROUP EFFECTS live here rather than in processTick, because fillOrder is the
+    // single funnel both fill paths share — placeOrder's immediate market fill and
+    // processTick's resting fill. Putting them anywhere else means one path behaves
+    // differently from the other, which is the bug class this chokepoint exists to stop.
+
+    // OCO: a fill on any member retires the rest. cancelOrder is pure and releases their
+    // reservation, so no separate accounting is needed.
+    if (order.groupKind === 'oco' && order.groupId) {
+        for (const sibling of next.orders) {
+            if (
+                sibling.groupId === order.groupId &&
+                sibling.id !== order.id &&
+                (sibling.status === 'open' || sibling.status === 'partial')
+            ) {
+                next = cancelOrder(next, sibling.id, ts);
+            }
+        }
+    }
+
+    // Bracket: arm the children and RE-SIZE them to what the parent has actually filled.
+    // Sizing to the parent's requested qty would let an exit be larger than the position
+    // it is protecting, which on a partial fill would open a new position in reverse.
+    if (order.groupKind === 'bracket') {
+        next = {
+            ...next,
+            orders: next.orders.map((child) =>
+                child.parentId === order.id && (child.status === 'open' || child.status === 'partial')
+                    ? { ...child, armed: true, qty: updatedOrder.filledQty, updatedAt: ts }
+                    : child
+            ),
+        };
+    }
+
+    return next;
 }
 
 // ---- placing ----
@@ -662,6 +728,8 @@ export interface PlaceOrderInput {
     qty: number;
     limitPrice?: number;
     stopPrice?: number;
+    /** May only reduce a position, and reserves nothing. Used for bracket exits. */
+    reduceOnly?: boolean;
 }
 
 export type PlaceStatus = 'filled' | 'accepted' | 'rejected';
@@ -761,6 +829,7 @@ export function placeOrder(
         createdAt: ts,
         updatedAt: ts,
         reservedBase: 0,
+        ...(input.reduceOnly ? { reduceOnly: true } : {}),
     };
 
     const reason = validate(state, input, refPrice, fx);
@@ -782,8 +851,14 @@ export function placeOrder(
 
     // Resting order: reserve the funding so it can't be double-spent by later orders.
     const notionalBase = toBase(input.symbol, input.qty * refPrice, fx);
-    const reservedBase =
-        input.side === 'buy' ? notionalBase : notionalBase * SHORT_MARGIN_FACTOR;
+    // A reduce-only order needs no funding: `validate` already lets a pure reduction
+    // through regardless of cash, so reserving against an exit was always a hold with no
+    // purpose — and on a bracket pair it is a double hold that rejects the structure.
+    const reservedBase = input.reduceOnly
+        ? 0
+        : input.side === 'buy'
+          ? notionalBase
+          : notionalBase * SHORT_MARGIN_FACTOR;
     const resting: PaperOrder = { ...base, reservedBase };
 
     return {
@@ -795,6 +870,279 @@ export function placeOrder(
         },
         result: { status: 'accepted', orderId: id },
     };
+}
+
+export interface MultiLegResult extends PlaceResult {
+    orderIds: string[];
+    groupId: string;
+}
+
+/**
+ * Place several orders as ONE structure — a spread, an OCO pair, or a bracket.
+ *
+ * ALL-OR-NOTHING. If any leg fails validation, every leg is recorded as `rejected`
+ * sharing the group id and the same reason, and nothing else moves: no cash, no
+ * positions, no reservation. A partially placed spread is not a smaller spread, it is a
+ * naked position nobody asked for.
+ *
+ * RESERVATION is taken ONCE for the group, on leg 0. Reserving per leg is what makes a
+ * bull call spread reject itself: `validate` sees the short leg in isolation and judges
+ * it naked, so the pair reserves a long premium plus a naked-short margin against an
+ * account that only ever needed the net debit.
+ *
+ * Legs are placed in order, so ids stay `ord-<seq>` in sequence and the group id is
+ * derived from the first — no clock, no randomness, determinism preserved.
+ */
+export function placeMultiLeg(
+    state: PaperState,
+    legs: PlaceOrderInput[],
+    kind: OrderGroupKind,
+    quotes: Record<string, LiveQuote> = {},
+    fx: FxRates = DEFAULT_FX,
+    ts = 0,
+    marks: Record<string, number> = {}
+): { state: PaperState; result: MultiLegResult } {
+    const groupId = `grp-${state.seq + 1}`;
+
+    if (!legs.length) {
+        return { state, result: { status: 'rejected', orderId: '', orderIds: [], groupId, reason: 'A group needs at least one leg.' } };
+    }
+
+    // Validate every leg against the SAME starting state, so one leg cannot consume the
+    // funding another was judged against.
+    for (const leg of legs) {
+        const quote = quotes[leg.symbol];
+        const asset = getAsset(leg.symbol);
+        const refPrice =
+            leg.type === 'limit' ? (leg.limitPrice ?? quote?.price ?? asset?.price ?? 0) : (quote?.price ?? asset?.price ?? 0);
+        const reason = validate(state, leg, refPrice, fx);
+        if (reason) return rejectGroup(state, legs, kind, groupId, reason, ts);
+    }
+
+    let next = state;
+    const orderIds: string[] = [];
+
+    for (let i = 0; i < legs.length; i++) {
+        const leg = legs[i];
+        // Only leg 0 funds the structure; the rest reserve nothing, so the group is not
+        // charged several times over for one economic exposure.
+        const placed = placeOrder(next, i === 0 ? leg : { ...leg, reduceOnly: true }, quotes[leg.symbol], fx, ts, marks);
+
+        if (placed.result.status === 'rejected') {
+            // Passed the dry run and failed on placement means an earlier leg changed
+            // the book underneath it. Unwind rather than leave a partial structure.
+            return rejectGroup(state, legs, kind, groupId, placed.result.reason ?? 'A leg was refused.', ts);
+        }
+
+        orderIds.push(placed.result.orderId);
+        next = {
+            ...placed.state,
+            orders: placed.state.orders.map((o) =>
+                o.id === placed.result.orderId
+                    ? {
+                          ...o,
+                          groupId,
+                          legIndex: i,
+                          groupKind: kind,
+                          ...(kind === 'bracket' && i > 0 ? { parentId: orderIds[0], armed: false } : {}),
+                      }
+                    : o
+            ),
+        };
+    }
+
+    return { state: next, result: { status: 'accepted', orderId: orderIds[0], orderIds, groupId } };
+}
+
+/** Record every leg as rejected, sharing one reason. Touches nothing else. */
+function rejectGroup(
+    state: PaperState,
+    legs: PlaceOrderInput[],
+    kind: OrderGroupKind,
+    groupId: string,
+    reason: string,
+    ts: number
+): { state: PaperState; result: MultiLegResult } {
+    let next = state;
+    const orderIds: string[] = [];
+
+    for (let i = 0; i < legs.length; i++) {
+        const seq = next.seq + 1;
+        const id = `ord-${seq}`;
+        orderIds.push(id);
+        const rejected: PaperOrder = {
+            id,
+            symbol: legs[i].symbol,
+            market: marketOf(legs[i].symbol),
+            side: legs[i].side,
+            type: legs[i].type,
+            qty: legs[i].qty,
+            limitPrice: legs[i].limitPrice,
+            stopPrice: legs[i].stopPrice,
+            filledQty: 0,
+            avgFillPrice: 0,
+            status: 'rejected',
+            rejectReason: reason,
+            fees: 0,
+            createdAt: ts,
+            updatedAt: ts,
+            reservedBase: 0,
+            groupId,
+            legIndex: i,
+            groupKind: kind,
+        };
+        next = { ...next, seq, orders: [rejected, ...next.orders] };
+    }
+
+    return { state: next, result: { status: 'rejected', orderId: orderIds[0], orderIds, groupId, reason } };
+}
+
+
+/* --------------------------------------------------------------- expiry settlement */
+
+export interface SettlementOutcome {
+    symbol: string;
+    /** Underlying level used. Labelled honestly — see the note below. */
+    spot: number;
+    intrinsic: number;
+    qty: number;
+}
+
+/**
+ * Settle expired option positions.
+ *
+ * For a EUROPEAN CASH-SETTLED option, settling is arithmetically identical to closing at
+ * a price of `intrinsic`. So this reuses `applyToPosition` verbatim rather than adding a
+ * second accounting path — which is what makes the reconciliation identity hold through
+ * settlement for free, for long, short, in-the-money and worthless alike.
+ *
+ * TWO HONESTY CONSTRAINTS, both deliberate:
+ *
+ * 1. NSE settles index options on the weighted average of the underlying over the last
+ *    half hour of the expiry day. We do not have that series. This settles at the last
+ *    available mark and the UI must say so — it is not the official settlement price and
+ *    must never be labelled as one.
+ *
+ * 2. With NO underlying mark available, the position is LEFT OPEN rather than settled at
+ *    an invented price. A written option keeps its margin held, which is also what a real
+ *    broker does. Fabricating a settlement price is the most tempting unsafe shortcut in
+ *    this whole feature and it is refused here.
+ */
+export function settleExpiries(
+    state: PaperState,
+    quotes: Record<string, LiveQuote>,
+    fx: FxRates = DEFAULT_FX,
+    nowMs = 0
+): { state: PaperState; settled: SettlementOutcome[]; awaitingMark: string[] } {
+    const settled: SettlementOutcome[] = [];
+    const awaitingMark: string[] = [];
+    let next = state;
+
+    // Sorted so settlement order is a pure function of the book, not of key insertion.
+    const symbols = Object.keys(state.positions).sort();
+
+    for (const symbol of symbols) {
+        const position = next.positions[symbol];
+        if (!position || Math.abs(position.qty) < 1e-8) continue;
+
+        const contract = getAsset(symbol)?.contract;
+        if (!contract || nowMs < contract.expiryMs) continue;
+
+        const spot = quotes[contract.underlying]?.price;
+        if (!Number.isFinite(spot) || (spot as number) <= 0) {
+            awaitingMark.push(symbol);
+            continue;
+        }
+
+        const intrinsicValue =
+            contract.optionType === 'CE'
+                ? Math.max(0, (spot as number) - contract.strike)
+                : Math.max(0, contract.strike - (spot as number));
+
+        const qty = Math.abs(position.qty);
+        const side: PaperSide = position.qty > 0 ? 'sell' : 'buy';
+
+        // Settlement is exchange-driven: no order was placed, so no brokerage. STT falls
+        // on intrinsic value at its own rate, which `productFor(symbol, true)` selects.
+        const notionalBase = toBase(symbol, qty * intrinsicValue, fx);
+        const fee = chargeTotal({
+            market: marketOf(symbol),
+            side,
+            product: productFor(symbol, true),
+            notionalBase,
+            maker: false,
+            qty,
+        });
+
+        const applied = applyToPosition(next.positions, symbol, side, qty, intrinsicValue, fx);
+
+        const seq = next.seq + 1;
+        const order: PaperOrder = {
+            id: `ord-${seq}`,
+            symbol,
+            market: marketOf(symbol),
+            side,
+            type: 'market',
+            qty,
+            filledQty: qty,
+            avgFillPrice: intrinsicValue,
+            status: 'filled',
+            fees: fee,
+            createdAt: nowMs,
+            updatedAt: nowMs,
+            reservedBase: 0,
+            origin: 'settlement',
+        };
+
+        const fill: PaperFill = {
+            id: `fill-${seq}`,
+            orderId: order.id,
+            symbol,
+            market: marketOf(symbol),
+            side,
+            kind: 'settle',
+            qty,
+            price: intrinsicValue,
+            fee,
+            pnl: applied.realized,
+            ts: nowMs,
+        };
+
+        const fills = [fill, ...next.fills];
+        const isRoundTrip = applied.closedQty > 1e-8;
+
+        next = {
+            ...next,
+            seq,
+            account: {
+                ...next.account,
+                cash: next.account.cash + applied.cashDelta - fee,
+                realizedGross: next.account.realizedGross + applied.realized,
+                feesPaid: next.account.feesPaid + fee,
+                fillCount: next.account.fillCount + 1,
+                roundTrips: next.account.roundTrips + (isRoundTrip ? 1 : 0),
+                roundTripWins: next.account.roundTripWins + (isRoundTrip && applied.realized > 0 ? 1 : 0),
+            },
+            positions: applied.positions,
+            realizedBySymbol: isRoundTrip
+                ? { ...next.realizedBySymbol, [symbol]: (next.realizedBySymbol[symbol] ?? 0) + applied.realized }
+                : next.realizedBySymbol,
+            orders: [order, ...next.orders],
+            fills: fills.slice(0, MAX_FILLS_RETAINED),
+            fillsTruncated: next.fillsTruncated || fills.length > MAX_FILLS_RETAINED,
+        };
+
+        // Any resting order on a settled contract is now meaningless.
+        for (const o of next.orders) {
+            if (o.symbol === symbol && (o.status === 'open' || o.status === 'partial')) {
+                next = cancelOrder(next, o.id, nowMs);
+            }
+        }
+
+        settled.push({ symbol, spot: spot as number, intrinsic: intrinsicValue, qty });
+    }
+
+    return { state: next, settled, awaitingMark };
 }
 
 /**
@@ -839,6 +1187,34 @@ export function recordRejection(
 }
 
 /** Orders in a given status, newest first. */
+/**
+ * Cancel every resting member of a group.
+ *
+ * Cancelling a bracket PARENT must cascade: its children would otherwise rest forever
+ * with no position behind them, and would fire against whatever position happened to
+ * exist later.
+ */
+export function cancelGroup(state: PaperState, groupId: string, ts = 0): PaperState {
+    let next = state;
+    for (const o of state.orders) {
+        if (o.groupId === groupId && (o.status === 'open' || o.status === 'partial')) {
+            next = cancelOrder(next, o.id, ts);
+        }
+    }
+    return next;
+}
+
+/** Cancel an order, and any bracket children that were waiting on it. */
+export function cancelWithChildren(state: PaperState, orderId: string, ts = 0): PaperState {
+    let next = cancelOrder(state, orderId, ts);
+    for (const child of state.orders) {
+        if (child.parentId === orderId && (child.status === 'open' || child.status === 'partial')) {
+            next = cancelOrder(next, child.id, ts);
+        }
+    }
+    return next;
+}
+
 export function ordersByStatus(state: PaperState, ...statuses: PaperOrderStatus[]): PaperOrder[] {
     const want = new Set(statuses);
     return state.orders.filter((o) => want.has(o.status));
@@ -884,6 +1260,10 @@ export function processTick(
 
         const current = next.orders.find((x) => x.id === o.id);
         if (!current || (current.status !== 'open' && current.status !== 'partial')) continue;
+        // A bracket child whose parent has not filled yet. `armed === false` is the
+        // waiting state; absent means "not a child" and rests normally, so `!armed`
+        // here would freeze every ordinary order in the book.
+        if (current.armed === false) continue;
 
         const remaining = round8(current.qty - current.filledQty);
         if (remaining <= 1e-8) continue;
@@ -951,8 +1331,19 @@ export function processTick(
         } else if (isFractional(o.symbol)) {
             fillQty = round8(remaining * frac);
         } else {
-            // Whole-unit instruments: at least one unit, never more than what is left.
-            fillQty = Math.min(remaining, Math.max(1, Math.floor(remaining * frac)));
+            const lot = getAsset(o.symbol)?.contract?.lotSize;
+            if (lot) {
+                // A contract trades in lots, so a partial fill must land on a lot
+                // boundary too. Without this a 65-lot option fills 54 units — a quantity
+                // no exchange would produce, and one `validate` would reject if you tried
+                // to place it. Fill at least one lot, or the whole remainder if less than
+                // a lot is left (which a prior partial can leave behind).
+                const lots = Math.max(1, Math.floor((remaining * frac) / lot));
+                fillQty = Math.min(remaining, lots * lot);
+            } else {
+                // Whole-unit instruments: at least one unit, never more than what is left.
+                fillQty = Math.min(remaining, Math.max(1, Math.floor(remaining * frac)));
+            }
         }
         if (!(fillQty > 1e-8)) continue;
 
