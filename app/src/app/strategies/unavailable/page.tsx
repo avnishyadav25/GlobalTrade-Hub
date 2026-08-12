@@ -13,7 +13,7 @@ interface Unavailable {
     name: string;
     why: string;
     needed: string;
-    verdict: 'no-free-data' | 'cannot-backtest' | 'not-real' | 'needs-options';
+    verdict: 'no-free-data' | 'cannot-backtest' | 'not-real' | 'needs-options' | 'no-history';
 }
 
 const VERDICT: Record<Unavailable['verdict'], { label: string; tone: 'warn' | 'down' | 'neutral' }> = {
@@ -21,6 +21,7 @@ const VERDICT: Record<Unavailable['verdict'], { label: string; tone: 'warn' | 'd
     'cannot-backtest': { label: 'can never be backtested', tone: 'down' },
     'not-real': { label: 'not a real retail opportunity', tone: 'down' },
     'needs-options': { label: 'needs an options layer', tone: 'neutral' },
+    'no-history': { label: 'buildable, but not backtestable yet', tone: 'warn' },
 };
 
 const ITEMS: Unavailable[] = [
@@ -68,9 +69,9 @@ const ITEMS: Unavailable[] = [
     },
     {
         name: 'Short straddle, iron condor, gamma scalping, IV skew',
-        verdict: 'needs-options',
-        why: 'The paper engine has no options instrument, no Greeks, no implied volatility and no multi-leg orders. Every one of these is a multi-leg position whose risk is defined by the Greeks.',
-        needed: 'An option chain feed, a Black-Scholes and IV solver, and multi-leg order support with options margin. Planned as its own phase.',
+        verdict: 'no-history',
+        why: 'The engine can now run these — there is a live NSE chain, a Black-Scholes and IV solver, multi-leg orders and an options margin model. What is missing is HISTORY: no free source publishes past option chains, so these can be paper-traded but not backtested against real premiums.',
+        needed: 'Either a paid historical chain archive, or enough time for the nightly snapshot to accumulate one. Until then the strategies can be tested on a clearly-labelled synthetic chain, which shows that the rules execute but is not evidence they made money.',
     },
 ];
 
@@ -98,6 +99,13 @@ export default function UnavailablePage() {
             </div>
 
             <p className="mt-6 text-xs text-faint">
+                Index options ARE here now — a live{' '}
+                <Link href="/options" className="text-accent underline underline-offset-2">NIFTY and BANKNIFTY chain</Link>{' '}
+                with Greeks, multi-leg orders and cash settlement. This page previously said no chain feed
+                existed; that stopped being true and has been corrected.
+            </p>
+
+            <p className="mt-3 text-xs text-faint">
                 One that IS here, with a limit worth repeating: the{' '}
                 <Link href="/strategies/funding-carry" className="text-accent underline underline-offset-2">funding-rate carry</Link>{' '}
                 has real data and is marked signal-only, because the paper engine has no perpetual-futures

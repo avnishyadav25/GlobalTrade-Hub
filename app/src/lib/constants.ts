@@ -83,6 +83,7 @@ export const NAV_SECTIONS: NavItem[] = [
     key: 'terminal', label: 'Terminal', href: '/terminal',
     children: [
       { key: 'chart', label: 'Chart', href: '/terminal' },
+      { key: 'options', label: 'Options', href: '/options' },
       { key: 'watchlists', label: 'Watchlists', href: '/watchlists' },
       { key: 'alerts', label: 'Alerts', href: '/alerts' },
       { key: 'scanner', label: 'Scanner', href: '/scanner' },
