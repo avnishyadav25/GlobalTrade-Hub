@@ -41,3 +41,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright session state — a real signed-in cookie, never committed
+e2e/.auth/
+test-results/
+playwright-report/

@@ -9,8 +9,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint:spacing": "! grep -rnE 'style=\\{\\{[^}]*(padding|margin)' src --include='*.tsx' | grep -v 'global-error' | grep -v 'charts/index.tsx' || (echo '\\nInline padding/margin found. Use Tailwind spacing classes \u2014 they work now that the unlayered * reset is gone (see globals.css header).' && exit 1)",
-    "verify": "npm run lint && npm run lint:spacing && npx tsc --noEmit && npm test && npm run build"
+    "lint:spacing": "! grep -rnE 'style=\\{\\{[^}]*(padding|margin)' src --include='*.tsx' | grep -v 'global-error' | grep -v 'charts/index.tsx' || (echo '\\nInline padding/margin found. Use Tailwind spacing classes — they work now that the unlayered * reset is gone (see globals.css header).' && exit 1)",
+    "verify": "npm run lint && npm run lint:spacing && npx tsc --noEmit && npm test && npm run build",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",

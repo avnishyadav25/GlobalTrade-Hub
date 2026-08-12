@@ -1,0 +1,15 @@
+{
+    "//": "Playwright specs are a separate toolchain from the Next build \u2014 they run under Playwright's own runner, not through the app bundle. Typechecked here rather than in the app's tsconfig so a browser-test dependency cannot break `npm run build`.",
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "types": [
+            "node"
+        ],
+        "noEmit": true
+    },
+    "include": [
+        "**/*.ts",
+        "../playwright.config.ts"
+    ],
+    "exclude": []
+}
