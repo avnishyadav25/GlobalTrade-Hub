@@ -24,7 +24,9 @@
 // `reservedCash` is a soft hold on `cash` used for buying-power checks against resting
 // orders; cash is not debited at reservation time, so it is not part of the identity.
 
-import { chargesFor, chargeTotal } from './charges';
+import { chargesFor, chargeTotal, type Product } from './charges';
+import { isWholeLots } from './options/contract';
+import { shortOptionMargin } from './options/margin';
 import { getAsset, type Currency } from './mockData';
 import { type Market } from './constants';
 import type { LiveQuote } from '@/stores/marketStore';
@@ -37,6 +39,15 @@ export type PaperOrderStatus = 'open' | 'partial' | 'filled' | 'cancelled' | 're
 export type FillKind = 'open' | 'add' | 'reduce' | 'close' | 'flip';
 
 export const PAPER_STATE_VERSION = 2;
+
+/**
+ * Oldest shape this build can carry forward without discarding the book.
+ *
+ * v1 and below are genuinely unmigratable: fills were priced with a blanket USD→INR rate
+ * applied to every non-India instrument, so the ledger can never reconcile. Everything
+ * from v2 on is additive-optional and loads as-is.
+ */
+export const MIN_COMPATIBLE_PAPER_VERSION = 2;
 
 export interface PaperOrder {
     id: string;
@@ -83,6 +94,20 @@ export interface PaperPosition {
     basisBase: number;
     /** Base-currency margin held against a short. Zero for longs. */
     marginHeldBase: number;
+    /**
+     * Base-currency cash CREDITED when this position was opened.
+     *
+     * Nonzero only for a written option, which pays you a premium AND requires margin.
+     * Short STOCK credits nothing here — its proceeds are held as margin instead (see
+     * SHORT_MARGIN_FACTOR), so this is 0 and the ledger identity is unchanged for every
+     * position that existed before options.
+     *
+     * STORED rather than derived from the symbol: deriving it would consult the module-
+     * global instrument registry, which is empty on the server and empty before
+     * rehydrate, so a reconciliation assert would flip based on registry timing. An
+     * assert that depends on load order is worse than no assert.
+     */
+    creditBase?: number;
     realizedPnl: number;  // base currency, this position's lifetime
 }
 
@@ -222,14 +247,75 @@ export function isFractional(symbol: string): boolean {
  */
 const PAPER_PRODUCT = 'intraday';
 
-function feeFor(symbol: string, notionalBase: number, maker: boolean, side: PaperSide, qty?: number): number {
+/**
+ * Which charge schedule applies to this instrument.
+ *
+ * Options are charged completely differently from equity: a flat ₹20 rather than a
+ * capped percentage, STT ten times the intraday rate but on PREMIUM rather than
+ * turnover, and an exchange fee about seventeen times higher. Routing on the contract
+ * rather than on the market keeps `Market` free of a derivatives member, which would
+ * otherwise ripple through every Record<Market, …> in the app.
+ */
+function productFor(symbol: string, settling = false): Product {
+    if (!getAsset(symbol)?.contract) return PAPER_PRODUCT;
+    return settling ? 'options-settlement' : 'options';
+}
+
+/**
+ * Margin to post when WRITING an option, or undefined for anything else.
+ *
+ * Undefined is the signal to `applyToPosition` to use the cash-covered stock model, so
+ * every non-option path is unchanged. A written option instead credits its premium and
+ * posts this figure, which is why the two cannot share one formula.
+ *
+ * Returns undefined when no underlying mark is available. That deliberately falls back
+ * to the conservative cash-covered model rather than guessing a spot price — a margin
+ * computed from an invented underlying would look authoritative and be wrong.
+ */
+function shortMarginFor(
+    symbol: string,
+    side: PaperSide,
+    qty: number,
+    price: number,
+    fx: FxRates,
+    marks: Record<string, number>
+): number | undefined {
+    if (side !== 'sell') return undefined;
+    const contract = getAsset(symbol)?.contract;
+    if (!contract) return undefined;
+
+    const spot = marks[contract.underlying];
+    if (!Number.isFinite(spot) || spot <= 0) return undefined;
+
+    const quote = shortOptionMargin(contract, spot, price, qty);
+    return toBase(symbol, quote.marginBase, fx);
+}
+
+/** Spot marks by symbol, for sizing option margin. Derived, never stored. */
+function marksFrom(quotes: Record<string, LiveQuote>): Record<string, number> {
+    const marks: Record<string, number> = {};
+    for (const [symbol, q] of Object.entries(quotes)) {
+        if (q && Number.isFinite(q.price) && q.price > 0) marks[symbol] = q.price;
+    }
+    return marks;
+}
+
+function feeFor(
+    symbol: string,
+    notionalBase: number,
+    maker: boolean,
+    side: PaperSide,
+    qty?: number,
+    chargeBrokerage = true
+): number {
     return chargeTotal({
         market: marketOf(symbol),
         side,
-        product: PAPER_PRODUCT,
+        product: productFor(symbol),
         notionalBase,
         maker,
         qty,
+        chargeBrokerage,
     });
 }
 
@@ -324,10 +410,16 @@ interface ApplyResult {
  * Apply a fill to a position and report the base-currency cash and margin movements.
  *
  * Booking rules:
- *   open/add long   cash -= notionalBase
- *   reduce long     cash += proceedsBase ; realized = proceeds − closedBasis
- *   open/add short  cash -= notionalBase * SHORT_MARGIN_FACTOR (moved to margin)
- *   reduce short    cash += releasedMargin + realized ; realized = closedBasis − proceeds
+ *   open/add long    cash -= notionalBase
+ *   reduce long      cash += proceedsBase ; realized = proceeds − closedBasis
+ *   open/add short   cash -= notionalBase * SHORT_MARGIN_FACTOR (moved to margin)
+ *   reduce short     cash += releasedMargin + realized − closedCredit
+ *
+ * WRITTEN OPTIONS take the same path with `shortMarginBase` supplied. A written option
+ * CREDITS its premium to cash and posts a margin unrelated to that premium, where short
+ * stock debits its notional straight into margin. Passing the margin in is the whole
+ * difference — `creditBase` then carries the premium so the ledger identity can net it
+ * back out, and the reduce formula covers both because `closedCredit` is 0 for stock.
  */
 function applyToPosition(
     positions: Record<string, PaperPosition>,
@@ -335,7 +427,9 @@ function applyToPosition(
     side: PaperSide,
     qty: number,
     price: number,
-    fx: FxRates
+    fx: FxRates,
+    /** Margin to post when opening a SHORT. Absent means the cash-covered stock model. */
+    shortMarginBase?: number
 ): ApplyResult {
     const dir = side === 'buy' ? 1 : -1;
     const signed = dir * qty;
@@ -346,7 +440,9 @@ function applyToPosition(
     // --- flat: open a new position ---
     if (!existing || existing.qty === 0) {
         const isShort = signed < 0;
-        const margin = isShort ? notionalBase * SHORT_MARGIN_FACTOR : 0;
+        const premiumModel = isShort && shortMarginBase !== undefined;
+        const margin = isShort ? (premiumModel ? shortMarginBase : notionalBase * SHORT_MARGIN_FACTOR) : 0;
+        const credit = premiumModel ? notionalBase : 0;
         next[symbol] = {
             symbol,
             market: marketOf(symbol),
@@ -354,13 +450,15 @@ function applyToPosition(
             avgPrice: price,
             basisBase: notionalBase,
             marginHeldBase: margin,
+            ...(credit > 0 ? { creditBase: credit } : {}),
             realizedPnl: 0,
         };
         return {
             positions: next,
             realized: 0,
             kind: 'open',
-            cashDelta: isShort ? -margin : -notionalBase,
+            // credit − margin. For stock credit is 0, so this stays exactly −margin.
+            cashDelta: isShort ? credit - margin : -notionalBase,
             marginDelta: margin,
             closedQty: 0,
         };
@@ -372,19 +470,23 @@ function applyToPosition(
     // --- same direction: add to the position ---
     if (Math.sign(signed) === posSign) {
         const total = Math.abs(existing.qty) + qty;
-        const margin = isShort ? notionalBase * SHORT_MARGIN_FACTOR : 0;
+        const premiumModel = isShort && shortMarginBase !== undefined;
+        const margin = isShort ? (premiumModel ? shortMarginBase : notionalBase * SHORT_MARGIN_FACTOR) : 0;
+        const credit = premiumModel ? notionalBase : 0;
+        const nextCredit = (existing.creditBase ?? 0) + credit;
         next[symbol] = {
             ...existing,
             qty: round8(existing.qty + signed),
             avgPrice: (existing.avgPrice * Math.abs(existing.qty) + price * qty) / total,
             basisBase: existing.basisBase + notionalBase,
             marginHeldBase: existing.marginHeldBase + margin,
+            ...(nextCredit > 0 ? { creditBase: nextCredit } : {}),
         };
         return {
             positions: next,
             realized: 0,
             kind: 'add',
-            cashDelta: isShort ? -margin : -notionalBase,
+            cashDelta: isShort ? credit - margin : -notionalBase,
             marginDelta: margin,
             closedQty: 0,
         };
@@ -396,11 +498,16 @@ function applyToPosition(
     const frac = closeQty / openQty;
     const closedBasis = existing.basisBase * frac;
     const releasedMargin = existing.marginHeldBase * frac;
+    const closedCredit = (existing.creditBase ?? 0) * frac;
     const proceedsBase = toBase(symbol, closeQty * price, fx);
 
     const realized = isShort ? closedBasis - proceedsBase : proceedsBase - closedBasis;
 
-    let cashDelta = isShort ? releasedMargin + realized : proceedsBase;
+    // One formula covers both short models. Stock has closedCredit 0, giving exactly
+    // today's `releasedMargin + realized`; a written option has closedCredit ===
+    // closedBasis, which reduces to `releasedMargin − proceedsBase` — the cash you pay
+    // to buy the option back, plus the margin you get released.
+    let cashDelta = isShort ? releasedMargin + realized - closedCredit : proceedsBase;
     let marginDelta = -releasedMargin;
 
     const newQty = round8(existing.qty + signed);
@@ -412,7 +519,15 @@ function applyToPosition(
         kind = 'flip';
         const flipNotional = toBase(symbol, flipQty * price, fx);
         const flipIsShort = newQty < 0;
-        const flipMargin = flipIsShort ? flipNotional * SHORT_MARGIN_FACTOR : 0;
+        const flipPremiumModel = flipIsShort && shortMarginBase !== undefined;
+        // shortMarginBase was sized for the whole order; the flip opens only the
+        // leftover, so scale it rather than posting margin for quantity not opened.
+        const flipMargin = flipIsShort
+            ? flipPremiumModel
+                ? shortMarginBase * (flipQty / qty)
+                : flipNotional * SHORT_MARGIN_FACTOR
+            : 0;
+        const flipCredit = flipPremiumModel ? flipNotional : 0;
         next[symbol] = {
             symbol,
             market: marketOf(symbol),
@@ -420,18 +535,21 @@ function applyToPosition(
             avgPrice: price,
             basisBase: flipNotional,
             marginHeldBase: flipMargin,
+            ...(flipCredit > 0 ? { creditBase: flipCredit } : {}),
             realizedPnl: existing.realizedPnl + realized,
         };
-        cashDelta += flipIsShort ? -flipMargin : -flipNotional;
+        cashDelta += flipIsShort ? flipCredit - flipMargin : -flipNotional;
         marginDelta += flipMargin;
     } else if (Math.abs(newQty) < 1e-8) {
         delete next[symbol];
     } else {
+        const remainingCredit = (existing.creditBase ?? 0) - closedCredit;
         next[symbol] = {
             ...existing,
             qty: newQty,
             basisBase: existing.basisBase - closedBasis,
             marginHeldBase: existing.marginHeldBase - releasedMargin,
+            ...(remainingCredit > 0 ? { creditBase: remainingCredit } : {}),
             realizedPnl: existing.realizedPnl + realized,
         };
     }
@@ -452,13 +570,25 @@ function fillOrder(
     fillPrice: number,
     maker: boolean,
     fx: FxRates,
-    ts: number
+    ts: number,
+    /** Spot marks by underlying symbol. Needed to size a written option's margin. */
+    marks: Record<string, number> = {}
 ): PaperState {
     if (!(fillQty > 1e-8) || !Number.isFinite(fillPrice) || fillPrice <= 0) return state;
 
     const notionalBase = toBase(order.symbol, fillQty * fillPrice, fx);
-    const fee = feeFor(order.symbol, notionalBase, maker, order.side, Math.abs(fillQty));
-    const applied = applyToPosition(state.positions, order.symbol, order.side, fillQty, fillPrice, fx);
+    // Options brokerage is a flat fee per ORDER. Charging it on every partial fill would
+    // be a 200% overcharge on a three-way fill, so only the first fill pays it.
+    const fee = feeFor(order.symbol, notionalBase, maker, order.side, Math.abs(fillQty), order.filledQty <= 1e-8);
+    const applied = applyToPosition(
+        state.positions,
+        order.symbol,
+        order.side,
+        fillQty,
+        fillPrice,
+        fx,
+        shortMarginFor(order.symbol, order.side, fillQty, fillPrice, fx, marks)
+    );
 
     const prevFilled = order.filledQty;
     const newFilled = round8(prevFilled + fillQty);
@@ -553,6 +683,13 @@ function validate(state: PaperState, input: PlaceOrderInput, refPrice: number, f
     if (!isFractional(input.symbol) && !Number.isInteger(input.qty)) {
         return `${input.symbol} trades in whole units`;
     }
+    // Quantity is denominated in UNITS, as Indian brokers display it ("65", not "1 lot"),
+    // which is what keeps `notional = qty * price` true and spares the pricing path a
+    // multiplier. Lot size only constrains WHICH quantities are legal.
+    const contract = getAsset(input.symbol)?.contract;
+    if (contract && !isWholeLots(input.qty, contract.lotSize)) {
+        return `${input.symbol} trades in lots of ${contract.lotSize}`;
+    }
     if (input.type === 'limit' || input.type === 'stop_limit') {
         if (!Number.isFinite(input.limitPrice) || (input.limitPrice as number) <= 0) {
             return 'Limit orders need a limit price';
@@ -592,7 +729,15 @@ export function placeOrder(
     input: PlaceOrderInput,
     quote?: LiveQuote,
     fx: FxRates = DEFAULT_FX,
-    ts = 0
+    ts = 0,
+    /**
+     * Spot marks by symbol, for sizing a written option's margin.
+     *
+     * Additive with a default, so every existing caller and test is unchanged. Without
+     * a mark for the underlying, a written option falls back to the conservative
+     * cash-covered model rather than to an invented spot price.
+     */
+    marks: Record<string, number> = {}
 ): { state: PaperState; result: PlaceResult } {
     const seq = state.seq + 1;
     const id = `ord-${seq}`;
@@ -631,7 +776,7 @@ export function placeOrder(
     if (input.type === 'market' && quote) {
         const slip = 1 + (input.side === 'buy' ? 1 : -1) * (TAKER_SLIPPAGE_BPS / 10000);
         const withOrder: PaperState = { ...state, seq, orders: [base, ...state.orders] };
-        const filled = fillOrder(withOrder, base, input.qty, quote.price * slip, false, fx, ts);
+        const filled = fillOrder(withOrder, base, input.qty, quote.price * slip, false, fx, ts, marks);
         return { state: filled, result: { status: 'filled', orderId: id } };
     }
 
@@ -813,7 +958,7 @@ export function processTick(
 
         const fresh = next.orders.find((x) => x.id === o.id);
         if (!fresh) continue;
-        next = fillOrder(next, fresh, fillQty, fillPrice, maker, fx, ts);
+        next = fillOrder(next, fresh, fillQty, fillPrice, maker, fx, ts, marksFrom(quotes));
     }
     return next;
 }
@@ -838,7 +983,14 @@ export function equity(state: PaperState, quotes: Record<string, LiveQuote>, fx:
     let total = state.account.cash;
     for (const p of Object.values(state.positions)) {
         total += p.marginHeldBase;
-        total += p.qty >= 0 ? positionMarketValueBase(p, quotes, fx) : unrealizedPnlBase(p, quotes, fx);
+        // A written option's premium is ALREADY in `cash`, and unrealizedPnlBase adds
+        // `basisBase − marketValue` which contains it again. Netting the credit out is
+        // what stops the account appearing richer by the premium the moment it is
+        // written. creditBase is 0 for short stock, so that case is untouched.
+        total +=
+            p.qty >= 0
+                ? positionMarketValueBase(p, quotes, fx)
+                : unrealizedPnlBase(p, quotes, fx) - (p.creditBase ?? 0);
     }
     return total;
 }
@@ -895,7 +1047,15 @@ export function reconciliationError(state: PaperState): number {
     let lhs = state.account.cash;
     for (const p of Object.values(state.positions)) {
         lhs += p.marginHeldBase;
-        if (p.qty > 0) lhs += p.basisBase;
+        if (p.qty > 0) {
+            lhs += p.basisBase;
+        } else if (p.qty < 0) {
+            // A short that CREDITED cash at open — a written option — already has that
+            // premium sitting in `cash`, so subtract it or the identity counts it twice.
+            // Short stock credits nothing, so this term vanishes and the equity cases
+            // are arithmetically identical to before options existed.
+            lhs -= p.creditBase ?? 0;
+        }
     }
     const rhs = state.account.startingCash + state.account.realizedGross - state.account.feesPaid;
     return lhs - rhs;
@@ -921,7 +1081,20 @@ export function assertReconciled(state: PaperState, tolerance = 1e-6): void {
 export function migratePaperState(raw: unknown): { state: PaperState; reset: boolean } {
     if (!raw || typeof raw !== 'object') return { state: newPaperState(), reset: false };
     const s = raw as Partial<PaperState>;
-    if (s.version === PAPER_STATE_VERSION && s.account && s.positions && Array.isArray(s.orders)) {
+    const v = typeof s.version === 'number' ? s.version : 0;
+    const structurallyOk = Boolean(s.account && s.positions && Array.isArray(s.orders));
+
+    // Forward-migratable band. Everything added since v2 is OPTIONAL and every reader
+    // uses `?? <legacy default>`, so a v2 blob already IS a valid current blob and there
+    // is nothing to rewrite. This branch exists so that a future bump is a code change
+    // here rather than a silent wipe of somebody's entire book.
+    if (structurallyOk && v >= MIN_COMPATIBLE_PAPER_VERSION && v <= PAPER_STATE_VERSION) {
+        return { state: { ...(s as PaperState), version: PAPER_STATE_VERSION }, reset: false };
+    }
+
+    // A blob from a NEWER build. This device is behind, not corrupt — discarding a book
+    // we merely cannot read yet would destroy data the other device is still using.
+    if (structurallyOk && v > PAPER_STATE_VERSION) {
         return { state: s as PaperState, reset: false };
     }
     const startingCash = (s.account as PaperAccount | undefined)?.startingCash ?? STARTING_CASH;
@@ -933,7 +1106,8 @@ export function isPaperState(value: unknown): value is PaperState {
     if (!value || typeof value !== 'object') return false;
     const s = value as Partial<PaperState>;
     return (
-        s.version === PAPER_STATE_VERSION &&
+        typeof s.version === 'number' &&
+        s.version >= MIN_COMPATIBLE_PAPER_VERSION &&
         !!s.account &&
         typeof s.account.cash === 'number' &&
         Number.isFinite(s.account.cash) &&

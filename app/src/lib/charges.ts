@@ -27,7 +27,7 @@ export const RATE_SOURCES = [
     { label: 'Zerodha brokerage calculator', url: 'https://zerodha.com/brokerage-calculator' },
 ];
 
-export type Product = 'intraday' | 'delivery';
+export type Product = 'intraday' | 'delivery' | 'options' | 'options-settlement';
 export type Side = 'buy' | 'sell';
 
 export interface ChargeInput {
@@ -35,6 +35,15 @@ export interface ChargeInput {
     side: Side;
     /** Equity only. Ignored for crypto, forex and commodities. */
     product?: Product;
+    /**
+     * Options brokerage is a flat fee per ORDER, not per fill. The engine charges per
+     * fill, so a three-way partial fill would pay it three times — a 200% overcharge on
+     * one order. Callers pass false on every fill after the first.
+     *
+     * Defaults true so equity callers are unaffected: their brokerage is a capped
+     * percentage, which degrades gracefully across partials.
+     */
+    chargeBrokerage?: boolean;
     /** Absolute order value in the base currency (INR). */
     notionalBase: number;
     /** Maker orders (resting limits) pay less on venues that price that way. */
@@ -86,6 +95,33 @@ export const INDIA_RATES = {
 } as const;
 
 /** US equity. Commission-free; what remains is regulatory and sell-side only. */
+/**
+ * NSE index options.
+ *
+ * Note what is NOT shared with equity: brokerage is a FLAT ₹20 rather than
+ * min(0.03%, ₹20), the exchange transaction charge is ~17x the equity rate, and STT is
+ * ten times the intraday equity rate — but charged on PREMIUM, which is a far smaller
+ * base than turnover.
+ *
+ * Premium STT and settlement STT never occur in the same charge event: a premium trade
+ * has no intrinsic leg and a settlement has no premium leg. So this stays a single
+ * `notionalBase` with a different rate, rather than needing two bases.
+ */
+export const INDIA_OPTION_RATES = {
+    /** Flat, per executed order. */
+    brokerageFlat: 20,
+    /** 0.1% on the SELL side, on premium. */
+    sttSellPremium: 0.001,
+    /** 0.125% on INTRINSIC value at settlement. Different base, different rate. */
+    sttSettlementIntrinsic: 0.00125,
+    /** ~0.05% of premium on NSE F&O. */
+    exchangeTxn: 0.0005,
+    sebiTurnover: 0.000001,
+    /** 0.003%, buy side only, on premium. */
+    stampDutyBuy: 0.00003,
+    gst: 0.18,
+} as const;
+
 export const US_RATES = {
     /** SEC Section 31 fee on sale proceeds. Revised annually. */
     secFee: 0.0000278,
@@ -114,6 +150,35 @@ function finish(parts: Omit<ChargeBreakdown, 'total' | 'effectiveBps'>, notional
         total,
         effectiveBps: notional > 0 ? (total / notional) * 10_000 : 0,
     };
+}
+
+/**
+ * NSE index options.
+ *
+ * `notional` is PREMIUM turnover for a trade and INTRINSIC turnover at settlement. Both
+ * map onto the single `notionalBase` field because the two never co-occur, which keeps
+ * `effectiveBps` meaningful and leaves every existing charge test untouched.
+ */
+function indiaOptions(input: ChargeInput, notional: number, product: Product): ChargeBreakdown {
+    const settling = product === 'options-settlement';
+    const isSell = input.side === 'sell';
+    const r = INDIA_OPTION_RATES;
+
+    // Settlement is exchange-driven — there is no order, so there is no brokerage.
+    const brokerage = settling ? 0 : input.chargeBrokerage === false ? 0 : r.brokerageFlat;
+
+    const stt = settling
+        ? notional * r.sttSettlementIntrinsic
+        : isSell
+          ? notional * r.sttSellPremium
+          : 0;
+
+    const exchangeTxn = notional * r.exchangeTxn;
+    const sebiTurnover = notional * r.sebiTurnover;
+    const stampDuty = !settling && !isSell ? notional * r.stampDutyBuy : 0;
+    const gst = (brokerage + exchangeTxn + sebiTurnover) * r.gst;
+
+    return finish({ brokerage, stt, exchangeTxn, sebiTurnover, stampDuty, dpCharge: 0, gst }, notional);
 }
 
 function indiaEquity(input: ChargeInput, notional: number): ChargeBreakdown {
@@ -166,7 +231,12 @@ export function chargesFor(input: ChargeInput): ChargeBreakdown {
     const notional = Math.abs(input.notionalBase);
     if (!Number.isFinite(notional) || notional <= 0) return finish(EMPTY, 0);
 
-    if (input.market === 'india') return indiaEquity(input, notional);
+    if (input.market === 'india') {
+        const product = input.product ?? 'intraday';
+        return product === 'options' || product === 'options-settlement'
+            ? indiaOptions(input, notional, product)
+            : indiaEquity(input, notional);
+    }
     if (input.market === 'us') return usEquity(input, notional);
 
     const rate = BPS_FALLBACK[input.market];

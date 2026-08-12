@@ -1,3 +1,4 @@
+import type { OptionContract } from './options/contract';
 // Instrument catalog + seed data for the trading platform.
 //
 // CURRENCY MODEL — read before adding an instrument.
@@ -28,6 +29,14 @@ export interface Asset {
     high24h: number;
     low24h: number;
     marketCap?: number;
+    /**
+     * Present only for derivative contracts; absent means a spot instrument.
+     *
+     * It lives on Asset rather than in a parallel registry because getAsset() is already
+     * the single resolver behind marketOf, quoteCcyOf, isFractional and validate() — a
+     * second map would mean a second lookup at every site and two things that can drift.
+     */
+    contract?: OptionContract;
 }
 
 export const WATCHLIST_ASSETS: Asset[] = [

@@ -11,6 +11,7 @@
 // for no behavioural gain. Registration happens on store rehydrate, on add, and on
 // cloud hydrate — see stores/watchlistStore.ts.
 
+import { isValidOptionContract } from './options/contract';
 import { WATCHLIST_ASSETS, REFERENCE_ASSETS, type Asset, type Currency } from './mockData';
 import { MARKETS, type Market } from './constants';
 
@@ -61,6 +62,10 @@ export function isValidAsset(a: unknown): a is Asset {
         typeof x.market === 'string' && VALID_MARKETS.has(x.market) &&
         typeof x.quoteCcy === 'string' && VALID_CCY.has(x.quoteCcy) &&
         typeof x.fractional === 'boolean' &&
+        // Absent is fine — spot instruments have no contract. Malformed is not: a
+        // cloud-synced watchlist row could otherwise inject a bogus lotSize and mis-size
+        // every order in that contract by a whole multiple.
+        (x.contract === undefined || isValidOptionContract(x.contract)) &&
         typeof x.price === 'number' && Number.isFinite(x.price)
     );
 }
