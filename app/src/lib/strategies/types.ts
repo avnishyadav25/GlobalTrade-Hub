@@ -1,4 +1,5 @@
 import type { Candle } from '@/lib/mockData';
+import type { ChainView } from '@/lib/options/chainView';
 import type { Market } from '@/lib/constants';
 import type { PaperSide } from '@/lib/paperEngine';
 import type { SessionInfo } from '@/lib/sessions';
@@ -26,7 +27,8 @@ export type Family =
     | 'spread'
     | 'volatility'
     | 'range'
-    | 'event';
+    | 'event'
+    | 'options';
 
 export type ParamType = 'int' | 'float' | 'pct' | 'choice';
 
@@ -182,6 +184,21 @@ export interface StrategyContext {
     other(role: string): SeriesView | undefined;
     /** Events at or before now. Never future events — same lookahead guarantee. */
     events: readonly StrategyEvent[];
+
+    /**
+     * The option chain at this bar, when one is available.
+     *
+     * Undefined for every instrument that has no listed options, and for a run where no
+     * chain source was supplied — so a strategy MUST handle its absence rather than
+     * assuming it. The same no-lookahead guarantee applies: this view is built for this
+     * bar and holds nothing from a later one.
+     *
+     * An equity strategy can read it as a filter (implied volatility as a regime signal,
+     * say) without becoming an options strategy. Strategies that TRADE the chain use the
+     * options runner, because a four-leg structure is one position with four strikes and
+     * the single-instrument position model cannot hold that.
+     */
+    chain?: ChainView;
 }
 
 /* ------------------------------------------------------------------ strategy */
@@ -226,7 +243,7 @@ export interface Strategy {
 }
 
 /** Defaults straight from the specs, so there is no second copy to drift. */
-export function defaultParams(strategy: Strategy): Params {
+export function defaultParams(strategy: Parameterised): Params {
     const out: Params = {};
     for (const spec of strategy.params) out[spec.key] = spec.default;
     return out;
@@ -238,7 +255,19 @@ export function defaultParams(strategy: Strategy): Params {
  * The old engine had a hand-written clamp ladder per field, which meant adding a
  * parameter required editing three places and forgetting one produced NaN equity.
  */
-export function sanitiseParams(strategy: Strategy, raw: Params = {}): Params {
+/**
+ * The parts of a strategy that parameter handling actually needs.
+ *
+ * Structural rather than the full `Strategy`, so the options contract — a sibling shape
+ * with legs instead of a single position — can share this without a cast, and without
+ * pretending to be something it is not.
+ */
+export interface Parameterised {
+    params: ParamSpec[];
+    normalise?(p: Params): Params;
+}
+
+export function sanitiseParams(strategy: Parameterised, raw: Params = {}): Params {
     const out: Params = {};
 
     for (const spec of strategy.params) {

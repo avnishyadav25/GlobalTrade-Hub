@@ -68,10 +68,10 @@ const ITEMS: Unavailable[] = [
         needed: 'Per-contract futures data with expiry dates.',
     },
     {
-        name: 'Short straddle, iron condor, gamma scalping, IV skew',
+        name: 'Short straddle, gamma scalping, IV skew — on synthetic data',
         verdict: 'no-history',
-        why: 'The engine can now run these — there is a live NSE chain, a Black-Scholes and IV solver, multi-leg orders and an options margin model. What is missing is HISTORY: no free source publishes past option chains, so these can be paper-traded but not backtested against real premiums.',
-        needed: 'Either a paid historical chain archive, or enough time for the nightly snapshot to accumulate one. Until then the strategies can be tested on a clearly-labelled synthetic chain, which shows that the rules execute but is not evidence they made money.',
+        why: 'All four options strategies are BUILT and the iron condor runs end to end. But three of them enter on a gap between implied and realised volatility, or on skew — and a synthetic chain prices every strike at the underlying\u2019s own realised volatility with no skew, so those gaps do not exist and the strategies correctly never fire. The backtester says so rather than reporting a silent zero.',
+        needed: 'Real chain history. The nightly snapshot has started accumulating it; until there is enough, these three can be paper-traded against the live chain but not tested.',
     },
 ];
 

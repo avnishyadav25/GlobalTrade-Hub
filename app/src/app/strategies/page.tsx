@@ -19,6 +19,7 @@ const FAMILY_LABEL: Record<Family, string> = {
     volatility: 'Volatility',
     range: 'Range',
     event: 'Event driven',
+    options: 'Options',
 };
 
 const FAMILY_BLURB: Record<Family, string> = {
@@ -31,9 +32,11 @@ const FAMILY_BLURB: Record<Family, string> = {
     volatility: 'How much you hold, rather than when you buy.',
     range: 'Harvest oscillation — until the range breaks.',
     event: 'React to scheduled real-world releases.',
+    options: 'Defined-risk and short-volatility structures on NIFTY and BANKNIFTY. Multi-leg, cash-settled, and traded against a live chain.',
+
 };
 
-const ORDER: Family[] = ['benchmark', 'trend', 'meanReversion', 'session', 'spread', 'volatility', 'range', 'event', 'breakout'];
+const ORDER: Family[] = ['benchmark', 'trend', 'meanReversion', 'session', 'spread', 'volatility', 'range', 'event', 'options', 'breakout'];
 
 export default function StrategiesPage() {
     const [market, setMarket] = useState<string>('all');

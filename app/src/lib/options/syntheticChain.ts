@@ -96,7 +96,11 @@ export function syntheticChainAt(
     opts: SyntheticOptions
 ): SyntheticChain | null {
     const bar = bars[barIndex];
-    if (!bar || !(bar.close > 0) || expiryBarIndex <= barIndex) return null;
+    // `<` not `<=`: a chain AT the expiry bar is valid and necessary. Every option there
+    // is worth exactly its intrinsic value, which is what Black-Scholes returns at zero
+    // years — and without it a structure can never reach settlement, because the engine
+    // would have no chain on the bar it expires.
+    if (!bar || !(bar.close > 0) || expiryBarIndex < barIndex) return null;
 
     const barsPerYear = opts.barsPerYear ?? 252;
     const vol = realisedVol(bars, barIndex, opts.lookback ?? 20, barsPerYear);

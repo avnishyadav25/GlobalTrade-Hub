@@ -71,8 +71,18 @@ describe('synthetic chain', () => {
         expect(syntheticChainAt(rising(6), 5, 10, { step: 50 })).toBeNull();
     });
 
-    it('refuses an expiry that is not in the future', () => {
-        expect(syntheticChainAt(bars, 100, 100, { step: 50 })).toBeNull();
+    it('prices AT expiry as pure intrinsic value', () => {
+        // Not a rejection: this is the chain a structure settles against, and without it
+        // nothing could ever reach expiry. Every option is worth max(0, spot − strike).
+        const atExpiry = syntheticChainAt(bars, 100, 100, { step: 50, width: 3 })!;
+        expect(atExpiry.years).toBe(0);
+        for (const s of atExpiry.strikes) {
+            expect(s.call).toBeCloseTo(Math.max(0, atExpiry.spot - s.strike), 6);
+            expect(s.put).toBeCloseTo(Math.max(0, s.strike - atExpiry.spot), 6);
+        }
+    });
+
+    it('refuses an expiry in the past', () => {
         expect(syntheticChainAt(bars, 100, 90, { step: 50 })).toBeNull();
     });
 
