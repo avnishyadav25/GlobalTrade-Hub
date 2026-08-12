@@ -5,6 +5,7 @@ import { WATCHLIST_ASSETS } from '@/lib/mockData';
 import { resolveUniverse } from '@/lib/marketData/universe';
 import { loadPersistedWatchlist } from '@/lib/marketData/watchlistState';
 import { fetchQuotes } from '@/lib/marketData/router';
+import { snapshotChains } from '@/lib/options/snapshot';
 
 // Scheduled tick — point Vercel Cron or Supabase pg_cron at
 //   GET /api/cron/tick?secret=CRON_SECRET
@@ -57,11 +58,20 @@ export async function GET(req: Request) {
     const brief = await dailyBriefing(market, []);
     const sent = await notify(brief.text, 'GlobalTrade Hub — Daily Briefing');
 
+    // Capture today's option chains. This is the ONLY way real option history ever
+    // accumulates — no free source publishes past Indian chains, so a day not captured
+    // is a day permanently missing. Failures are reported rather than thrown: a chain
+    // NSE refused must not stop the briefing that already succeeded.
+    const chains = await snapshotChains(['NIFTY', 'BANKNIFTY'], Date.now()).catch((e) => [
+        { symbol: 'NIFTY' as const, expiry: '', strikes: 0, stored: false, reason: e instanceof Error ? e.message : 'snapshot failed' },
+    ]);
+
     return NextResponse.json({
         ok: true,
         source: brief.source,
         universe: persisted ? 'watchlist' : 'seeds',
         symbolCount: market.length,
         sent,
+        chains,
     });
 }
