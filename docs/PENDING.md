@@ -7,8 +7,8 @@ This is not `docs/AUDIT.md` — that stays as the historical record of the defec
 remediation. This file answers a different question: **if you sat down to use this app
 today, what would you find, and what would you not.**
 
-Verified against the code on **2026-08-12**. Counts: **614 tests across 30 files · 117
-lessons · 24 strategies · 29 page routes · 16 API routes.**
+Verified against the code on **2026-08-12**. Counts: **621 tests across 31 files · 117
+lessons · 24 strategies · 30 page routes · 16 API routes.**
 
 ---
 
@@ -85,9 +85,13 @@ conservative) · NSE's 30-minute closing settlement average (last mark used inst
 
 ### 1. Playwright is written but has never run
 `app/e2e/` and `playwright.config.ts` exist, `npm run test:e2e` is defined — and
-`@playwright/test` **is not installed**. Three install attempts timed out against the
-registry from this machine. Chromium itself is cached locally; only the npm package is
-missing.
+`@playwright/test` **is not installed**. **Four** install attempts have now timed out
+against the registry from this machine, across two Node versions and two npm versions,
+including one with a raised `--fetch-timeout`. Chromium itself is cached locally, so
+this is specific to fetching that one package.
+
+Treat it as an environment problem rather than a project one: `npm i -D @playwright/test`
+from a machine that can reach the registry should be all it takes.
 
 `npm run verify` still passes because it does not include e2e. **`npm run test:e2e` will
 fail until `npm i -D @playwright/test` succeeds**, and the selectors in
