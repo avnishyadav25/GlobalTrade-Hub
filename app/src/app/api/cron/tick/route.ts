@@ -25,7 +25,16 @@ function authorized(req: Request): boolean {
     // than exposing an endpoint that runs an LLM agent and sends notifications.
     if (!secret) return process.env.NODE_ENV !== 'production';
     const url = new URL(req.url);
-    return url.searchParams.get('secret') === secret || req.headers.get('x-cron-secret') === secret;
+    // Vercel's scheduler sends `Authorization: Bearer $CRON_SECRET` and nothing else —
+    // no query string, no custom header. Accepting only the other two forms meant a
+    // scheduled run would 401 silently and no option history would ever accumulate,
+    // while a manual curl with ?secret= worked fine and hid the problem.
+    const bearer = req.headers.get('authorization');
+    return (
+        url.searchParams.get('secret') === secret ||
+        req.headers.get('x-cron-secret') === secret ||
+        bearer === `Bearer ${secret}`
+    );
 }
 
 export async function GET(req: Request) {

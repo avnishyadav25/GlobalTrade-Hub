@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "comment": "Daily briefing AND the option-chain snapshot. 10:15 UTC is 15:45 IST — just after the NSE close, so the chain captured is the settled one for that trading day. Without this the snapshot only runs when the URL is hit by hand, and no option history accumulates at all.",
+      "path": "/api/cron/tick",
+      "schedule": "15 10 * * 1-5"
+    }
+  ]
+}

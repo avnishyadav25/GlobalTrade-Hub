@@ -72,6 +72,7 @@ export const vixContrarian: Strategy = {
         idea: 'A volatility index measures what the options market is paying for protection, which is a fairly direct reading of how frightened participants are. Fear is mean-reverting in a way prices are not: it spikes hard and decays. Buying the underlying market once that spike has peaked and started to fall is a bet on the exhaustion of the panic rather than on any view about value.',
         entry: 'The volatility index is in the top decile of its recent range AND has turned down from the previous bar.',
         exit: 'A fixed holding period, with a stop for the case where the fear was well founded.',
+        whenItWorks: 'The tail of a panic, once fear has peaked and begun to decay. Fear mean-reverts in a way prices do not, so the signal is measuring something with a genuine tendency to revert rather than hoping a price does. Entries cluster near capitulation, which is where the subsequent returns have historically been largest.',
         whenItFails: 'When the spike is the beginning rather than the end. In a genuine crisis volatility puts in several lower peaks on the way down while the market keeps falling, and each one looks like exhaustion. This strategy will buy every one of them.',
     },
     caveats: [
@@ -128,6 +129,7 @@ export const volTargeted: Strategy = {
         idea: 'The entry rule here is intentionally the simplest possible — hold while above a moving average — so that everything interesting is in the sizing. Position size is set inversely to recent volatility, so that a typical bar moves the account by roughly the same amount whatever you are trading. This is what "risk" means to a professional: not the amount invested, but the amount that moves.',
         entry: 'Price above the trend filter, sized so one average true range is worth the target percentage of equity.',
         exit: 'Price closes back below the trend filter.',
+        whenItWorks: 'Any trending market, because the entry rule is deliberately trivial and the edge is entirely in the sizing. Holding one average true range worth of risk constant means a calm instrument gets a large position and a violent one a small position, so the account\'s day-to-day movement is stable even as the instruments are not. That is what professional risk control actually means.',
         whenItFails: 'Volatility measured on the past underestimates the future at exactly the wrong moments. Markets are calm right up until they are not, so this sizes UP into the quiet period before a shock and is largest when the shock arrives. Every volatility-targeting approach shares that flaw.',
         lesson: 'position-sizing',
     },

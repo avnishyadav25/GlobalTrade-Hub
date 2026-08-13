@@ -84,6 +84,7 @@ export const pairsZScore: Strategy = {
         idea: 'Two instruments that normally move together occasionally drift apart for reasons that are temporary — an index rebalance, a large order, a piece of news that affects one but should affect both. Measuring that gap in standard deviations of its own history gives a scale-free way to say "this is unusually wide", and the bet is that it narrows.',
         entry: 'Sell this instrument when the spread is unusually rich against the hedge, buy it when unusually cheap, provided the two are still correlated.',
         exit: 'When the spread returns to near its mean, or when it stretches so far that the relationship has evidently changed.',
+        whenItWorks: 'Two instruments with a real economic tie that drift apart on something temporary — an index rebalance, a block order, a headline affecting one but properly affecting both. The bet is on a relationship rather than a direction, so it can pay in a falling market as readily as a rising one.',
         whenItFails: 'When the divergence is information rather than noise. If one company has genuinely deteriorated, the spread does not revert — it keeps widening, and the position that was sized for a two-sigma move keeps losing through four, five and six. Correlation measured on the past is exactly the thing that breaks first.',
     },
     caveats: [
@@ -130,6 +131,7 @@ export const crackSpread: Strategy = {
         idea: 'A refinery buys crude and sells petrol and heating oil, so the gap between them is its gross margin — the crack spread. That margin is bounded by physical economics: too thin and refiners cut runs, reducing product supply and widening it again; too fat and they run flat out, which compresses it. The bet is on that physical feedback loop, not on a statistical accident.',
         entry: 'When the crude-to-product ratio stretches beyond its recent norm.',
         exit: 'When it returns toward that norm.',
+        whenItWorks: 'Refining margins stretched beyond what physical economics sustains. Unlike a purely statistical spread, this one has a feedback mechanism behind it: too thin and refiners cut runs, which tightens products and widens the margin again. That is a reason for reversion rather than merely a history of it.',
         whenItFails: 'Genuine supply shocks. A refinery fire, a hurricane or a sanctions decision moves the margin to a new level and keeps it there, and the reversion never comes. Seasonal transitions also shift the normal range, so a lookback that spans a season change measures against a mean that no longer applies.',
     },
     caveats: [
@@ -183,6 +185,7 @@ export const crossSectionalMomentum: Strategy = {
         idea: 'Cross-sectional momentum is the observation that, over medium horizons, instruments which have outperformed their peers tend to keep doing so. It is a RELATIVE statement, not a directional one: in a falling market the winner is the one falling least. The recent window is usually skipped because very short-term moves tend to reverse rather than persist.',
         entry: 'Hold while this instrument is beating the peer over the momentum window by more than the minimum edge.',
         exit: 'When the outperformance disappears.',
+        whenItWorks: 'Medium horizons in markets with dispersion, where leaders keep leading. Because the statement is relative rather than directional, it can hold up in a falling market — the winner is simply whatever falls least — which makes it behave differently from a trend filter measured against zero.',
         whenItFails: 'Sharp reversals, where yesterday\'s leaders become the worst performers within days. Momentum strategies characteristically produce steady gains punctuated by severe, fast drawdowns — the pattern is well documented and it is why sizing matters more here than entry timing.',
         lesson: 'position-sizing',
     },

@@ -32,6 +32,7 @@ export const buyAndHold: Strategy = {
         idea: 'Buy once, never sell. It is not a trading strategy — it is the bar every trading strategy has to clear. Over long horizons it beats the large majority of active approaches, largely because it pays costs twice in total rather than twice per trade.',
         entry: 'The first bar of the period.',
         exit: 'The last bar of the period, forced by the engine so the trade list reconciles with the equity curve.',
+        whenItWorks: 'Whenever the asset appreciates over your holding period, which for broad equity has been most multi-year windows in history. Its real edge is structural rather than predictive: it pays two sets of charges in total instead of two per trade, it never mistimes a re-entry, and it cannot be talked out of a position during a drawdown. Most active strategies lose to it on costs and behaviour long before they lose on ideas.',
         whenItFails: 'It takes the full drawdown, whatever that turns out to be. A strategy that returns less than buy-and-hold but suffers half the drawdown may well be the better one to actually live with — compare both numbers, not just the return.',
         lesson: 'journal-and-discipline',
     },

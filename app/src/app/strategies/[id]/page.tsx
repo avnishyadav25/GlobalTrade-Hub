@@ -134,6 +134,12 @@ export default function StrategyDetailPage({ params }: { params: Promise<{ id: s
                                 <dt className="text-2xs font-bold tracking-wide text-faint">EXIT</dt>
                                 <dd className="mt-0.5 text-foreground-muted">{strategy.explain.exit}</dd>
                             </div>
+                            {strategy.explain.whenItWorks && (
+                                <div>
+                                    <dt className="text-2xs font-bold tracking-wide text-up">WHERE IT MAKES MONEY</dt>
+                                    <dd className="mt-0.5 text-foreground-muted">{strategy.explain.whenItWorks}</dd>
+                                </div>
+                            )}
                             <div>
                                 <dt className="text-2xs font-bold tracking-wide text-down">WHERE IT LOSES MONEY</dt>
                                 <dd className="mt-0.5 text-foreground-muted">{strategy.explain.whenItFails}</dd>

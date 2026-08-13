@@ -2,12 +2,16 @@ import type { Lesson } from '../types';
 
 // Track: derivatives and options.
 //
-// The largest track, and the one where the honesty rule bites hardest: this app has
-// NO options layer. No chain provider, no Greeks module, no multi-leg orders, no
-// options margin. Every lesson here is therefore `study`, and each one that describes
-// a trade says plainly that it cannot be placed in this app. The plan puts the options
-// engine in a later phase; until it exists, teaching it as though it were here would
-// be exactly the defect the project rule names.
+// The largest track. It was written when this app had NO options layer, and every
+// lesson said so; PRs 46-50 built one, and this track was not updated for several
+// releases — so it spent that time telling users the opposite of the truth. That is
+// precisely the defect the project rule exists to prevent, and it happened here.
+//
+// What is true now: NIFTY and BANKNIFTY index options trade against a live NSE chain,
+// with solved Greeks, multi-leg orders, an approximate margin model and cash settlement
+// at expiry. What is still NOT true is stated lesson by lesson — no stock options, no
+// historical chain to backtest against, no spot instrument to hedge with, and a margin
+// model that is an approximation rather than SPAN.
 
 export const DERIVATIVES_LESSONS: Lesson[] = [
     {
@@ -26,7 +30,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             'The two main families work differently. **Futures** obligate both sides: buyer must buy, seller must sell, at the agreed price on the agreed date. **Options** obligate only one: the buyer has a right and may walk away, the seller has an obligation and cannot.',
             'That asymmetry is the whole of options, and it is why the two instruments require completely different risk thinking. In a future, both parties face the same shape of risk. In an option, one party has capped loss and the other does not.',
         ],
-        inApp: '**This app has no derivatives.** No futures, no options, no margin engine for them. Everything here is cash-settled spot. These lessons teach the instrument; they cannot be practised in this simulator, and the plan schedules the options engine as a later phase.',
+        inApp: '**Options are here; futures are not.** [The option chain](/options) trades real NIFTY and BANKNIFTY contracts, cash-settled at expiry. There is still no futures instrument and no perpetual, so the futures half of this lesson is taught rather than practised.',
         quiz: [
             {
                 question: 'What is the structural difference between a future and an option?',
@@ -105,7 +109,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             '**Short put.** Receive premium. Profit if the price stays above the strike. Maximum loss is large but bounded, because the price can only fall to zero. Economically it is close to agreeing to buy the stock at the strike, whatever happens.',
             'The distribution of outcomes is what makes options psychologically treacherous. **Selling options wins often and loses rarely and enormously.** A short-option book produces a long, comfortable run of small gains that feels like skill, and the entire loss can arrive in a single session. That shape has ended more accounts than any directional view, and it is a property of the instrument rather than of the trader.',
         ],
-        inApp: '**No options exist in this app** — you cannot buy or write one here. The strategy library marks the four planned options strategies as not built, for exactly this reason.',
+        inApp: 'You can do both on [the option chain](/options): click a premium to buy, or switch the ticket to **Write** to sell. Writing shows a margin requirement and a warning, because the asymmetry in this lesson is the whole reason those two buttons behave so differently.',
         quiz: [
             {
                 question: 'Which position carries genuinely unlimited loss?',
@@ -142,7 +146,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             'Cheap far-out-of-the-money options are attractive because they are cheap and the percentage returns in the winning case are spectacular. They are cheap because they usually expire worthless. Buying them repeatedly is not a strategy with a small edge; it is a strategy with a very low hit rate that needs the rare winner to be very large indeed to survive the arithmetic.',
             'And the decay is not linear. Time value erodes slowly at first and then accelerates sharply into the final days — which is why the last week before expiry behaves so differently from the rest of an option\'s life.',
         ],
-        inApp: '**Not tradeable here.** The payoff diagram above is the same structure an options screen would render if this app had one.',
+        inApp: 'Open [the chain](/options) and compare a strike below the money with one above it. The out-of-the-money premium is pure time value — every paisa of it decays to zero by expiry unless the index moves.',
         formulas: [
             {
                 label: 'The two components',
@@ -185,7 +189,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             'One serious limitation, and it is the difference between the diagram and reality. **A payoff diagram shows expiry only.** Before expiry, the position is worth something different, because time value is still present and volatility can move the price of the option without the underlying moving at all. A trade that looks flat on the diagram can show substantial gains or losses two weeks before expiry.',
             'So the diagram tells you the destination, and the Greeks — next — tell you about the journey.',
         ],
-        inApp: '**Not tradeable here.** In a spot position, your payoff is a straight line: this whole track is about the instruments where it is not.',
+        inApp: 'Place a single option on [the chain](/options), then watch it on [Holdings](/holdings) as the index moves. A spot position moves in a straight line; this one does not, and the bend is the strike.',
         quiz: [
             {
                 question: 'Where does a long call break even?',
@@ -223,7 +227,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             'The relationships between them are what practitioners actually trade. **Gamma and theta oppose each other**: the position that gains most from movement is the one that bleeds most from stillness. You are paid for one by giving up the other, and there is no arrangement that is long both.',
             'The most common way a retail options trade fails is not being wrong about direction. It is **being right too slowly** — theta eroding the premium faster than the underlying moves, so the view is vindicated and the position still loses. An option is a bet on direction *and* magnitude *and* timing, and all three must be right.',
         ],
-        inApp: '**This app computes no Greeks.** `lib/options/greeks.ts` is planned, not built — the plan schedules Black-Scholes, an IV solver and the Greeks as the second step of the options phase.',
+        inApp: '[The chain](/options) shows delta per strike, solved here with Black-Scholes rather than taken from NSE. Watch how delta approaches 1 deep in the money and 0 far out of it — that is the same number doubling as an approximate probability of finishing in the money.',
         formulas: [
             {
                 label: 'The five sensitivities',
@@ -270,7 +274,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             '**IV rank** or **IV percentile** — where current IV sits against its own past year — is the standard way to judge whether options are historically expensive. It is a far better guide than the absolute number, because normal IV differs enormously across instruments.',
             'The **volatility smile** is the other structural feature: options at different strikes trade at different IVs, with out-of-the-money puts typically carrying the highest. That is the market pricing crash risk, and it is a permanent feature rather than an inefficiency — a reminder that the market knows returns are not normally distributed even though the model assumes they are.',
         ],
-        inApp: '**No IV anywhere in this app** — it needs an option chain, which is planned and not built. [Research](/research) does provide real earnings dates, which is the event this lesson is about.',
+        inApp: '[The chain](/options) solves implied volatility per strike. Some cells show a dash: far from the money, vega is so small that no volatility reproduces the price, and NSE reports zero on roughly a third of a live expiry for the same reason. A dash is the honest answer there — a number would be invented.',
         quiz: [
             {
                 question: 'You buy a call before earnings, results are good, the stock rises 4%, and your call loses money. Why?',
@@ -306,7 +310,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             '**Calendar spread** — same strike, different expiries, profiting from the near option decaying faster than the far one.',
             'Two cautions that apply to all of them. **Costs multiply with legs**: a four-leg condor pays four spreads and four sets of charges to open and again to close, and in a less liquid chain those spreads dominate the expected profit. And **defined risk is not small risk** — the maximum loss on a condor is typically a multiple of the maximum gain, so a strategy that wins nine times out of ten can still lose money over a year.',
         ],
-        inApp: '**None of these can be placed here.** `PlaceOrderInput` is single-leg — no OCO grouping, no parent/child link, no options margin. Multi-leg orders are the third step of the planned options phase, and [/strategies/unavailable](/strategies/unavailable) lists the four options strategies as not built.',
+        inApp: 'Multi-leg orders are built: a spread places as ONE structure, and if any leg fails validation every leg is rejected together — a half-placed spread is a naked position nobody asked for. The [iron condor](/strategies/options/iron-condor) builds all four legs for you. One honest limit remains: **margin is computed per leg**, so a defined-risk structure is charged more here than a real broker would charge.',
         quiz: [
             {
                 question: 'What does a vertical spread give up in exchange for costing less?',
@@ -341,7 +345,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             'The **Indian derivatives calendar has changed repeatedly**, and this is one place a remembered rule is worse than no rule. SEBI has revised the number of weekly expiries per exchange and raised contract sizes, with the stated intention of reducing retail speculation in short-dated options. **Check the current expiry schedule and lot sizes on the exchange website before trading — do not rely on this lesson, or any article, for the current values.**',
             'Practically: know your settlement style before you open the position, not on expiry day. And do not carry a short physically-settled stock option into expiry unless you can actually meet the delivery.',
         ],
-        inApp: '**No expiry mechanics exist here** — this app has no contracts, no expiry model and no delivery obligations. The plan notes that calendar spreads and roll rules are unbuildable without a futures curve and a contract model.',
+        inApp: 'Index options here settle automatically at expiry, at intrinsic value against the index — European and cash-settled, as NSE\'s are. Two limits stated plainly: settlement uses the **last available index mark**, not NSE\'s 30-minute closing average, which this app does not have; and with no mark available the position is left open and reported as awaiting one rather than settled at an invented price. Stock options are not supported at all, because they settle physically.',
         quiz: [
             {
                 question: 'You hold an in-the-money Indian STOCK option at expiry. What happens?',
@@ -382,7 +386,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             '**And the counterparty is not another retail trader.** The other side of most retail options flow is a professional market maker with better pricing models, lower costs, hedged exposure and no directional view at all. They do not need to predict the market to make money from the spread.',
             'What follows is not "never trade derivatives". Hedging a real holding with a put is a sound and conservative use, and the instruments exist for good reasons. What follows is that **the burden of proof is on you**, that this base rate applies until you have your own evidence against it, and that paper trading with real costs is the cheapest way to gather that evidence.',
         ],
-        inApp: 'This app cannot simulate options — but [Portfolio](/portfolio) does show your real paper record with real charges applied. That record, over months, is the only evidence about you specifically that is worth anything.',
+        inApp: 'This app now simulates index options with real premiums and the real charge schedule — flat brokerage per leg, STT on the sell side on premium, settlement STT on intrinsic. [Portfolio](/portfolio) shows what that record looks like over time, and it is the only evidence about you specifically that is worth anything.',
         quiz: [
             {
                 question: 'What have SEBI\'s studies of individual equity-derivatives traders consistently found?',
@@ -420,7 +424,7 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
             '**A collar** combines both — buy a protective put, fund it by selling a call. Cheap or free protection, with the upside sold to pay for it.',
             'The question that decides whether any hedge is worth it: **what specifically am I protecting against, and what would happen if I did not?** If the answer is "the market might fall" and you would simply hold through it, the hedge is a cost with no purpose. If the answer is "this position is 60% of my net worth and I need the money in eighteen months", the premium may be the cheapest thing you buy all year.',
         ],
-        inApp: '**No hedging instruments exist here.** What this app can teach you is the risk that would need hedging — [Portfolio](/portfolio) shows concentration, and a position too large to lose is the one worth protecting.',
+        inApp: 'You can buy a protective put on [the chain](/options) — though note it hedges the INDEX, not your individual holdings, so it is a rough hedge for an Indian equity book rather than an exact one. [Portfolio](/portfolio) shows the concentration that would need protecting.',
         formulas: [
             {
                 label: 'The cost of continuous protection',
@@ -447,37 +451,56 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
 
     {
         slug: 'options-in-this-app',
-        title: 'What this app does not have, and why that is stated',
+        title: 'What this simulator models, approximates, and refuses',
         track: 'derivatives',
         level: 'expert',
         kind: 'study',
         minutes: 6,
-        outcome: 'Know exactly what would have to be built before any of this track is practisable here.',
-        where: { href: '/strategies/unavailable', label: 'See what is not built' },
+        outcome: 'Know exactly what this simulator models, what it approximates, and what it refuses to model at all.',
+        where: { href: '/options', label: 'Open the chain' },
         prereq: ['hedging-with-options'],
         concept: [
-            'Every other track in this course points at something you can do in the app. This one cannot, and saying so plainly is the point of this lesson.',
-            '**There is no options layer.** Specifically, four things are missing, and they must be built in order.',
-            '**1. An option chain provider.** NSE publishes chains for NIFTY and BANKNIFTY. Without live strikes, expiries and premiums there is nothing to price or display.',
-            '**2. A Greeks module.** `lib/options/greeks.ts` is planned: Black-Scholes, an implied-volatility solver, and delta, gamma, theta and vega. Without it, no position can be analysed and no IV can be shown.',
-            '**3. Multi-leg orders in the paper engine.** `PlaceOrderInput` is single-leg today. No OCO grouping, no parent/child links, no options margin model. A spread is not two independent orders — the legs must live or die together, and margin on a defined-risk structure is not the sum of its legs.',
-            '**4. Only then the strategies** — short straddle, iron condor, gamma scalping, IV skew — which are listed in the library as **not built** rather than stubbed.',
-            'Why does the course say this instead of shipping a plausible-looking options screen? Because **a simulator that pretends to model options teaches you a market that does not exist.** You would learn the mechanics of a fake instrument, build confidence from fake fills, and carry both into a real account where assignment, margin and liquidity behave completely differently.',
-            'An honest "not implemented" is more useful than a convincing placeholder. It is the rule this entire codebase is built on, and this track is the largest single place it applies.',
+            'This lesson used to say the opposite of what follows. For several releases it told you this app had no options layer — which was true when it was written and false from the moment one shipped. It is worth knowing that happened, because it is exactly the failure this course warns about, and a codebase is not exempt from its own rule.',
+            '**What is real.** Index options on NIFTY and BANKNIFTY trade against a live NSE chain: real strikes, real expiries, real premiums, real bid and ask, real open interest. Lot sizes are parsed from NSE\'s own contract master per expiry rather than hardcoded. Greeks and implied volatility are solved here with Black-Scholes. Multi-leg structures place atomically, and positions settle at expiry against the index.',
+            '**What is approximated, and labelled as such.** Margin is a documented approximation, not SPAN — the screen says so, and it is computed **per leg**, so a defined-risk spread is charged more here than a real broker would charge. Settlement uses the last available index mark rather than NSE\'s 30-minute closing average. Both of those are visible in the UI rather than buried.',
+            '**What is refused rather than faked.** Where no underlying mark exists at expiry, the position is left open and reported as awaiting one — not settled at an invented price. Where no volatility reproduces an option\'s price, the implied-volatility cell shows a dash rather than a number.',
+            '**What genuinely is not here.** Stock options, because they settle physically and are American-style — a different engine. Futures and perpetuals. A spot index instrument, which is why gamma scalping can be signalled but not hedged. And **historical option chains**, because no free source publishes them: a nightly snapshot has begun accumulating history, but until there is enough, options strategies can be traded live and tested only against a clearly-labelled synthetic chain.',
+            'That last one is the most important limitation in this track. A synthetic chain prices every strike at the underlying\'s own realised volatility with no skew — so implied equals realised by construction, and any strategy whose edge is the gap between them cannot fire at all. Three of the four options strategies here are in exactly that position, and the backtester says so rather than reporting a silent zero.',
         ],
-        inApp: '[/strategies/unavailable](/strategies/unavailable) lists every strategy that is not built and states what each would need. The four options strategies are on it.',
+        inApp: '[The option chain](/options) is the live surface. [The options strategies](/strategies) list the four structures, each with its own backtest against a synthetic chain and a warning that says what that does and does not show. [What is not here](/strategies/unavailable) tracks the rest.',
         quiz: [
             {
-                question: 'What must exist before options can be traded in this app?',
-                options: ['Only a chain provider', 'A chain provider, a Greeks module, and multi-leg orders with an options margin model — in that order', 'Just a UI screen', 'Nothing, it already works'],
+                question: 'What can this app do with index options today?',
+                options: [
+                    'Nothing — options are not implemented',
+                    'Trade a live NSE chain with solved Greeks, multi-leg orders and cash settlement at expiry',
+                    'Only display prices, with no trading',
+                    'Trade both index and stock options',
+                ],
                 answer: 1,
-                why: 'Each depends on the previous. Multi-leg orders in particular are not two independent orders: the legs must live or die together and margin is not the sum of the parts.',
+                why: 'All four pieces are built. Stock options are the exception — they settle physically and are American-style, which is a different engine this app does not have.',
             },
             {
-                question: 'Why not ship a simplified options simulator now?',
-                options: ['It would be too slow', 'It would teach a market that does not exist — fake fills build real confidence that fails in a live account', 'Licensing', 'Nobody asked'],
+                question: 'Why can three of the four options strategies not be backtested here yet?',
+                options: [
+                    'They are not implemented',
+                    'No free source publishes historical option chains, and a synthetic chain has implied equal to realised by construction — so a volatility-edge strategy has no gap to find',
+                    'They are too slow to run',
+                    'The margin model is an approximation',
+                ],
                 answer: 1,
-                why: 'Assignment, margin and liquidity behave nothing like a simplified model. An honest empty state is more useful than a convincing placeholder.',
+                why: 'It is a property of the data rather than a verdict on the strategies. The backtester reports it explicitly, because "0 trades" without an explanation reads as "the strategy never triggered", which is a different and much more damning claim.',
+            },
+            {
+                question: 'At expiry, no mark for the underlying is available. What happens to your position?',
+                options: [
+                    'It settles at the last option premium',
+                    'It settles at zero',
+                    'It is left open and reported as awaiting a settlement mark',
+                    'It is cancelled',
+                ],
+                answer: 2,
+                why: 'Fabricating a settlement price is the most tempting unsafe shortcut in this whole feature, and it is refused deliberately. A written option also keeps its margin held, which is what a real broker does.',
             },
         ],
     },

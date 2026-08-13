@@ -108,6 +108,10 @@ describe('every options strategy', () => {
             expect(s.explain.idea.length).toBeGreaterThan(80);
             // The field that stops a strategy being sold rather than described.
             expect(s.explain.whenItFails.length, `${s.id} whenItFails`).toBeGreaterThan(60);
+            // Symmetry: an options structure that shows only its downside reads as a
+            // warning rather than a description, and these four need describing.
+            expect(s.explain.whenItWorks, `${s.id} whenItWorks`).toBeTruthy();
+            expect(s.explain.whenItWorks!.length, `${s.id} whenItWorks`).toBeGreaterThan(80);
             expect(s.caveats?.length, `${s.id} caveats`).toBeGreaterThan(0);
         }
     });

@@ -81,6 +81,7 @@ export const openingRangeBreakout: Strategy = {
         idea: 'The first minutes of a session absorb everything that happened while the market was shut — overnight news, other time zones, orders queued since yesterday. Once that initial burst settles, the high and low it produced act as reference levels, and a decisive break of one is read as the day choosing a direction.',
         entry: 'After the opening range is established, a close beyond its high or low by more than the buffer.',
         exit: 'The opposite side of the opening range as a stop, and a forced flatten before the close.',
+        whenItWorks: 'Days that choose a direction early and hold it — typically after real overnight news. The opening range is a genuinely informative level rather than an arbitrary one, because it is where the market cleared everything that accumulated while it was shut, and a decisive break of it is the day\'s first real decision.',
         whenItFails: 'Range-bound days, where price breaks the opening high, reverses, breaks the low, and reverses again — paying the spread and the charges each time. It also fails on gap days, where the opening range is enormous and the stop is consequently far away, making the position size tiny or the risk large.',
         lesson: 'stops',
     },
@@ -157,6 +158,7 @@ export const sessionMomentum: Strategy = {
         idea: 'Currency markets run continuously, but liquidity does not. The Asian hours are comparatively quiet and prices tend to consolidate; when London opens, an order of magnitude more volume arrives at once. A break of the quiet range as that volume hits is read as the direction the larger participants are taking.',
         entry: 'After the quiet session ends, a break of its high or low within the trading window.',
         exit: 'The opposite side of the quiet range as a stop, and a flat position once the window closes.',
+        whenItWorks: 'Days when the London open brings genuine directional flow into a range that formed on thin Asian liquidity. The edge is structural rather than statistical: the participants arriving are larger, and the range they are breaking was set by a much smaller set of them.',
         whenItFails: 'Days when London opens and immediately reverses, which is common enough to have its own trading folklore. It also fails whenever a scheduled release lands mid-window: the range break and the news are the same event, and the spread widens exactly when the order goes in.',
     },
     caveats: [

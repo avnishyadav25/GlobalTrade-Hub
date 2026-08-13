@@ -208,6 +208,15 @@ export interface Explain {
     idea: string;
     entry: string;
     exit: string;
+    /**
+     * The regime in which this makes money, and WHY the market pays for it.
+     *
+     * Optional so it can be filled in over time, but a strategy that ships with
+     * `whenItFails` and no counterpart shows the reader only its downside — which is a
+     * different distortion from the one `whenItFails` exists to prevent, not a safer
+     * one. A test asserts the pair stays together.
+     */
+    whenItWorks?: string;
     /** The honest part: the regime in which this loses money. */
     whenItFails: string;
     /** Slug of the Learn lesson that covers the underlying concept. */

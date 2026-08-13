@@ -50,6 +50,8 @@ export interface OptionsTrade {
 export interface OptionsBacktestResult {
     trades: OptionsTrade[];
     equity: number[];
+    /** Percentage below the running peak at each bar. Always <= 0. */
+    drawdown: number[];
     finalValue: number;
     netPct: number;
     maxDD: number;
@@ -212,9 +214,12 @@ export function runOptionsBacktest(config: OptionsBacktestConfig): OptionsBackte
     const finalValue = equity.length ? equity[equity.length - 1] : startingCapital;
     let peak = equity[0] ?? startingCapital;
     let maxDD = 0;
+    const drawdown: number[] = [];
     for (const v of equity) {
         if (v > peak) peak = v;
-        if (peak > 0) maxDD = Math.min(maxDD, (v / peak - 1) * 100);
+        const dd = peak > 0 ? (v / peak - 1) * 100 : 0;
+        drawdown.push(dd);
+        maxDD = Math.min(maxDD, dd);
     }
 
     const suppressed: string[] = [];
@@ -244,6 +249,7 @@ export function runOptionsBacktest(config: OptionsBacktestConfig): OptionsBackte
     return {
         trades,
         equity,
+        drawdown,
         finalValue,
         netPct: startingCapital > 0 ? (finalValue / startingCapital - 1) * 100 : 0,
         maxDD,

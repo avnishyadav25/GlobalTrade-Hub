@@ -63,6 +63,17 @@ describe('every registered strategy', () => {
         }
     });
 
+    it('never shows a downside without the matching upside', () => {
+        // `whenItWorks` is optional in the type so it could be filled in over time, but a
+        // strategy page rendering only "WHERE IT LOSES MONEY" is its own distortion — it
+        // reads as a warning about that strategy rather than as the symmetric description
+        // it is meant to be. This keeps the pair together.
+        for (const s of allStrategies()) {
+            expect(s.explain.whenItWorks, `${s.id} has whenItFails but no whenItWorks`).toBeTruthy();
+            expect(s.explain.whenItWorks!.length, `${s.id} whenItWorks`).toBeGreaterThan(80);
+        }
+    });
+
     it('declares a complete explain block with an honest failure mode', () => {
         for (const s of all) {
             expect(s.explain.idea.length, s.id).toBeGreaterThan(80);

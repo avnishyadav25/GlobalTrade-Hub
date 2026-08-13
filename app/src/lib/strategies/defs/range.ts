@@ -67,6 +67,7 @@ export const gridTrading: Strategy = {
         idea: 'Place a ladder of buy orders below the current price and sell orders above it, then let the market oscillate through them. Each round trip harvests one rung of movement, and no view about direction is required — only that price keeps crossing the same region. Roughly three-quarters of the time, currency pairs do exactly that.',
         entry: 'A resting limit order at the nearest unfilled rung on the appropriate side of the anchor.',
         exit: 'Take profit one rung back toward the anchor, or exit entirely if price escapes the grid boundary.',
+        whenItWorks: 'Range-bound markets that keep crossing the same region — which currency pairs do a large fraction of the time. It needs no view about direction at all, only that price oscillates, and each round trip harvests one rung regardless of which way the market went first.',
         whenItFails: 'A trend. The grid keeps buying as price falls through every rung, each position underwater, and the account carries a growing loss with no mechanism to stop — unless the boundary rule fires. The boundary is not a refinement; it is the only thing standing between this strategy and a margin call.',
     },
     caveats: [

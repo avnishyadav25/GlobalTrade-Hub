@@ -166,7 +166,7 @@ export default function InsightsPage() {
             <div className="mb-7 grid gap-6" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
                 <div>
                     <div className="text-base font-bold">Suggested rule changes</div>
-                    <div className="mb-3.5 text-sm text-faint">Applied rules are enforced on every paper order — the ticket, the Agents screen and auto-trading all go through the same check. Live routing is not implemented yet.</div>
+                    <div className="mb-3.5 text-sm text-faint">Applied rules are enforced on every order — the ticket, the Agents screen and auto-trading all go through the same check, and so does live routing when ENABLE_LIVE_TRADING is on.</div>
                     <div className="flex flex-col gap-3">
                         {COACH_RULES.map((r) => {
                             const on = !!applied[r.id];

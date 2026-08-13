@@ -61,6 +61,7 @@ export const bollingerRsi: Strategy = {
         idea: 'Bollinger bands sit a couple of standard deviations either side of a moving average, so price outside them is unusual relative to its own recent volatility. On its own that is weak — price rides the upper band throughout a strong trend. Requiring RSI to agree that the move is stretched filters out the cases where "unusual" simply means "trending".',
         entry: 'Buy when the close is below the lower band AND RSI is oversold. Short the mirror image.',
         exit: 'Take profit when price returns to the middle band. A percentage stop closes the trade when the overshoot turns out to be a trend.',
+        whenItWorks: 'Range-bound markets with a stable mean, where price genuinely oscillates around a level. Requiring two independent conditions — statistical extension AND momentum exhaustion — is what separates it from a naive band-touch rule, because in a trend price rides the band while RSI refuses to confirm, and the trade is simply not taken.',
         whenItFails: 'A genuine breakout. Price leaves the band and keeps going, RSI stays pinned below 30 for weeks, and every entry is against a move that does not stop. This is the strategy that most reliably produces a long string of small wins followed by one loss larger than all of them.',
         lesson: 'scanner-and-rsi',
     },
@@ -113,6 +114,7 @@ export const rsi2: Strategy = {
         idea: 'A very short RSI — two bars rather than fourteen — reacts to a single sharp down day. Combined with a long-term filter that only permits buying while the instrument is above its 200-bar average, this buys short pullbacks inside an established uptrend. The two components do different jobs: the long average decides whether to participate at all, the short RSI decides when.',
         entry: 'Price above the long moving average, and RSI(2) below the entry level.',
         exit: 'Price closes back above a short moving average, usually within a few bars. A stop handles the case where the pullback keeps going.',
+        whenItWorks: 'Established uptrends that pull back sharply and briefly. The two components do genuinely different jobs, which is why the pair works better than either alone: the long average decides whether this market deserves participation at all, and the short RSI decides when the price is temporarily unattractive to everyone else. Buying fear inside strength has a rationale that buying fear alone does not.',
         whenItFails: 'When the long-term trend breaks while you are still trading it. The 200-bar average turns slowly, so there is a window where the filter still says "uptrend" and the market has already rolled over. That window is where this strategy takes its worst losses.',
     },
     caveats: ['Long only. The asymmetry it exploits — sharp dips inside uptrends — does not mirror cleanly on the short side.'],
@@ -167,6 +169,7 @@ export const vwapReversion: Strategy = {
         idea: 'VWAP is the average price weighted by how much actually traded there, which makes it a rough proxy for where the day\'s real business was done. Institutions measure their own execution against it, so it acts as a magnet during a session: price that has run well away from VWAP often comes back to it.',
         entry: 'Price stretched a configurable percentage away from session VWAP.',
         exit: 'Price returns to VWAP, or the stop admits the move was not a stretch.',
+        whenItWorks: 'Balanced intraday sessions where price rotates around the day\'s real business. VWAP is not an arbitrary average — institutions are measured against it, so it acts as a genuine magnet, and a stretch away from it is a stretch away from where size actually traded.',
         whenItFails: 'Trend days, when VWAP simply rises all session and price never comes back to it. Fading a trend day with this is how an intraday account loses a week of gains in an afternoon.',
     },
     caveats: [
@@ -225,6 +228,7 @@ export const zscoreReversion: Strategy = {
         idea: 'A z-score expresses how far price sits from its own recent mean in units of its own recent volatility. That normalisation is what makes it comparable across instruments: two standard deviations means the same thing on a quiet currency pair and a violent altcoin, even though the percentage moves differ by an order of magnitude.',
         entry: 'Buy at a z-score below minus the entry threshold; short above it.',
         exit: 'Close once the score returns near zero. The stop is placed at a further z-score, so it scales with volatility rather than being a fixed percentage.',
+        whenItWorks: 'Mean-reverting instruments with a stable level. Its advantage is comparability: because the threshold is in standard deviations rather than percent, the same parameters mean the same thing on a quiet currency pair and a violent altcoin, so one rule set can be applied across a portfolio without per-instrument tuning.',
         whenItFails: 'When the mean itself is moving. A z-score measures distance from a rolling average, and in a steady trend that average chases price, so the score keeps resetting toward zero while the instrument marches away from where you bought it.',
     },
 };

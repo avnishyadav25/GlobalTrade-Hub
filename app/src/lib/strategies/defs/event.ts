@@ -77,6 +77,7 @@ export const pead: Strategy = {
         idea: 'Markets are supposed to absorb earnings news instantly, and mostly they do — but not completely. Prices have historically continued drifting in the direction of a large surprise for weeks afterwards, which is one of the most durable documented anomalies in finance. The usual explanation is that investors under-react to information that arrives all at once.',
         entry: 'A large earnings surprise, confirmed by the market gapping in the same direction.',
         exit: 'A fixed holding period, with a stop for the case where the drift reverses.',
+        whenItWorks: 'Large earnings surprises in liquid names. This is one of the most durable documented anomalies in finance and it survives, in weakened form, decades after publication — which is what you would expect of a real effect being slowly arbitraged rather than a data artefact. Requiring the gap to agree with the surprise filters the cases where the number was already priced.',
         whenItFails: 'When the surprise was already anticipated, so the gap is the whole move and there is nothing left to drift. It also fails badly when a beat comes with weak guidance: the headline number is good, the stock falls, and the strategy is long into a decline. Requiring the gap to agree with the surprise filters most but not all of those.',
     },
     caveats: [
@@ -133,6 +134,7 @@ export const inventoryShock: Strategy = {
         idea: 'Weekly petroleum stock figures are one of the few genuinely scheduled supply signals in commodities. A build larger than expected means more oil sitting in tanks than the market thought, which is bearish; a draw is the reverse. The reaction is fast and usually visible within minutes of the release.',
         entry: 'A build or draw larger than the threshold, traded in the direction of the supply implication.',
         exit: 'A short holding period, with a stop.',
+        whenItWorks: 'The minutes after a genuinely surprising petroleum stock figure. It is one of very few scheduled, quantified supply signals in any market, so the reaction is fast and the direction is interpretable rather than guessed.',
         whenItFails: 'When the inventory number is contradicted by something larger — an OPEC decision, a geopolitical event, a demand revision. Inventories describe supply only, and price is set by both sides. It also fails when the release has already leaked into the market through the private survey published the evening before.',
     },
     caveats: [
@@ -164,6 +166,7 @@ export const fundingCarry: Strategy = {
         idea: 'A perpetual futures contract has no expiry, so exchanges use a funding payment every few hours to tether it to the spot price. When the perpetual trades above spot, longs pay shorts. A trader holding the asset on the spot market while shorting the perpetual is flat on price and collects that payment — a genuine carry, not a directional bet.',
         entry: 'Not executable here. The signal flags when the annualised funding rate is high enough to be worth the operational effort.',
         exit: 'Nothing to exit — no position is ever opened. The signal simply stops being flagged once the carry falls back below the threshold.',
+        whenItWorks: 'Periods when the perpetual trades persistently above spot, which is most of a bull market. The position is flat on price by construction and collects a payment every few hours, so the return comes from a mechanical transfer between traders rather than from a forecast being right.',
         whenItFails: 'The trade is only market-neutral while both legs are held. Exchange risk, liquidation of the short leg during a violent rally, and the funding rate flipping negative are the real hazards — the profit is small and steady, which means the losses that matter are rare and large.',
     },
     caveats: [

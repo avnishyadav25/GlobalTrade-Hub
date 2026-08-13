@@ -194,6 +194,7 @@ export const shortStraddle: OptionsStrategy = {
         idea: 'Sell the at-the-money call and put together, collecting both premiums. The position profits when the underlying stays near the strike and implied volatility falls. It is a bet that the market is charging more for movement than movement will turn out to cost.',
         entry: 'Implied volatility above a floor AND above recent realised volatility, with enough time left that gamma is still manageable.',
         exit: 'A share of the credit captured, a multiple of it lost, or the approach of expiry — whichever comes first.',
+        whenItWorks: 'Quiet markets that have been pricing in movement they do not deliver — the gap between implied and realised volatility, which is positive more often than not because buyers of protection systematically overpay for it. Time works for the position every single day it is open, which is the only Greek with a certain direction.',
         whenItFails: 'A large move in either direction. Losses are unbounded on the call side, and they arrive fastest exactly when volatility is rising, so the position is losing on direction and on vega at the same time. This is the structure that has ended the most retail accounts, and it wins most of the time right up until it does not.',
     },
     caveats: [
@@ -250,6 +251,7 @@ export const ironCondor: OptionsStrategy = {
         idea: 'Sell an out-of-the-money call spread and an out-of-the-money put spread at once. The position profits if the underlying stays between the short strikes, and the bought wings cap the loss if it does not.',
         entry: 'Short strikes near a chosen delta, with wings a fixed number of strikes beyond.',
         exit: 'A share of the credit captured, a multiple of it lost, or the approach of expiry.',
+        whenItWorks: 'Range-bound markets, with a loss that is capped rather than unbounded. The bought wings are what make the position survivable: the same view expressed as a naked strangle has no ceiling, and the difference between those two is whether one bad week ends the account or costs a known amount.',
         whenItFails: 'A move through either short strike. The maximum loss is typically several times the maximum gain, so a strategy that wins nine times in ten can still lose money over a year. Defined risk is not small risk.',
     },
     caveats: [
@@ -325,6 +327,7 @@ export const gammaScalp: OptionsStrategy = {
         idea: 'Buy an at-the-money straddle and trade the underlying against it as price moves. A long option gains delta in the direction of the move, so repeatedly flattening that delta banks each swing. The position is long gamma and short theta: it is paid by movement and charged by time.',
         entry: 'Implied volatility below recent realised, with enough time left that decay is not yet dominant.',
         exit: 'Approach of expiry, where theta accelerates and the remaining time value is small.',
+        whenItWorks: 'Markets moving more than their options are priced for. It is the mirror of the straddle seller and the rarer opportunity, because implied volatility usually exceeds realised — when it does not, the position is paid by every swing and the rebalances bank movement the option price did not charge for.',
         whenItFails: 'A quiet market. Theta is charged every day whatever happens, so a straddle bought before a week of calm loses steadily and the scalps never cover it. It also fails when implied volatility falls after entry — the position is long vega as well as long gamma.',
     },
     caveats: [
@@ -378,6 +381,7 @@ export const ivSkew: OptionsStrategy = {
         idea: 'Out-of-the-money puts on an equity index almost always carry higher implied volatility than the equivalent calls, because the market pays up for crash protection. This sells the expensive wing and buys the cheap one when the gap between them widens beyond its usual level.',
         entry: 'Put implied volatility exceeding call implied volatility at the same delta by more than a threshold.',
         exit: 'A share of the credit captured, a stop, or the approach of expiry.',
+        whenItWorks: 'Periods when crash protection has become unusually expensive relative to upside — after a scare rather than during one. Selling the wing the market is crowding into is a genuine liquidity provision, and index skew does mean-revert once the fear that widened it fades.',
         whenItFails: 'Precisely when the skew was right. The gap widens because the market is pricing a crash, and selling that protection immediately before one is how the trade loses many times what it collected. Skew is not usually mispriced — it is compensation for a real and asymmetric risk.',
     },
     caveats: [

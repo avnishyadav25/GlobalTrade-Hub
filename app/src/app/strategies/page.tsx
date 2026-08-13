@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { PageShell, Panel, Badge, Button, SegmentedControl } from '@/components/ui';
 import { allStrategies } from '@/lib/strategies/defs';
+import { OPTIONS_STRATEGIES } from '@/lib/options/strategy';
 import { useStrategyStore } from '@/stores/strategyStore';
 import { useSignalStore } from '@/stores/signalStore';
 import { MARKET_LABELS } from '@/lib/constants';
@@ -36,7 +37,10 @@ const FAMILY_BLURB: Record<Family, string> = {
 
 };
 
-const ORDER: Family[] = ['benchmark', 'trend', 'meanReversion', 'session', 'spread', 'volatility', 'range', 'event', 'options', 'breakout'];
+// 'options' is deliberately absent: an OptionsStrategy has no `markets`, no `shape` and
+// no `onBar`, so it cannot enter the Strategy registry and would never appear here.
+// It gets its own section below, read straight from OPTIONS_STRATEGIES.
+const ORDER: Family[] = ['benchmark', 'trend', 'meanReversion', 'session', 'spread', 'volatility', 'range', 'event', 'breakout'];
 
 export default function StrategiesPage() {
     const [market, setMarket] = useState<string>('all');
@@ -61,7 +65,7 @@ export default function StrategiesPage() {
         <PageShell
             title="Strategies"
             coachTopic="strategies"
-            subtitle="Twenty rule sets you can backtest against real data, then run in review mode. Each one states where it loses money as plainly as what it does."
+            subtitle={`${strategies.length + OPTIONS_STRATEGIES.length} rule sets you can backtest against real data, then run in review mode. Each one states where it loses money as plainly as what it does.`}
             actions={
                 <Link href="/signals">
                     <Button variant={pending ? 'primary' : 'secondary'}>
@@ -127,6 +131,45 @@ export default function StrategiesPage() {
                     </div>
                 </section>
             ))}
+
+            {/* Options structures. Separate because they are a different contract: one
+                position made of several strikes, run by their own engine. Only shown on
+                the 'all' and India filters, since they are NIFTY/BANKNIFTY only. */}
+            {(market === 'all' || market === 'india') && (
+                <section className="mb-7">
+                    <header className="mb-2.5">
+                        <h2 className="text-md font-semibold">{FAMILY_LABEL.options}</h2>
+                        <p className="text-xs text-faint">{FAMILY_BLURB.options}</p>
+                    </header>
+
+                    <div className="flex flex-col gap-2">
+                        {OPTIONS_STRATEGIES.map((s) => (
+                            <Link
+                                key={s.id}
+                                href={`/strategies/options/${s.id}`}
+                                className="panel block p-3.5 transition-colors hover:border-accent"
+                            >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-semibold">{s.name}</span>
+                                            <Badge>multi-leg</Badge>
+                                        </div>
+                                        <p className="mt-1 max-w-[70ch] text-xs text-foreground-muted">{s.explain.entry}</p>
+                                        {s.caveats?.length ? (
+                                            <p className="mt-1 text-2xs text-warn">{s.caveats[0]}</p>
+                                        ) : null}
+                                    </div>
+                                    <div className="flex shrink-0 flex-wrap gap-1">
+                                        <Badge>NIFTY</Badge>
+                                        <Badge>BANKNIFTY</Badge>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
         </PageShell>
     );
 }
