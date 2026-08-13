@@ -19,6 +19,16 @@ export const INDIA_EQUITY_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Name the exchanges, the regulator and the depositories, and say what each actually does.',
         where: { href: '/terminal', label: 'Open the Terminal' },
+        visual: {
+            kind: 'nested',
+            caption: "Your shares are not at your broker. That single fact is the biggest structural protection Indian retail investors have.",
+            steps: [
+                { label: "SEBI", note: "writes the rules", tone: 'accent' },
+                { label: "NSE / BSE", note: "match the orders" },
+                { label: "NSDL / CDSL", note: "hold your shares, in your name", tone: 'up' },
+                { label: "your broker", note: "routes and holds cash only", tone: 'warn' },
+            ],
+        },
         concept: [
             'India has two significant stock exchanges. The **BSE**, founded in 1875, is the older — Asia\'s first. The **NSE**, which opened in 1994, is where the overwhelming majority of equity volume now trades. Most liquid stocks are listed on both, and the prices track each other closely because arbitrageurs make money whenever they do not.',
             '**SEBI** is the regulator. It is not a participant: it writes the rules, licenses the brokers and exchanges, and punishes people who break them. When you read that a stock has been moved to a surveillance list, or that intraday leverage was reduced, that is SEBI.',
@@ -55,6 +65,14 @@ export const INDIA_EQUITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Choose the right product type, and know what it costs you in tax, margin and risk.',
         where: { href: '/funds', label: 'See your charges' },
+        visual: {
+            kind: 'split-bar',
+            caption: "The same \u20b91,00,000 round trip, charged two ways. The gap is almost entirely STT.",
+            steps: [
+                { label: "intraday", note: "8.24 bps", tone: 'up', value: 824 },
+                { label: "delivery", note: "23.57 bps", tone: 'down', value: 2357 },
+            ],
+        },
         prereq: ['nse-bse-and-sebi'],
         concept: [
             'Every Indian equity order carries a product type, and it is not a formality. **MIS** (intraday) means the position must be closed the same day. **CNC** (delivery) means the shares are actually credited to your demat account.',
@@ -100,6 +118,14 @@ export const INDIA_EQUITY_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Explain why an order can become unfillable at exactly the moment you most want out.',
         where: { href: '/orders', label: 'Look at your orders' },
+        visual: {
+            kind: 'gauge',
+            caption: "A circuit is not a pause. Trading continues \u2014 but only at that price, and only if somebody is on the other side.",
+            value: 0.95,
+            a: "lower circuit",
+            b: "upper circuit",
+            unit: "%",
+        },
         prereq: ['intraday-vs-delivery'],
         concept: [
             'Indian exchanges cap how far a stock may move in a day. Depending on the security, the band is 2%, 5%, 10% or 20% either side of the previous close. Touch the upper limit and it is in **upper circuit**; touch the lower and it is in **lower circuit**.',
@@ -134,6 +160,16 @@ export const INDIA_EQUITY_LESSONS: Lesson[] = [
         minutes: 10,
         outcome: 'Understand the STRUCTURE of Indian trading tax, and know where to check the current rates.',
         where: { href: '/funds', label: 'Review your charges' },
+        visual: {
+            kind: 'flow',
+            caption: "Which box your profit falls into is decided before you trade, by the product you chose.",
+            steps: [
+                { label: "intraday equity", note: "speculative business income", tone: 'warn' },
+                { label: "delivery equity", note: "capital gains, by holding period" },
+                { label: "F&O", note: "non-speculative business income", tone: 'accent' },
+                { label: "slab or special rate", note: "and different set-off rules", tone: 'down' },
+            ],
+        },
         prereq: ['intraday-vs-delivery'],
         concept: [
             'Indian trading income falls into categories that are taxed completely differently, and picking the wrong mental model costs more than most trading mistakes.',

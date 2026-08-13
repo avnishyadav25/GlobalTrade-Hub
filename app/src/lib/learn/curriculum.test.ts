@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { LESSONS, lessonBySlug, lessonsByTrack } from './curriculum';
 import { TRACKS, LEVELS } from './types';
-import { VISUAL_KEYS } from './visuals';
+import { VISUAL_KEYS, ARCHETYPE_KINDS, isBespoke } from './visuals';
 import { COACH_TOPICS } from './topics';
 import { parseInline, parseBlocks } from './markdownLite';
 import { newPaperState } from '@/lib/paperEngine';
@@ -98,11 +98,26 @@ describe('curriculum integrity', () => {
         }
     });
 
-    it('resolves every visual to a registered animation', () => {
+    it('resolves every visual to a registered animation or a known archetype', () => {
+        // The component registry is now built FROM `visuals.ts` with a `satisfies`
+        // clause, so a bespoke key without a component fails to COMPILE. This covers
+        // the other half: an archetype whose kind is not one the dispatcher knows.
         for (const l of LESSONS) {
             if (!l.visual) continue;
-            expect(VISUAL_KEYS as readonly string[], `${l.slug} → ${l.visual}`).toContain(l.visual);
+            if (isBespoke(l.visual)) {
+                expect(VISUAL_KEYS as readonly string[], `${l.slug} → ${l.visual}`).toContain(l.visual);
+            } else {
+                expect(ARCHETYPE_KINDS as readonly string[], `${l.slug} → ${l.visual.kind}`).toContain(l.visual.kind);
+                expect(l.visual.caption.length, `${l.slug} archetype caption`).toBeGreaterThan(20);
+            }
         }
+    });
+
+    it('gives every lesson a visual', () => {
+        // 95 of 117 lessons had none, and three whole tracks had zero. Asserting it here
+        // is what stops that reopening one unillustrated lesson at a time.
+        const missing = LESSONS.filter((l) => !l.visual).map((l) => l.slug);
+        expect(missing, `lessons with no visual: ${missing.join(', ')}`).toEqual([]);
     });
 
     it('has a well-formed quiz on every lesson', () => {

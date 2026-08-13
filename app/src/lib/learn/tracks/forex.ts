@@ -16,6 +16,16 @@ export const FOREX_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Say what a quoted FX price means and which currency you are actually long.',
         where: { href: '/terminal', label: 'Open a currency pair' },
+        visual: {
+            kind: 'flow',
+            caption: "Every FX position is relative. There is no way to be long one currency alone.",
+            steps: [
+                { label: "buy EUR/USD", tone: 'accent' },
+                { label: "long the base", note: "euro", tone: 'up' },
+                { label: "short the quote", note: "dollar", tone: 'down' },
+                { label: "one position", note: "two simultaneous bets" },
+            ],
+        },
         concept: [
             'A currency has no price on its own — only a price against another currency. So FX quotes come in **pairs**: `EUR/USD`, `USD/JPY`, `USD/INR`.',
             'The first currency is the **base**, the second the **quote**. The number is how much of the quote currency buys one unit of the base. `USD/INR = 88` means one dollar costs 88 rupees.',
@@ -49,6 +59,14 @@ export const FOREX_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Know which FX products are permitted in India and why the advertised ones usually are not.',
         where: { href: '/settings', label: 'Broker connections' },
+        visual: {
+            kind: 'ladder',
+            caption: "What an Indian resident may actually trade, and what the advertising is selling.",
+            steps: [
+                { label: "exchange currency derivatives", note: "permitted, SEBI-regulated broker", tone: 'up', value: 100 },
+                { label: "offshore leveraged FX", note: "not a permitted remittance under FEMA", tone: 'down', value: 0 },
+            ],
+        },
         prereq: ['currency-pairs'],
         concept: [
             'This lesson exists because the advertising is relentless and the rules are not widely known. It is worth being precise.',
@@ -86,6 +104,16 @@ export const FOREX_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Rank the drivers by horizon, and stop expecting economics to explain a daily move.',
         where: { href: '/terminal', label: 'Watch USD/INR' },
+        visual: {
+            kind: 'stack',
+            caption: "Different drivers dominate at different horizons. Most confusion is a long-horizon explanation applied to a daily move.",
+            steps: [
+                { label: "days", note: "rate EXPECTATIONS, not levels", tone: 'accent' },
+                { label: "months", note: "capital flows and risk sentiment" },
+                { label: "years", note: "inflation differentials, trade balance", tone: 'up' },
+                { label: "always", note: "RBI intervention \u2014 a managed rate", tone: 'warn' },
+            ],
+        },
         prereq: ['currency-pairs'],
         concept: [
             'Currencies respond to different things over different horizons, and most confusion comes from applying a long-horizon explanation to a short-horizon move.',
@@ -164,6 +192,14 @@ export const FOREX_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain why borrowing cheap to hold high-yield works for years and then unwinds in days.',
         where: { href: '/strategies', label: 'See the funding-carry signal' },
+        visual: {
+            kind: 'two-series',
+            caption: "Steady, positive, low-variance \u2014 and then catastrophic. Years of gains reverse in days.",
+            a: "carry return",
+            b: "",
+            seriesA: [100, 103, 106, 109, 112, 115, 118, 121, 124, 127, 96],
+            seriesB: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+        },
         prereq: ['what-moves-currencies'],
         concept: [
             'The **carry trade** borrows in a low-interest currency and holds a high-interest one, collecting the difference. Historically this has been one of the most persistently profitable FX strategies, which by itself should prompt suspicion.',
@@ -198,6 +234,17 @@ export const FOREX_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Choose when to trade FX, and know what data the market structurally cannot give you.',
         where: { href: '/terminal', label: 'Check the session state' },
+        visual: {
+            kind: 'timeline',
+            caption: "A 24-hour market with structured liquidity. The same strategy behaves differently at different hours.",
+            steps: [
+                { label: "Sydney", note: "thin" },
+                { label: "Tokyo", note: "ranges form", tone: 'warn' },
+                { label: "London", note: "volume arrives", tone: 'up' },
+                { label: "London + NY", note: "deepest book, tightest spreads", tone: 'up' },
+                { label: "late NY", note: "thinning again", tone: 'warn' },
+            ],
+        },
         prereq: ['fx-leverage'],
         concept: [
             'FX trades continuously from Monday morning in Asia to Friday evening in New York. There is no opening bell and no closing auction, because there is no exchange — it is a decentralised over-the-counter market between banks.',

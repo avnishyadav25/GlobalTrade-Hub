@@ -16,6 +16,14 @@ export const IPO_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Distinguish a fresh issue from an offer for sale, and know why the difference matters to you.',
         where: { href: '/research', label: 'See live IPOs' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Where does your money go? The prospectus states the split, and it is the first thing to read.",
+            steps: [
+                { label: "fresh issue", note: "the company gets it", tone: 'up', value: 35 },
+                { label: "offer for sale", note: "existing holders exit", tone: 'down', value: 65 },
+            ],
+        },
         concept: [
             'An initial public offering is the first time a company\'s shares are sold to the public. After it, the shares trade on an exchange and anyone can buy them.',
             'The critical distinction, and the one most coverage skips: **where does your money go?**',
@@ -50,6 +58,16 @@ export const IPO_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Read an issue\'s terms and work out what applying actually costs you.',
         where: { href: '/research', label: 'Look at an issue\'s terms' },
+        visual: {
+            kind: 'timeline',
+            caption: "Under ASBA your money is blocked, not debited \u2014 it stays yours and keeps earning until allotment.",
+            steps: [
+                { label: "bid at cut-off", note: "funds blocked in YOUR account", tone: 'accent' },
+                { label: "book builds", note: "three days of demand" },
+                { label: "price discovered", note: "the cut-off is set" },
+                { label: "allotted, or released", note: "the block lifts either way", tone: 'up' },
+            ],
+        },
         prereq: ['what-an-ipo-is'],
         concept: [
             'Most Indian IPOs are **book built**. The company announces a **price band** — a floor and a cap — and takes bids across it over a three-day window. At the close, the final **cut-off price** is set from the demand received.',
@@ -84,6 +102,15 @@ export const IPO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Understand the category split and why the retail lottery favours one application per person.',
         where: { href: '/research', label: 'Check subscription figures' },
+        visual: {
+            kind: 'ladder',
+            caption: "Retail allotment is a lottery in whole lots, designed to spread allotments as widely as possible.",
+            steps: [
+                { label: "QIB", note: "discretionary, proportional", tone: 'accent', value: 50 },
+                { label: "NII / HNI", note: "proportional \u2014 why HNIs borrow", tone: 'warn', value: 15 },
+                { label: "retail", note: "a lottery, one lot each", tone: 'up', value: 35 },
+            ],
+        },
         prereq: ['book-building-and-lots'],
         concept: [
             'An issue is divided into reserved portions. **QIB** — qualified institutional buyers. **NII/HNI** — non-institutional, applications above ₹2 lakh. **RII** — retail individual investors, up to ₹2 lakh. There are often small reservations for employees and, occasionally, shareholders of a parent company.',
@@ -118,6 +145,16 @@ export const IPO_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Interpret GMP for what it is, and know why it moves the way it does.',
         where: { href: '/research', label: 'Back to Research' },
+        visual: {
+            kind: 'cycle',
+            caption: "It is circular. Nothing about the business is learned at any point in this loop.",
+            steps: [
+                { label: "GMP quoted high", note: "by dealers with a position", tone: 'warn' },
+                { label: "retail applies", note: "because GMP is high" },
+                { label: "subscription rises", note: "the headline number", tone: 'accent' },
+                { label: "GMP rises further", note: "confirming nothing", tone: 'down' },
+            ],
+        },
         prereq: ['allotment-and-categories'],
         concept: [
             '**Grey market premium** is the price at which an IPO\'s shares are informally traded before listing, quoted as a premium to the issue price. A GMP of ₹120 on a ₹500 issue implies an expected listing around ₹620.',
@@ -152,6 +189,16 @@ export const IPO_LESSONS: Lesson[] = [
         minutes: 10,
         outcome: 'Find the four sections of a DRHP that actually change a decision.',
         where: { href: '/research', label: 'Back to Research' },
+        visual: {
+            kind: 'ladder',
+            caption: "Four sections carry most of the decision. Nobody reads all several hundred pages, and nobody needs to.",
+            steps: [
+                { label: "objects of the issue", note: "what the money is for", tone: 'accent', value: 100 },
+                { label: "risk factors", note: "written by lawyers, unusually candid", tone: 'warn', value: 90 },
+                { label: "restated financials", note: "read three to five years", tone: 'up', value: 85 },
+                { label: "related-party + promoter", note: "money moving to insiders", tone: 'down', value: 70 },
+            ],
+        },
         prereq: ['what-an-ipo-is'],
         concept: [
             'The **DRHP** — draft red herring prospectus — is filed with SEBI and runs to several hundred pages. Almost nobody reads all of it, and almost nobody needs to. Four sections carry most of the decision-relevant content.',
@@ -190,6 +237,14 @@ export const IPO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Separate the listing pop from the long-run record, and size an application accordingly.',
         where: { href: '/portfolio', label: 'Think about position size' },
+        visual: {
+            kind: 'two-series',
+            caption: "Two very different things get called \"IPO returns\". Conflating them is the most common mistake in this subject.",
+            a: "listing-day pop",
+            b: "return over 3 years",
+            seriesA: [0, 18, 18, 18, 18],
+            seriesB: [0, 18, 8, -2, -9],
+        },
         prereq: ['grey-market-premium'],
         concept: [
             'Two very different things get called "IPO returns", and conflating them is the single most common mistake in this subject.',

@@ -15,6 +15,15 @@ export const INDIA_EQUITY_ADVANCED: Lesson[] = [
         minutes: 7,
         outcome: 'Explain how the Indian indices are built and what rebalancing does to a stock.',
         where: { href: '/terminal', label: 'Back to the terminal' },
+        visual: {
+            kind: 'ladder',
+            caption: "Free-float weighting: a company with a large promoter stake counts far less than its headline size suggests.",
+            steps: [
+                { label: "full market cap", note: "what the company is worth", tone: 'accent', value: 100 },
+                { label: "promoter holding", note: "never trades", tone: 'down', value: 75 },
+                { label: "free float", note: "what the index counts", tone: 'up', value: 25 },
+            ],
+        },
         prereq: ['nse-bse-and-sebi'],
         concept: [
             'The **Nifty 50** holds 50 large companies on the NSE; the **Sensex** holds 30 on the BSE. Both are weighted by **free-float market capitalisation** — company value counted only over shares actually available to trade, excluding promoter and government holdings that never come to market.',
@@ -84,6 +93,14 @@ export const INDIA_EQUITY_ADVANCED: Lesson[] = [
         minutes: 8,
         outcome: 'Recognise a mechanical price adjustment and stop reading it as a crash.',
         where: { href: '/holdings', label: 'Check your holdings' },
+        visual: {
+            kind: 'two-series',
+            caption: "A 1:5 split on an unadjusted series looks like an 80% crash. It is one of the most common silent backtest errors.",
+            a: "unadjusted",
+            b: "adjusted",
+            seriesA: [1000, 1010, 1005, 1015, 203, 205, 204, 208],
+            seriesB: [200, 202, 201, 203, 203, 205, 204, 208],
+        },
         prereq: ['nse-bse-and-sebi'],
         concept: [
             'A **corporate action** changes the shares or the cash attached to them, and several of them change the quoted price without changing the value of what you hold. Reading one as a market move is a recurring beginner error, and it also corrupts backtests.',
@@ -120,6 +137,16 @@ export const INDIA_EQUITY_ADVANCED: Lesson[] = [
         minutes: 8,
         outcome: 'Understand upfront margin collection and why intraday leverage is far lower than it used to be.',
         where: { href: '/funds', label: 'See your buying power' },
+        visual: {
+            kind: 'timeline',
+            caption: "Peak margin is assessed on intraday snapshots. A position flat by the close still incurred its largest requirement.",
+            steps: [
+                { label: "09:15 flat", note: "nothing held" },
+                { label: "11:00 large", note: "peak requirement", tone: 'down' },
+                { label: "14:00 reduced", note: "still assessed at the peak", tone: 'warn' },
+                { label: "15:30 flat", note: "the peak is what counted", tone: 'accent' },
+            ],
+        },
         prereq: ['intraday-vs-delivery'],
         concept: [
             'Indian margin rules were substantially tightened, and any material written before that change describes leverage that no longer exists. This lesson describes the structure rather than the multiples, because the multiples are set by regulation and revised.',
@@ -155,6 +182,16 @@ export const INDIA_EQUITY_ADVANCED: Lesson[] = [
         minutes: 8,
         outcome: 'Check a stock\'s surveillance status before buying, and know what it does to your ability to exit.',
         where: { href: '/scanner', label: 'Back to the scanner' },
+        visual: {
+            kind: 'stack',
+            caption: "The stages escalate. What changes is not your loss but your ability to act on it.",
+            steps: [
+                { label: "normal", note: "continuous trading", tone: 'up' },
+                { label: "ASM", note: "higher margin" },
+                { label: "trade-for-trade", note: "no intraday netting", tone: 'warn' },
+                { label: "GSM higher stages", note: "periodic auction only \u2014 you cannot exit", tone: 'down' },
+            ],
+        },
         prereq: ['circuit-filters'],
         concept: [
             'The exchanges run surveillance frameworks that place unusual stocks under restrictions. They are published, checkable before you buy, and routinely ignored by the people most affected by them.',
@@ -190,6 +227,16 @@ export const INDIA_EQUITY_ADVANCED: Lesson[] = [
         minutes: 8,
         outcome: 'Size a small-cap position by exit capacity rather than by conviction.',
         where: { href: '/portfolio', label: 'Check your concentration' },
+        visual: {
+            kind: 'flow',
+            caption: "The risks are not independent. One event triggers all of them at once.",
+            steps: [
+                { label: "price falls" },
+                { label: "thin book", note: "no bids in size", tone: 'warn' },
+                { label: "circuit band", note: "locked limit-down", tone: 'down' },
+                { label: "pledged shares", note: "lenders sell into no bid", tone: 'down' },
+            ],
+        },
         prereq: ['surveillance-frameworks'],
         concept: [
             'Small caps are where the largest returns and the largest permanent losses both live, and the reason is the same in both cases: **there are fewer participants on the other side.**',

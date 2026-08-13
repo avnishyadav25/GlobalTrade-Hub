@@ -23,6 +23,15 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Say what a derivative derives from, and why leverage is the point rather than a side effect.',
         where: { href: '/terminal', label: 'Back to the terminal' },
+        visual: {
+            kind: 'flow',
+            caption: "Risk moving from someone who has it to someone who wants it. Both sides get what they came for.",
+            steps: [
+                { label: "a hedger", note: "already carries the risk", tone: 'up' },
+                { label: "a contract", note: "about a price, not the thing", tone: 'accent' },
+                { label: "a speculator", note: "wants to take it on", tone: 'warn' },
+            ],
+        },
         concept: [
             'A **derivative** is a contract whose value comes from something else — a stock, an index, a currency, a barrel of oil. You are not trading the thing; you are trading an agreement about its price.',
             'They exist because two very different groups want opposite things from the same contract. A **hedger** — a farmer, an exporter, a fund manager — wants to remove a price risk they already carry. A **speculator** wants to take one on. The contract transfers risk from someone who has it to someone who wants it, and both sides get what they came for.',
@@ -56,6 +65,14 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Explain daily settlement and why a correct view can still liquidate you.',
         where: { href: '/funds', label: 'Look at margin in the paper book' },
+        visual: {
+            kind: 'two-series',
+            caption: "You can be right about direction and still be liquidated, if the path there is rough enough.",
+            a: "your equity",
+            b: "maintenance margin",
+            seriesA: [100, 88, 74, 61, 52, 68, 84, 97],
+            seriesB: [60, 60, 60, 60, 60, 60, 60, 60],
+        },
         prereq: ['what-a-derivative-is'],
         concept: [
             'A **futures contract** commits both sides to a transaction at a set price on a set date. In India, index and stock futures are cash-settled: no shares change hands, only the difference.',
@@ -99,6 +116,16 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'State the four basic positions and who faces unlimited loss in each.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'ladder',
+            caption: "Four positions, and they are not symmetric. Only one of them has no ceiling on the loss.",
+            steps: [
+                { label: "long call", note: "loss capped at premium", tone: 'up', value: 20 },
+                { label: "long put", note: "loss capped at premium", tone: 'up', value: 20 },
+                { label: "short put", note: "large, but bounded at zero", tone: 'warn', value: 60 },
+                { label: "short call", note: "UNLIMITED", tone: 'down', value: 100 },
+            ],
+        },
         prereq: ['what-a-derivative-is'],
         concept: [
             'A **call** gives its buyer the right to buy the underlying at a fixed **strike price** before or at expiry. A **put** gives the right to sell at a strike. In both cases the buyer pays a **premium** for that right and may simply never use it.',
@@ -180,6 +207,16 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Draw the payoff of any combination and find its break-even without arithmetic.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'flow',
+            caption: "A long call is not profitable at the strike. It is profitable at the strike plus what you paid.",
+            steps: [
+                { label: "below strike", note: "worthless, you lose premium", tone: 'down' },
+                { label: "at strike", note: "exercisable, still down the premium", tone: 'warn' },
+                { label: "strike + premium", note: "break-even at last", tone: 'accent' },
+                { label: "above that", note: "profit, uncapped", tone: 'up' },
+            ],
+        },
         prereq: ['intrinsic-and-time-value'],
         concept: [
             'A **payoff diagram** plots profit and loss at expiry against the underlying price. It is the single most useful tool in options, because it converts a position into a shape you can reason about at a glance.',
@@ -265,6 +302,12 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Read IV as a price rather than a forecast, and anticipate the post-event collapse.',
         where: { href: '/research', label: 'Check an earnings date' },
+        visual: {
+            kind: 'decay',
+            caption: "Volatility crush. Implied volatility rises into a known event and collapses the moment it passes.",
+            a: "before earnings",
+            b: "after",
+        },
         prereq: ['the-greeks'],
         concept: [
             '**Implied volatility** is the volatility figure that, put into a pricing model, reproduces the option\'s actual market price. It is not measured from history — it is reverse-engineered from what people are paying.',
@@ -300,6 +343,14 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Explain what each common structure trades away, and why nothing is free.',
         where: { href: '/strategies', label: 'See what is and is not built' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Every structure trades something away. A vertical spread buys cheapness with the upside beyond the second strike.",
+            steps: [
+                { label: "kept", note: "the move up to the short strike", tone: 'up', value: 45 },
+                { label: "given up", note: "everything beyond it", tone: 'down', value: 55 },
+            ],
+        },
         prereq: ['implied-volatility'],
         concept: [
             'Combining options builds positions with shapes a single option cannot produce. Every one of them is a trade: you give something up to get something.',
@@ -336,6 +387,16 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Know what happens at expiry, and why an option seller can be assigned early.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'timeline',
+            caption: "Settlement style decides what actually happens. Getting this wrong is a recurring expiry-day disaster.",
+            steps: [
+                { label: "index option", note: "European, cash-settled", tone: 'up' },
+                { label: "at expiry", note: "pay the difference", tone: 'accent' },
+                { label: "stock option", note: "American, PHYSICAL", tone: 'down' },
+                { label: "at expiry", note: "deliver the shares, in full", tone: 'down' },
+            ],
+        },
         prereq: ['spreads-and-combinations'],
         concept: [
             'Expiry is the most mechanically dangerous moment in options, and most of the danger is procedural rather than directional.',
@@ -374,6 +435,13 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Confront the base rate for retail derivatives trading in India before deciding to participate.',
         where: { href: '/portfolio', label: 'Look at your own record' },
+        visual: {
+            kind: 'counter',
+            caption: "SEBI has published this finding repeatedly, across versions of its study. It is the base rate this activity starts from.",
+            value: 9,
+            unit: " in 10",
+            a: "individual F&O traders who lose money",
+        },
         prereq: ['expiry-and-assignment'],
         concept: [
             'Everything to this point has been mechanics. This lesson is the base rate, and it belongs in the course because omitting it would misrepresent the activity.',
@@ -415,6 +483,15 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Price a protective put honestly, including the cost of the insurance itself.',
         where: { href: '/portfolio', label: 'Look at your concentration' },
+        visual: {
+            kind: 'waterfall',
+            caption: "A put bought quarterly at 2% costs about 8% a year. That is why permanent hedging rarely makes sense.",
+            steps: [
+                { label: "equity return", note: "before hedging", tone: 'up', value: 12 },
+                { label: "4 puts a year", note: "2% each", tone: 'down', value: 8 },
+                { label: "what is left", note: "the cost of the certainty", tone: 'warn', value: 4 },
+            ],
+        },
         prereq: ['fno-reality-check'],
         concept: [
             'After the previous lesson it would be easy to conclude options are simply a bad idea. That would be wrong, and the distinction matters: **the losing use is speculation on direction; the sound use is transferring a risk you already hold.**',
@@ -458,6 +535,16 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         minutes: 6,
         outcome: 'Know exactly what this simulator models, what it approximates, and what it refuses to model at all.',
         where: { href: '/options', label: 'Open the chain' },
+        visual: {
+            kind: 'stack',
+            caption: "What is real, what is approximated and labelled, and what is refused rather than faked.",
+            steps: [
+                { label: "live NSE chain", note: "real premiums, IV, bid and ask", tone: 'up' },
+                { label: "multi-leg + settlement", note: "atomic, cash-settled at intrinsic", tone: 'up' },
+                { label: "margin", note: "an approximation, per leg \u2014 NOT SPAN", tone: 'warn' },
+                { label: "no historical chain", note: "so no real backtest yet", tone: 'down' },
+            ],
+        },
         prereq: ['hedging-with-options'],
         concept: [
             'This lesson used to say the opposite of what follows. For several releases it told you this app had no options layer — which was true when it was written and false from the moment one shipped. It is worth knowing that happened, because it is exactly the failure this course warns about, and a codebase is not exempt from its own rule.',

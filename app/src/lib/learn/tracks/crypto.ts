@@ -16,6 +16,16 @@ export const CRYPTO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Say what problem a blockchain solves, and what it does not.',
         where: { href: '/terminal', label: 'Watch a live crypto price' },
+        visual: {
+            kind: 'flow',
+            caption: "The problem it solved, and the property that follows. Both directions of it.",
+            steps: [
+                { label: "digital money", tone: 'accent' },
+                { label: "could be copied", note: "double spending", tone: 'down' },
+                { label: "consensus rule", note: "no trusted party needed", tone: 'up' },
+                { label: "irreversible", note: "a feature and a hazard", tone: 'warn' },
+            ],
+        },
         concept: [
             'Strip away the vocabulary and a blockchain is a **shared ledger that nobody owns and everybody can verify**. It records who holds what, and it settles transfers without a bank in the middle deciding whether they happened.',
             'The genuinely hard problem it solved is **double spending**. A digital file can be copied perfectly, so digital money needs some way to guarantee that the same coin is not spent twice. Before Bitcoin, the answer was always a trusted central party keeping the authoritative record. A blockchain replaces that party with a consensus rule and an incentive to follow it.',
@@ -49,6 +59,15 @@ export const CRYPTO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Choose a custody model deliberately, and know what each one exposes you to.',
         where: { href: '/settings', label: 'See how this app handles secrets' },
+        visual: {
+            kind: 'nested',
+            caption: "A balance is controlled by a key. Everything else is a decision about who holds it.",
+            steps: [
+                { label: "your coins", tone: 'accent' },
+                { label: "a private key", note: "whoever has it can move them", tone: 'warn' },
+                { label: "exchange, or you", note: "an IOU, or your own seed phrase", tone: 'down' },
+            ],
+        },
         prereq: ['what-a-blockchain-settles'],
         concept: [
             'A crypto balance is controlled by a **private key**. Whoever holds the key can move the funds. That is the entire security model, and everything else is a decision about who holds it.',
@@ -84,6 +103,16 @@ export const CRYPTO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain why the same coin has different prices in different places, and what a thin book costs you.',
         where: { href: '/terminal', label: 'Watch the live order flow' },
+        visual: {
+            kind: 'ladder',
+            caption: "The quoted price applies to the top of the book. Everything below is what size actually costs.",
+            steps: [
+                { label: "$1.00", note: "5,000 available", tone: 'up', value: 5 },
+                { label: "$0.98", note: "12,000", tone: 'warn', value: 12 },
+                { label: "$0.94", note: "40,000", tone: 'down', value: 40 },
+                { label: "your $50,000 sale", note: "fills across all three", tone: 'down', value: 50 },
+            ],
+        },
         prereq: ['custody-and-keys'],
         concept: [
             'Crypto has no central exchange and no consolidated tape. Every venue runs its own order book, so the "price of Bitcoin" is really the price on whichever exchange your data comes from. The prices track each other closely because arbitrageurs profit whenever they do not — but they are never identical, and in stress they diverge sharply.',
@@ -118,6 +147,15 @@ export const CRYPTO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Distinguish the three stablecoin designs and know which one has failed catastrophically.',
         where: { href: '/terminal', label: 'Look at a USDT pair' },
+        visual: {
+            kind: 'stack',
+            caption: "Three designs. They fail differently, and only one has failed completely at scale.",
+            steps: [
+                { label: "fiat-backed", note: "counterparty risk \u2014 reserves must be real", tone: 'warn' },
+                { label: "crypto-collateralised", note: "over-collateralised, liquidation can lag" },
+                { label: "algorithmic", note: "FAILED \u2014 Terra/UST, ~$40bn in days", tone: 'down' },
+            ],
+        },
         prereq: ['exchanges-and-liquidity'],
         concept: [
             'A stablecoin aims to hold a fixed value, almost always one US dollar. Most crypto trading is denominated in them — which means that if a stablecoin fails, it does not just lose value, it reprices every pair quoted against it.',
@@ -153,6 +191,14 @@ export const CRYPTO_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Explain how a futures contract with no expiry stays tied to spot, and read funding as positioning.',
         where: { href: '/strategies', label: 'See the funding-carry signal' },
+        visual: {
+            kind: 'gauge',
+            caption: "Funding is not a survey. It is what crowded positioning actually costs, paid every eight hours.",
+            value: 0.82,
+            a: "shorts pay longs",
+            b: "longs pay shorts",
+            unit: "% crowded",
+        },
         prereq: ['exchanges-and-liquidity'],
         concept: [
             'A **perpetual future** is a futures contract with no expiry date. Most crypto leverage trades through them, and their volume routinely exceeds spot.',
@@ -198,6 +244,16 @@ export const CRYPTO_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Understand the three features of the VDA regime that make frequent trading structurally expensive.',
         where: { href: '/funds', label: 'See your trading charges' },
+        visual: {
+            kind: 'waterfall',
+            caption: "Ten winners and ten equal losers. Under equity rules this nets to nothing; under the VDA regime it does not.",
+            steps: [
+                { label: "gains", note: "\u20b95,00,000", tone: 'up', value: 500 },
+                { label: "losses", note: "\u20b95,00,000 \u2014 NOT set off", tone: 'down', value: 500 },
+                { label: "taxable", note: "the full gain", tone: 'down', value: 500 },
+                { label: "economic result", note: "you broke even", tone: 'warn', value: 0 },
+            ],
+        },
         prereq: ['what-a-blockchain-settles'],
         concept: [
             'India taxes **virtual digital assets** under a regime distinct from equity, and three structural features matter far more than the headline rate.',

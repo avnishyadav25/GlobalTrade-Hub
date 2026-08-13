@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { isBespoke, type BespokeKey, type LessonVisualSpec } from '@/lib/learn/visuals';
+import { Archetype } from './archetypes';
 
 // Animated explainers for the Learn track.
 //
@@ -9,14 +11,14 @@ import { useEffect, useRef, useState } from 'react';
 // and pauses while off-screen so a lesson page with several of them costs nothing
 // while you are reading something else.
 
-const UP = 'var(--up)';
-const DOWN = 'var(--down)';
-const ACCENT = 'var(--accent)';
-const FAINT = 'var(--faint)';
-const FG = 'var(--foreground)';
+export const UP = 'var(--up)';
+export const DOWN = 'var(--down)';
+export const ACCENT = 'var(--accent)';
+export const FAINT = 'var(--faint)';
+export const FG = 'var(--foreground)';
 
 /** Plays only while visible, and never when the reader has asked for less motion. */
-function useVisible<T extends Element>() {
+export function useVisible<T extends Element>() {
     const ref = useRef<T>(null);
     const [play, setPlay] = useState(false);
 
@@ -32,7 +34,7 @@ function useVisible<T extends Element>() {
     return { ref, play };
 }
 
-function Frame({ children, caption }: { children: React.ReactNode; caption?: string }) {
+export function Frame({ children, caption }: { children: React.ReactNode; caption?: string }) {
     return (
         <figure className="rounded-sm border border-border2 bg-panel2 p-3">
             {children}
@@ -811,11 +813,38 @@ const VISUALS: Record<string, () => React.JSX.Element> = {
     'order-book': OrderBook,
 };
 
-export const VISUAL_KEYS = Object.keys(VISUALS);
+/**
+ * Every bespoke component, keyed exactly as `visuals.ts` declares.
+ *
+ * `satisfies Record<BespokeKey, ...>` is the safety net: adding a key to visuals.ts
+ * without a component here is now a COMPILE error rather than a blank figure with a
+ * passing test. The two lists cannot drift.
+ */
+const BESPOKE = {
+    'candle-anatomy': CandleAnatomy,
+    'order-types': OrderTypes,
+    'long-vs-short': LongVsShort,
+    'slippage-fees': SlippageFees,
+    'fx-conversion': FxConversion,
+    'rsi-gauge': RsiGauge,
+    'equity-drawdown': EquityDrawdown,
+    'risk-sizing': RiskSizing,
+    'token-vesting': TokenVesting,
+    'three-statements': ThreeStatements,
+    'option-payoff': OptionPayoff,
+    'greeks': Greeks,
+    'futures-curve': FuturesCurve,
+    'yield-curve': YieldCurve,
+    'compounding': CompoundingDrawdown,
+    'order-book': OrderBook,
+} satisfies Record<BespokeKey, () => React.JSX.Element>;
 
-/** Renders a lesson's animated explainer, or nothing if the key is unknown. */
-export function LessonVisual({ name }: { name?: string }) {
-    if (!name) return null;
-    const Component = VISUALS[name];
-    return Component ? <Component /> : null;
+/** Renders a lesson's explainer — a bespoke component, or a configured archetype. */
+export function LessonVisual({ spec }: { spec?: LessonVisualSpec }) {
+    if (!spec) return null;
+    if (isBespoke(spec)) {
+        const Component = BESPOKE[spec];
+        return Component ? <Component /> : null;
+    }
+    return <Archetype config={spec} />;
 }

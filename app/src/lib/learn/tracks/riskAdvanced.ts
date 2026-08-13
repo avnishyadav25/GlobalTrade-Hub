@@ -16,6 +16,14 @@ export const RISK_ADVANCED: Lesson[] = [
         minutes: 9,
         outcome: 'Name the specific biases behind your own worst trades, and the mechanical countermeasure for each.',
         where: { href: '/portfolio', label: 'Review your record' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Loss aversion, measured. Losses hurt about twice as much as the equivalent gain feels good \u2014 which is why winners get cut and losers held.",
+            steps: [
+                { label: "a \u20b910,000 gain", note: "feels like this", tone: 'up', value: 33 },
+                { label: "a \u20b910,000 loss", note: "feels like this", tone: 'down', value: 67 },
+            ],
+        },
         prereq: ['journal-and-discipline'],
         concept: [
             'Knowing a bias does not remove it. The value of naming them is that each has a **mechanical** countermeasure, and mechanisms work where willpower does not.',
@@ -53,6 +61,17 @@ export const RISK_ADVANCED: Lesson[] = [
         minutes: 9,
         outcome: 'Recognise the four structures behind most investment fraud, and verify a registration in a minute.',
         where: { href: '/settings', label: 'How this app handles credentials' },
+        visual: {
+            kind: 'ladder',
+            caption: "Almost all investment fraud uses a handful of structures. Recognising the structure beats evaluating the claim.",
+            steps: [
+                { label: "guaranteed returns", note: "the defining Ponzi feature", tone: 'down', value: 100 },
+                { label: "urgency", note: "exists to stop you checking", tone: 'down', value: 90 },
+                { label: "unregistered adviser", note: "the SEBI register is public", tone: 'warn', value: 75 },
+                { label: "social proof only", note: "screenshots are free to fabricate", tone: 'warn', value: 60 },
+                { label: "asks for seed / OTP", note: "conclusive", tone: 'down', value: 100 },
+            ],
+        },
         concept: [
             'Investment fraud is not creative. Almost all of it uses a handful of structures that have worked for a century, and recognising the structure matters far more than evaluating the claim.',
             '**Guaranteed returns.** No legitimate market investment guarantees a return. A promised fixed monthly percentage, particularly one well above bank deposit rates, is the defining feature of a **Ponzi scheme** — early participants paid from later participants\' money, which continues until inflows stop and then ends abruptly and completely.',

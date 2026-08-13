@@ -22,6 +22,16 @@ export const AIRDROP_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Explain why a project gives tokens away, and what it is buying.',
         where: { href: '/research', label: 'Look at crypto supply data' },
+        visual: {
+            kind: 'flow',
+            caption: "It looks like a gift. It is a marketing expense paid in an asset created at zero cost.",
+            steps: [
+                { label: "project needs holders", tone: 'accent' },
+                { label: "issues tokens free", note: "distribution, attention", tone: 'up' },
+                { label: "you receive them", note: "and a tax event", tone: 'warn' },
+                { label: "team and investors", note: "hold a far larger allocation", tone: 'down' },
+            ],
+        },
         concept: [
             'An airdrop is a project distributing its token to a set of addresses for free. It looks like a gift. It is a marketing and governance expense, paid in an asset the project can create at zero cost.',
             'The reasons are rational. A token with a handful of holders is not decentralised in any meaningful sense, and often cannot be listed. Distribution buys holders, buys attention, and buys a userbase who now have a financial reason to care. It also rewards early users who took a risk before there was any reward — which is the version projects prefer to talk about.',
@@ -99,6 +109,16 @@ export const AIRDROP_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Understand how eligibility is decided, and why gaming it usually fails.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'timeline',
+            caption: "The criteria are announced AFTER the snapshot, precisely so they cannot be gamed.",
+            steps: [
+                { label: "you use the protocol", note: "not knowing if it counts" },
+                { label: "snapshot", note: "at a block nobody announced", tone: 'accent' },
+                { label: "criteria published", note: "now you learn the rule", tone: 'warn' },
+                { label: "allotment", note: "or nothing", tone: 'down' },
+            ],
+        },
         prereq: ['vesting-and-unlocks'],
         concept: [
             'Eligibility is decided by a snapshot: at some past block, the project looks at on-chain history and picks addresses. Criteria commonly include having used the protocol before a date, transacting above some threshold, providing liquidity, holding across a period, or bridging assets in.',
@@ -133,6 +153,16 @@ export const AIRDROP_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Know that a free token creates a tax event on arrival, before you sell anything.',
         where: { href: '/funds', label: 'See how costs are tracked' },
+        visual: {
+            kind: 'waterfall',
+            caption: "Taxed on arrival at market value, then again on disposal \u2014 and the loss in between does not offset anything.",
+            steps: [
+                { label: "tokens arrive", note: "valued at \u20b91,00,000", tone: 'accent', value: 100 },
+                { label: "income tax", note: "on receipt, before you sell", tone: 'down', value: 30 },
+                { label: "price falls 80%", note: "now worth \u20b920,000", tone: 'down', value: 80 },
+                { label: "loss relief", note: "none \u2014 VDA losses do not set off", tone: 'down', value: 0 },
+            ],
+        },
         prereq: ['what-an-airdrop-is'],
         concept: [
             'This surprises almost everyone: in India, receiving an airdrop is generally a **taxable event at the moment of receipt**, valued at the fair market value of the tokens when they arrive. You have income before you have sold anything, and before you have any rupees with which to pay the tax.',
@@ -170,6 +200,16 @@ export const AIRDROP_LESSONS: Lesson[] = [
         minutes: 10,
         outcome: 'Recognise the three mechanisms behind most crypto theft, and why none of them need your password.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'flow',
+            caption: "No password is stolen. That mental model is exactly what makes these work.",
+            steps: [
+                { label: "a claim page", note: "a copy of the real one", tone: 'warn' },
+                { label: "you connect", note: "nothing has happened yet" },
+                { label: "you sign", note: "a Permit, not a transaction", tone: 'down' },
+                { label: "drained", note: "no gas, no prompt, no warning", tone: 'down' },
+            ],
+        },
         prereq: ['what-an-airdrop-is'],
         concept: [
             'Most people picture crypto theft as a stolen password. Almost none of it works that way, and that mental model is exactly what makes the real attacks effective — you are watching for the wrong thing.',

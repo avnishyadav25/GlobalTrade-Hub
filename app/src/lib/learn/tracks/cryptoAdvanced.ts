@@ -12,6 +12,15 @@ export const CRYPTO_ADVANCED: Lesson[] = [
         minutes: 8,
         outcome: 'Explain what you are paying for when you send a transaction, and what a layer 2 changes.',
         where: { href: '/terminal', label: 'Back to the terminal' },
+        visual: {
+            kind: 'stack',
+            caption: "Gas meters computation, not value. Sending $10 and $10 million can cost the same.",
+            steps: [
+                { label: "layer 1", note: "settles itself, limited block space", tone: 'accent' },
+                { label: "rollup", note: "executes off-chain, posts proofs back", tone: 'up' },
+                { label: "your transaction", note: "priced by congestion, not by amount", tone: 'warn' },
+            ],
+        },
         prereq: ['exchanges-and-liquidity'],
         concept: [
             'Every transaction on a blockchain consumes computation, and **gas** is the unit that meters it. You pay gas price × gas used, and the gas price floats with demand — it is a continuous auction for scarce block space, not a fee schedule.',
@@ -46,6 +55,14 @@ export const CRYPTO_ADVANCED: Lesson[] = [
         minutes: 9,
         outcome: 'Explain why providing liquidity can lose money while both assets rise.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'two-series',
+            caption: "Both assets rose. The pool still lags simply holding them, because keeping the product constant sells the winner all the way up.",
+            a: "holding both",
+            b: "in the pool",
+            seriesA: [100, 108, 118, 131, 145],
+            seriesB: [100, 106, 113, 121, 129],
+        },
         prereq: ['layers-and-gas'],
         concept: [
             'A decentralised exchange usually has no order book. Instead an **automated market maker** prices trades against a pool of two assets using a formula — classically `x × y = k`, where the product of the two reserves stays constant.',
@@ -92,6 +109,15 @@ export const CRYPTO_ADVANCED: Lesson[] = [
         minutes: 9,
         outcome: 'Ask the four questions that most new tokens cannot answer well.',
         where: { href: '/research', label: 'Check supply data' },
+        visual: {
+            kind: 'nested',
+            caption: "A token can be worthless while the product it is named after thrives. The mechanism is what to look for.",
+            steps: [
+                { label: "a successful protocol", tone: 'up' },
+                { label: "does the token capture fees?", note: "or merely share a name", tone: 'warn' },
+                { label: "who holds it, at what cost", note: "vesting, cliffs, FDV", tone: 'down' },
+            ],
+        },
         prereq: ['vesting-and-unlocks'],
         concept: [
             'Equity valuation discounts future cash flows. Most tokens have none, so the tools from the company track do not transfer. What remains is a set of questions that are answerable and that most projects answer badly.',
@@ -127,6 +153,16 @@ export const CRYPTO_ADVANCED: Lesson[] = [
         minutes: 9,
         outcome: 'Place a current enthusiasm in the pattern, and size for the distribution rather than the story.',
         where: { href: '/portfolio', label: 'Look at your exposure' },
+        visual: {
+            kind: 'cycle',
+            caption: "The shape has repeated. A handful of cycles is a small sample \u2014 this is a pattern to recognise, not a forecast.",
+            steps: [
+                { label: "catalyst", note: "a narrative arrives", tone: 'accent' },
+                { label: "capital in", note: "projects proliferate", tone: 'up' },
+                { label: "peak", note: "mainstream attention", tone: 'warn' },
+                { label: "\u221270 to \u221290%", note: "most projects disappear", tone: 'down' },
+            ],
+        },
         prereq: ['evaluating-a-token'],
         concept: [
             'Crypto has run through several boom-and-bust cycles, and the shape has been consistent enough to be worth describing — while being honest that a handful of cycles is a small sample, and pattern-matching on it is not prediction.',

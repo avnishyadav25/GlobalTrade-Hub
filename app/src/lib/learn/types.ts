@@ -1,3 +1,4 @@
+import type { LessonVisualSpec } from './visuals';
 import type { PaperState } from '@/lib/paperEngine';
 import type { LiveQuote } from '@/stores/marketStore';
 
@@ -141,8 +142,12 @@ export interface Lesson {
     where: { href: string; label: string };
     /** SOFT prerequisites: shown as guidance, never used to lock a lesson. */
     prereq?: string[];
-    /** Key into components/learn/anim — an animated explainer. */
-    visual?: string;
+    /**
+     * An animated explainer: either a bespoke component key, or an archetype with this
+     * lesson's own labels and numbers. Typed rather than a bare string, so a key that
+     * has no component fails to compile instead of rendering nothing.
+     */
+    visual?: LessonVisualSpec;
     formulas?: Formula[];
     /** Required for a `practice` lesson; absent on a `study` lesson. */
     exercise?: Exercise;

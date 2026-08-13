@@ -50,6 +50,16 @@ const CORE_LESSONS: Lesson[] = [
         minutes: 5,
         outcome: 'Name every part of the trading screen and say what it is for.',
         where: { href: '/terminal', label: 'Open the Terminal' },
+        visual: {
+            kind: 'nested',
+            caption: "A quote is the outermost layer of several. Each one below it is a decision somebody made.",
+            steps: [
+                { label: "The price you see", note: "last traded, not what you will get", tone: 'accent' },
+                { label: "The order book", note: "bids and asks waiting" },
+                { label: "A matching engine", note: "pairs them by price, then time" },
+                { label: "Two people", note: "who disagreed about value", tone: 'up' },
+            ],
+        },
         concept: [
             'An **instrument** is anything you can buy or sell: a share in a company (`RELIANCE`), a currency pair (`EUR/USD`), a cryptocurrency (`BTC/USDT`), a commodity (`XAU/USD` — gold), or an index (`NIFTY 50`).',
             'Instruments live in **markets**. This app covers five: India (NSE/BSE), US equities, crypto, foreign exchange, and commodities. They differ in opening hours, currency, and how fast prices move.',
@@ -105,6 +115,14 @@ const CORE_LESSONS: Lesson[] = [
         minutes: 6,
         outcome: 'Read a price row and know exactly what each number is measured against.',
         where: { href: '/terminal', label: 'Compare two instruments' },
+        visual: {
+            kind: 'two-series',
+            caption: "The same instrument, plotted as price and as percentage change. The shapes differ, and only one of them compares across instruments.",
+            a: "price",
+            b: "% change",
+            seriesA: [100, 102, 101, 105, 108, 107, 112, 115],
+            seriesB: [0, 2, 1, 5, 8, 7, 12, 15],
+        },
         prereq: ['what-you-are-looking-at'],
         concept: [
             'The **price** is what the instrument last traded at. It is a fact about the past, not a promise about the next second.',
@@ -273,6 +291,15 @@ const CORE_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Decide a position size deliberately instead of typing a round number.',
         where: { href: '/terminal', label: 'Size a trade' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Buying power is not your balance. What is already committed cannot be committed twice.",
+            steps: [
+                { label: "cash", note: "spendable", tone: 'up', value: 60 },
+                { label: "reserved", note: "held against resting orders", tone: 'warn', value: 15 },
+                { label: "margin held", note: "against shorts", tone: 'down', value: 25 },
+            ],
+        },
         prereq: ['your-first-order'],
         concept: [
             '**Order value** is simply quantity × price. It is what the position is worth, not what it can cost you.',
@@ -458,6 +485,16 @@ const CORE_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Know the difference between profit on screen and profit in your account.',
         where: { href: '/holdings', label: 'Close a position' },
+        visual: {
+            kind: 'timeline',
+            caption: "A round trip is two decisions, and the second one is where the money is actually made or lost.",
+            steps: [
+                { label: "open", note: "you choose the price" },
+                { label: "hold", note: "the market chooses" },
+                { label: "close", note: "you choose again", tone: 'accent' },
+                { label: "realised", note: "it becomes a number", tone: 'up' },
+            ],
+        },
         prereq: ['your-first-order'],
         concept: [
             'While a position is open, its profit is **unrealised**. It changes with every tick and it is not yours. It is an opinion the market currently holds about your position.',
@@ -911,6 +948,16 @@ const CORE_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Convert an intention into a constraint that refuses to let you break it.',
         where: { href: '/insights', label: 'Apply a rule' },
+        visual: {
+            kind: 'flow',
+            caption: "A rule you can override is a preference. This is the difference.",
+            steps: [
+                { label: "you place an order" },
+                { label: "kill switch", note: "refuses everything when on", tone: 'down' },
+                { label: "coach rules", note: "refuse this order specifically", tone: 'warn' },
+                { label: "the engine", note: "records the rejection and why", tone: 'accent' },
+            ],
+        },
         prereq: ['journal-and-discipline'],
         concept: [
             'Everyone intends to size properly and stop after a bad day. Intentions fail exactly when they matter, because that is when you are least able to keep them.',
@@ -961,6 +1008,16 @@ const CORE_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Know what changes when the money is real, and what you should have proved first.',
         where: { href: '/settings', label: 'Review connections' },
+        visual: {
+            kind: 'stack',
+            caption: "Each layer must be crossed deliberately. None of them happens by accident.",
+            steps: [
+                { label: "paper", note: "the default, always", tone: 'up' },
+                { label: "a broker connected", note: "credentials in the vault" },
+                { label: "ENABLE_LIVE_TRADING=true", note: "refused unless exactly this", tone: 'warn' },
+                { label: "real money", note: "and a real loss", tone: 'down' },
+            ],
+        },
         prereq: ['journal-and-discipline', 'rules-that-bind'],
         concept: [
             'Paper trading gets the mechanics right and the psychology completely wrong. Nothing here can reproduce what it feels like to watch real money fall.',

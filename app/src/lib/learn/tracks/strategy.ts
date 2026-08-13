@@ -16,6 +16,17 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Turn a vague market belief into rules a computer could execute without asking you anything.',
         where: { href: '/strategies', label: 'Read a strategy definition' },
+        visual: {
+            kind: 'flow',
+            caption: "A testable strategy specifies five things. Leaving any unstated means you decide it differently each time.",
+            steps: [
+                { label: "entry", note: "the precise condition", tone: 'accent' },
+                { label: "sizing", note: "as a function of something" },
+                { label: "exit", note: "both the losing and the winning one" },
+                { label: "universe", note: "which instruments, which timeframe" },
+                { label: "costs", note: "what a round trip actually costs", tone: 'warn' },
+            ],
+        },
         concept: [
             'Most trading ideas are not wrong. They are **unfalsifiable** — stated so loosely that no evidence could contradict them, which also means no evidence can support them.',
             '"Buy when the trend is strong" is not a rule. Whose trend, measured how, over what lookback, strong by what threshold, buy how much, sell when? Every one of those is a decision, and leaving them unstated means you make them differently each time and can never learn whether the idea works.',
@@ -49,6 +60,14 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Recognise the three signatures of a curve-fitted result in your own work.',
         where: { href: '/backtest', label: 'Run a comparison' },
+        visual: {
+            kind: 'two-series',
+            caption: "A real edge is a plateau. A spike where only one value works is a coincidence that happens to have a name.",
+            a: "overfitted",
+            b: "robust",
+            seriesA: [0, 1, 2, 48, 3, 1, 0],
+            seriesB: [8, 11, 13, 14, 13, 11, 8],
+        },
         prereq: ['hypothesis-to-rules'],
         concept: [
             '**Overfitting** is building a rule that describes the noise in your sample rather than any real structure. It is the central failure of systematic trading, and it does not feel like a mistake while you are doing it — it feels like research.',
@@ -83,6 +102,16 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain why in-sample results are worthless and what degradation is acceptable.',
         where: { href: '/backtest/walk-forward', label: 'Run a walk-forward' },
+        visual: {
+            kind: 'timeline',
+            caption: "Optimise on data you had; measure on data you had not seen. The gap between them is the finding.",
+            steps: [
+                { label: "train", note: "choose parameters here", tone: 'accent' },
+                { label: "test", note: "measure them here", tone: 'up' },
+                { label: "roll forward", note: "and repeat" },
+                { label: "degradation", note: "how much was fitting", tone: 'down' },
+            ],
+        },
         prereq: ['overfitting'],
         concept: [
             'A single backtest over all your data answers a question nobody has: *if I had known the best parameters in advance, how would this have done?* You did not know them in advance. That is the whole difficulty.',
@@ -117,6 +146,13 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Estimate a realistic round-trip cost and apply it before believing any result.',
         where: { href: '/funds', label: 'See the itemised charges' },
+        visual: {
+            kind: 'counter',
+            caption: "200 round trips a year at 8.24 bps, before the strategy has been right about anything.",
+            value: 16.5,
+            unit: "%",
+            a: "annual cost drag",
+        },
         prereq: ['walk-forward'],
         concept: [
             'A backtest that ignores costs is not optimistic; it describes a different universe. And the error is proportional to trading frequency, so it hits precisely the strategies that look most exciting.',
@@ -203,6 +239,14 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Measure real diversification rather than counting positions.',
         where: { href: '/backtest/portfolio', label: 'Measure it on a real basket' },
+        visual: {
+            kind: 'two-series',
+            caption: "Correlations rise toward 1 in a crisis. The diversification you measured in calm data is partly absent when you need it.",
+            a: "asset A",
+            b: "asset B",
+            seriesA: [100, 104, 101, 107, 110, 106, 72, 66],
+            seriesB: [100, 97, 103, 99, 104, 108, 71, 64],
+        },
         prereq: ['systematic-sizing'],
         concept: [
             'Six positions look diversified. If they are six Indian IT companies, they are approximately one position with extra transaction costs. **Diversification is about correlation, not count.**',
@@ -281,6 +325,14 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Distinguish a normal drawdown from a broken edge, using criteria set in advance.',
         where: { href: '/strategies', label: 'Review your strategies' },
+        visual: {
+            kind: 'gauge',
+            caption: "A live drawdown deeper than anything in testing is evidence of a changed regime, not merely bad luck.",
+            value: 0.85,
+            a: "within tested range",
+            b: "beyond it \u2014 stop",
+            unit: "% of worst tested DD",
+        },
         prereq: ['risk-of-ruin'],
         concept: [
             'Every strategy has losing periods, and every dead strategy also has losing periods. Telling them apart in real time is genuinely hard, and it is where most systematic traders actually fail — not in the research, but in deciding whether to keep going.',
@@ -315,6 +367,16 @@ export const STRATEGY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'List what a paper record does and does not prove, and what changes when money is real.',
         where: { href: '/settings', label: 'See the live-trading guard' },
+        visual: {
+            kind: 'split-bar',
+            caption: "What a paper record proves, and what it cannot. The second half is what the first live months measure.",
+            steps: [
+                { label: "rules are complete", note: "tested", tone: 'up', value: 25 },
+                { label: "survives costs", note: "tested", tone: 'up', value: 25 },
+                { label: "you can follow a process", note: "tested", tone: 'up', value: 20 },
+                { label: "how you behave with real money", note: "NOT tested", tone: 'down', value: 30 },
+            ],
+        },
         prereq: ['when-to-kill-a-strategy'],
         concept: [
             'A paper record is genuine evidence about some things and no evidence at all about others, and being clear about the boundary is the point of this lesson.',

@@ -16,6 +16,16 @@ export const MACRO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain the surprise mechanism, and stop trading headlines you read after the move.',
         where: { href: '/insights', label: 'Back to insights' },
+        visual: {
+            kind: 'flow',
+            caption: "Excellent results, slightly less excellent than expected, is bad news. What trades is the surprise.",
+            steps: [
+                { label: "consensus forms", note: "and is priced in", tone: 'accent' },
+                { label: "the number lands", note: "30% growth", tone: 'up' },
+                { label: "versus 35% expected", note: "the surprise is negative", tone: 'down' },
+                { label: "the stock falls", note: "on good results", tone: 'warn' },
+            ],
+        },
         concept: [
             'The most common confusion in markets is why a company reports excellent results and the stock falls, or a country posts strong growth and its currency weakens. It resolves with one idea: **markets price expectations, and news moves price only to the extent that it differs from what was expected.**',
             'By the time a scheduled announcement arrives, the consensus is already in the price. What trades on the release is **actual minus expected** — the surprise. Excellent results that were slightly less excellent than expected are, in market terms, bad news.',
@@ -50,6 +60,16 @@ export const MACRO_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Explain the transmission from a policy rate to asset prices, and read a policy statement.',
         where: { href: '/insights', label: 'Back to insights' },
+        visual: {
+            kind: 'flow',
+            caption: "Why high-growth companies fall hardest when rates rise. It is arithmetic, not sentiment.",
+            steps: [
+                { label: "policy rate rises", tone: 'warn' },
+                { label: "discount rate rises", note: "applied to future cash flows", tone: 'accent' },
+                { label: "distant profits", note: "discounted hardest", tone: 'down' },
+                { label: "growth stocks", note: "fall most", tone: 'down' },
+            ],
+        },
         prereq: ['how-news-is-priced'],
         concept: [
             'Central banks set the price of money, and the price of money is the input to the valuation of every other asset. That makes policy decisions the largest recurring scheduled events in markets.',
@@ -85,6 +105,14 @@ export const MACRO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Read the main economic releases and know which components the market cares about.',
         where: { href: '/insights', label: 'Back to insights' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Headline includes food and energy. Core excludes them, and core is what policy responds to.",
+            steps: [
+                { label: "core", note: "services, wages, rent \u2014 persistent", tone: 'accent', value: 65 },
+                { label: "food and energy", note: "volatile, weather and geopolitics", tone: 'warn', value: 35 },
+            ],
+        },
         prereq: ['central-banks'],
         concept: [
             'A handful of scheduled releases move markets more than all the commentary between them, and each has a component that matters more than the headline.',
@@ -120,6 +148,16 @@ export const MACRO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Plan around known events rather than being surprised by them.',
         where: { href: '/research', label: 'Check the earnings calendar' },
+        visual: {
+            kind: 'timeline',
+            caption: "A large share of volatility is scheduled. Being surprised by it is a planning failure, not bad luck.",
+            steps: [
+                { label: "before", note: "ranges narrow, IV rises", tone: 'warn' },
+                { label: "release", note: "a violent, often false, first move", tone: 'down' },
+                { label: "minutes later", note: "the detail is read", tone: 'accent' },
+                { label: "after", note: "IV collapses", tone: 'up' },
+            ],
+        },
         prereq: ['how-news-is-priced'],
         concept: [
             'A large share of market volatility is **scheduled**. Central bank decisions, inflation releases, employment data, earnings dates, index rebalancing, expiry days — all published in advance, all knowable.',
@@ -155,6 +193,16 @@ export const MACRO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Name the domestic drivers that do not appear in international macro coverage.',
         where: { href: '/terminal', label: 'Watch USD/INR' },
+        visual: {
+            kind: 'flow',
+            caption: "One external variable feeding three domestic ones at once \u2014 the clearest link between a commodity and Indian equity.",
+            steps: [
+                { label: "crude rises", note: "India imports most of it", tone: 'warn' },
+                { label: "trade deficit widens", tone: 'down' },
+                { label: "rupee under pressure", tone: 'down' },
+                { label: "inflation up", note: "RBI room to cut shrinks", tone: 'down' },
+            ],
+        },
         prereq: ['inflation-and-growth-data'],
         concept: [
             'Indian markets respond to a set of domestic events that generic macro coverage does not cover, and several have no equivalent elsewhere.',
@@ -190,6 +238,16 @@ export const MACRO_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Identify the incentives behind a piece of market coverage before acting on it.',
         where: { href: '/learn', label: 'Back to the track' },
+        visual: {
+            kind: 'cycle',
+            caption: "The daily explanation is written after the close, by selecting a plausible cause from that day\\u2019s headlines.",
+            steps: [
+                { label: "market moves", note: "for many unobservable reasons", tone: 'accent' },
+                { label: "a cause is chosen", note: "from today\\u2019s headlines", tone: 'warn' },
+                { label: "the story is published", note: "as though it were measured", tone: 'down' },
+                { label: "you read it", note: "and believe it explains" },
+            ],
+        },
         prereq: ['how-news-is-priced'],
         concept: [
             'Financial media is a business, and its product is attention rather than accuracy. That is not a conspiracy — it is an incentive structure, and knowing it changes how you read.',

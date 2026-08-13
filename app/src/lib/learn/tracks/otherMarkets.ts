@@ -17,6 +17,14 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain the inverse price-yield relationship and why long bonds move more.',
         where: { href: '/portfolio', label: 'Think about allocation' },
+        visual: {
+            kind: 'two-series',
+            caption: "Price and yield move in opposite directions, mechanically. The coupon never changed \u2014 the price did all the adjusting.",
+            a: "bond price",
+            b: "market yield",
+            seriesA: [1000, 980, 955, 930, 910],
+            seriesB: [5.0, 5.4, 5.9, 6.4, 6.8],
+        },
         concept: [
             'A bond is a loan you can trade. You lend a fixed sum, receive periodic interest — the **coupon** — and get the principal back at **maturity**. Governments and companies both issue them, and the government bond market is far larger than the equity market almost everywhere.',
             'The single fact that unlocks bonds: **price and yield move in opposite directions, mechanically.** A bond paying ₹50 a year on ₹1,000 yields 5%. If new bonds are issued at 6%, nobody will pay ₹1,000 for a 5% coupon — the price falls until the fixed ₹50 represents a competitive yield. The coupon never changed; the price did all the adjusting.',
@@ -94,6 +102,14 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain why cost dominates fund selection, and what an ETF adds over an index fund.',
         where: { href: '/portfolio', label: 'Compare to your own record' },
+        visual: {
+            kind: 'two-series',
+            caption: "A 1% annual cost difference over twenty years. Same portfolio, same manager \u2014 direct versus regular.",
+            a: "direct plan",
+            b: "regular plan",
+            seriesA: [100, 112, 125, 140, 157, 176, 197, 221, 247, 277],
+            seriesB: [100, 111, 123, 136, 151, 167, 185, 205, 227, 251],
+        },
         concept: [
             'An **index fund** holds every constituent of an index in proportion, aiming to match it rather than beat it. An **ETF** does the same thing in a form that trades on an exchange like a share.',
             'The case for them is uncomfortable for a trading app to state, and it is stated anyway because it is true: **across markets and over long horizons, most actively managed funds have underperformed their benchmark after fees**, and the ones that outperform in one period are largely not the ones that outperform in the next. SPIVA and similar scorecards have shown this repeatedly, including for Indian large-cap funds.',
@@ -136,6 +152,16 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Say what you own, and why the distribution yield is not a coupon.',
         where: { href: '/portfolio', label: 'Back to portfolio' },
+        visual: {
+            kind: 'flow',
+            caption: "A distribution yield is not a coupon. Rate rises hit a REIT from both directions at once.",
+            steps: [
+                { label: "rates rise", tone: 'warn' },
+                { label: "borrowing costs up", note: "the trust pays more", tone: 'down' },
+                { label: "yield less attractive", note: "against risk-free", tone: 'down' },
+                { label: "unit price falls", note: "both effects compound", tone: 'down' },
+            ],
+        },
         prereq: ['bonds-basics'],
         concept: [
             'A **REIT** — real estate investment trust — owns income-producing property and distributes most of the rent it collects to unitholders. An **InvIT** does the same for infrastructure assets such as roads, power transmission or telecom towers. Both are listed and traded like shares, and both exist in India under SEBI regulation.',
@@ -170,6 +196,14 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Navigate the category scheme and understand what an SIP does and does not do.',
         where: { href: '/portfolio', label: 'Back to portfolio' },
+        visual: {
+            kind: 'gauge',
+            caption: "The expense ratio is the most reliable predictor of relative future performance \u2014 because the fee is certain and the outperformance is not.",
+            value: 0.25,
+            a: "direct 0.5%",
+            b: "regular 2.0%",
+            unit: "% ER",
+        },
         prereq: ['etfs-and-index-funds'],
         concept: [
             'SEBI standardised mutual fund categories so that a "large-cap fund" means the same thing at every fund house. Large cap, mid cap, small cap, flexi cap, ELSS, index, debt categories by duration, hybrid. The labels are now comparable across providers, which they were not before.',
@@ -205,6 +239,15 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Set a split you can hold through a drawdown, and rebalance mechanically.',
         where: { href: '/portfolio', label: 'Look at your own mix' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Time horizon, not risk appetite, should set the split. Two years is not long enough to recover a drawdown.",
+            steps: [
+                { label: "needed in 2 years", note: "cash and short debt", tone: 'up', value: 30 },
+                { label: "needed in 10", note: "balanced", tone: 'accent', value: 30 },
+                { label: "not needed for 20", note: "equity can afford volatility", tone: 'warn', value: 40 },
+            ],
+        },
         prereq: ['mutual-funds-india'],
         concept: [
             '**Asset allocation** — how your money is split across equity, debt, gold, cash and anything else — explains far more of a portfolio\'s outcome than the individual choices within each bucket. Picking the right stock inside a 10% allocation cannot outweigh getting the 10% wrong.',

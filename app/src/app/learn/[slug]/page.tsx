@@ -82,7 +82,7 @@ export default function LessonPage({ params }: { params: Promise<{ slug: string 
 
             {lesson.visual && (
                 <div className="mt-5">
-                    <LessonVisual name={lesson.visual} />
+                    <LessonVisual spec={lesson.visual} />
                 </div>
             )}
 

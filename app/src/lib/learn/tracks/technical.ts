@@ -17,6 +17,16 @@ export const TECHNICAL_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Say why levels sometimes hold, and why drawing them after the fact proves nothing.',
         where: { href: '/terminal', label: 'Look at a chart' },
+        visual: {
+            kind: 'flow',
+            caption: "Why a broken support becomes resistance. It is people getting out flat, not the chart remembering.",
+            steps: [
+                { label: "buyers enter at a level", tone: 'accent' },
+                { label: "price falls", note: "they are trapped", tone: 'down' },
+                { label: "price returns", note: "they sell to break even", tone: 'warn' },
+                { label: "the level holds", note: "as resistance now" },
+            ],
+        },
         prereq: ['reading-a-candle'],
         concept: [
             'A **support** level is a price where buying has repeatedly appeared; **resistance** is where selling has. Drawn on a chart they look like the market respecting lines, which is not what is happening.',
@@ -52,6 +62,14 @@ export const TECHNICAL_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Use an average as a lagging summary rather than a signal, and predict when it fails.',
         where: { href: '/backtest', label: 'Test a crossover' },
+        visual: {
+            kind: 'two-series',
+            caption: "An average of the past always lags. That lateness is the price of filtering noise, not a flaw to tune away.",
+            a: "price",
+            b: "50-bar average",
+            seriesA: [100, 104, 109, 107, 112, 118, 115, 121, 126, 124],
+            seriesB: [100, 101, 103, 104, 106, 109, 111, 113, 116, 118],
+        },
         prereq: ['support-and-resistance'],
         concept: [
             'A **moving average** is the mean of the last N closes. That is the whole definition, and everything about its behaviour follows from it.',
@@ -95,6 +113,14 @@ export const TECHNICAL_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Read RSI correctly and stop treating an extreme reading as a sell signal.',
         where: { href: '/scanner', label: 'Scan by RSI' },
+        visual: {
+            kind: 'gauge',
+            caption: "Overbought does not mean too high. It means rising fast \u2014 which in a trend keeps happening.",
+            value: 0.78,
+            a: "oversold 30",
+            b: "overbought 70",
+            unit: " RSI",
+        },
         prereq: ['scanner-and-rsi'],
         concept: [
             '**RSI** compares the size of recent gains to the size of recent losses and maps the result onto 0–100. Above 70 is conventionally "overbought", below 30 "oversold".',
@@ -177,6 +203,17 @@ export const TECHNICAL_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Use volume as confirmation where it is real, and know the two markets where it is not.',
         where: { href: '/terminal', label: 'Check an instrument\'s volume' },
+        visual: {
+            kind: 'ladder',
+            caption: "Volume is trustworthy where a regulated exchange reports it, and unreliable where nobody is obliged to.",
+            steps: [
+                { label: "India equity", note: "exchange-reported", tone: 'up', value: 100 },
+                { label: "US equity", note: "consolidated tape", tone: 'up', value: 100 },
+                { label: "crypto, one venue", note: "real for that venue", tone: 'warn', value: 60 },
+                { label: "crypto aggregated", note: "wash trading", tone: 'down', value: 30 },
+                { label: "spot forex", note: "no central exchange at all", tone: 'down', value: 5 },
+            ],
+        },
         prereq: ['volatility-measures'],
         concept: [
             '**Volume** is how many units changed hands. On an exchange-traded instrument it is a hard, reported number, and it is the main piece of information on a chart that is not derived from price.',
@@ -213,6 +250,15 @@ export const TECHNICAL_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Pick a timeframe deliberately and understand what it costs in fees, noise and attention.',
         where: { href: '/backtest', label: 'Run the same idea on two timeframes' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Costs scale with frequency and returns do not. This is why short-timeframe backtests fail live.",
+            steps: [
+                { label: "gross edge", note: "the same idea", tone: 'up', value: 50 },
+                { label: "costs at 10 trades/yr", note: "small", tone: 'warn', value: 5 },
+                { label: "costs at 500 trades/yr", note: "the whole edge", tone: 'down', value: 50 },
+            ],
+        },
         prereq: ['momentum-oscillators'],
         concept: [
             'The same instrument produces a different chart at every timeframe, and the same rules produce different results on each. This is not a detail — the timeframe is one of the highest-impact choices in a trading system and it is usually made by accident.',
@@ -248,6 +294,13 @@ export const TECHNICAL_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Name the four specific ways a chart-pattern study fools its author, and test for each.',
         where: { href: '/backtest', label: 'Test something yourself' },
+        visual: {
+            kind: 'counter',
+            caption: "Test 100 parameter combinations at the 5% level and this many look significant by pure chance. Published results are the survivors of an unreported search.",
+            value: 5,
+            unit: " of 100",
+            a: "significant by chance alone",
+        },
         prereq: ['multiple-timeframes'],
         concept: [
             'Technical analysis contains genuinely useful ideas — volatility clusters, trends persist, costs matter — and a very large body of published pattern results that do not replicate. It is worth being precise about *how* the failures happen, because the same four mechanisms explain nearly all of them, and each one is testable.',

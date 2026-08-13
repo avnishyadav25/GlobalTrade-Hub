@@ -16,6 +16,15 @@ export const COMMODITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain why commodity prices behave differently from equity prices.',
         where: { href: '/terminal', label: 'Open a commodity' },
+        visual: {
+            kind: 'nested',
+            caption: "A share is a claim on future profits. A barrel of oil is a barrel of oil \u2014 it cannot compound.",
+            steps: [
+                { label: "a commodity", note: "a standardised physical good", tone: 'accent' },
+                { label: "no cash flow", note: "nothing to discount", tone: 'warn' },
+                { label: "supply inelastic", note: "a demand shock goes into price", tone: 'down' },
+            ],
+        },
         concept: [
             'A commodity is a standardised physical good — crude oil, gold, copper, wheat — where one unit is interchangeable with another of the same grade. That standardisation is what makes a futures market possible.',
             'They differ from equities in a way that changes everything about how they behave. **A share is a claim on future profits; a barrel of oil is a barrel of oil.** It produces no cash flow, pays no dividend, and cannot compound. Its price is set by supply and demand for the physical good, not by discounting anything.',
@@ -93,6 +102,14 @@ export const COMMODITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Compare the ownership routes on cost, tax and counterparty risk.',
         where: { href: '/terminal', label: 'Look at a gold price' },
+        visual: {
+            kind: 'split-bar',
+            caption: "For an Indian buyer, rupee gold is two bets. Much of the historical appeal was the second one.",
+            steps: [
+                { label: "dollar gold price", note: "the metal", tone: 'accent', value: 55 },
+                { label: "USD/INR", note: "currency, not gold", tone: 'warn', value: 45 },
+            ],
+        },
         prereq: ['commodity-basics'],
         concept: [
             'India is among the largest consumers of gold in the world, and gold occupies a place in Indian household portfolios that has no equivalent in most markets. It is worth being precise about the alternatives, because they differ far more than the underlying metal suggests.',
@@ -127,6 +144,14 @@ export const COMMODITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain what a refiner actually trades, and why a spread can be safer than either leg.',
         where: { href: '/strategies', label: 'See the crack spread strategy' },
+        visual: {
+            kind: 'two-series',
+            caption: "A refiner does not trade the price of crude. It trades the gap between crude and what it sells.",
+            a: "crude",
+            b: "crack spread",
+            seriesA: [80, 84, 79, 75, 82, 88, 85],
+            seriesB: [14, 12, 16, 19, 15, 11, 13],
+        },
         prereq: ['futures-curve'],
         concept: [
             'Crude oil is not one price. **WTI** and **Brent** are different benchmarks with different delivery points and quality, and the spread between them reflects transport and regional supply rather than a disagreement about oil.',
@@ -161,6 +186,16 @@ export const COMMODITY_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Know the venue, the contract mechanics and the currency exposure you inherit.',
         where: { href: '/settings', label: 'Broker connections' },
+        visual: {
+            kind: 'flow',
+            caption: "An Indian gold contract is priced in rupees but tracks a dollar benchmark. The exchange rate is inside your P&L.",
+            steps: [
+                { label: "global gold", note: "priced in USD", tone: 'accent' },
+                { label: "USD/INR", note: "applied", tone: 'warn' },
+                { label: "MCX contract", note: "quoted in rupees" },
+                { label: "your P&L", note: "contains both", tone: 'down' },
+            ],
+        },
         prereq: ['commodity-basics'],
         concept: [
             '**MCX** is India\'s principal commodity derivatives exchange, regulated by SEBI since commodity regulation was merged into it. It lists futures and options on gold, silver, crude oil, natural gas and base metals; **NCDEX** covers agricultural commodities.',
@@ -195,6 +230,15 @@ export const COMMODITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Decide how much commodity exposure is defensible, and on what evidence.',
         where: { href: '/portfolio', label: 'Look at your allocation' },
+        visual: {
+            kind: 'waterfall',
+            caption: "The roll cost in contango is paid continuously, whatever the price does. It is why passive commodity returns lag spot.",
+            steps: [
+                { label: "spot price rose", note: "over the year", tone: 'up', value: 10 },
+                { label: "roll cost", note: "each cycle, in contango", tone: 'down', value: 14 },
+                { label: "what you got", note: "less than nothing", tone: 'down', value: -4 },
+            ],
+        },
         prereq: ['futures-curve'],
         concept: [
             'Commodities are usually sold to investors on two claims: they hedge inflation, and they diversify equities. Both are partly true, and the qualifications are where the money is.',

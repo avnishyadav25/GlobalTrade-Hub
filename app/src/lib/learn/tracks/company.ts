@@ -55,6 +55,19 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Walk from revenue to net income and know which line each cost belongs to.',
         where: { href: '/research', label: 'Compare margins' },
+        visual: {
+            kind: 'waterfall',
+            caption: "A waterfall. Each line subtracts a category, and each subtotal answers a different question.",
+            steps: [
+                { label: "revenue", tone: 'accent', value: 1000 },
+                { label: "cost of goods", note: "\u2212600", tone: 'down', value: 600 },
+                { label: "gross profit", note: "400 \u00b7 40%", tone: 'up', value: 400 },
+                { label: "operating expenses", note: "\u2212250", tone: 'down', value: 250 },
+                { label: "operating profit", note: "150 \u00b7 15%", tone: 'up', value: 150 },
+                { label: "interest + tax", note: "\u221260", tone: 'down', value: 60 },
+                { label: "net income", note: "90 \u00b7 9%", tone: 'up', value: 90 },
+            ],
+        },
         prereq: ['three-statements'],
         concept: [
             'The income statement is a waterfall. Each line subtracts a category of cost, and each intermediate total answers a different question.',
@@ -101,6 +114,15 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Read the funding structure and spot a liquidity problem before it arrives.',
         where: { href: '/research', label: 'Check debt to equity' },
+        visual: {
+            kind: 'nested',
+            caption: "It balances by construction: everything owned was funded either by borrowing or by owners.",
+            steps: [
+                { label: "assets", note: "what the company controls", tone: 'accent' },
+                { label: "liabilities", note: "what somebody else has a claim on", tone: 'down' },
+                { label: "equity", note: "the residual \u2014 what is left, not what was put in", tone: 'up' },
+            ],
+        },
         prereq: ['income-statement'],
         concept: [
             'The balance sheet is a photograph taken on one day — usually the last day of the financial year, which is also the day a company has the most incentive to look its best.',
@@ -144,6 +166,15 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Read the three sections and tell a growing company from a struggling one.',
         where: { href: '/research', label: 'Back to Research' },
+        visual: {
+            kind: 'flow',
+            caption: "The sign pattern across the three sections tells the story faster than any single figure.",
+            steps: [
+                { label: "operating +", note: "the business funds itself", tone: 'up' },
+                { label: "investing \u2212", note: "it is buying things to grow" },
+                { label: "financing \u2212", note: "and returning capital", tone: 'accent' },
+            ],
+        },
         prereq: ['balance-sheet'],
         concept: [
             'Profit involves judgement — when to recognise revenue, how fast to depreciate, what to provision for. Cash involves none. Money is either in the bank or it is not, which is why experienced readers go to this statement first.',
@@ -188,6 +219,14 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Detect the gap between reported profit and cash generated, and name its usual causes.',
         where: { href: '/research', label: 'Back to Research' },
+        visual: {
+            kind: 'two-series',
+            caption: "Profits rose 40%; cash did not move. The gap is sitting in receivables and inventory.",
+            a: "reported profit",
+            b: "operating cash flow",
+            seriesA: [100, 112, 126, 140],
+            seriesB: [100, 101, 99, 102],
+        },
         prereq: ['cash-flow-statement'],
         concept: [
             'Two companies can report identical net income while one is thriving and the other is failing. The difference is **earnings quality**: how much of the reported profit turned into cash.',
@@ -232,6 +271,15 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Decompose ROE and explain why a high one can be a warning rather than a compliment.',
         where: { href: '/research', label: 'Look up a real ROE' },
+        visual: {
+            kind: 'split-bar',
+            caption: "DuPont: only one of these three terms is about the business. The third is leverage.",
+            steps: [
+                { label: "net margin", note: "profitability", tone: 'up', value: 33 },
+                { label: "asset turnover", note: "efficiency", tone: 'accent', value: 33 },
+                { label: "equity multiplier", note: "leverage, and nothing else", tone: 'down', value: 34 },
+            ],
+        },
         prereq: ['balance-sheet'],
         concept: [
             '**Return on equity** is net income divided by shareholders\' equity: what the business earns on the owners\' money. It is the most quoted quality ratio and the most misread.',
@@ -280,6 +328,14 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Read a margin trend as evidence about competition, and predict how profit responds to a sales change.',
         where: { href: '/research', label: 'Compare margins in one industry' },
+        visual: {
+            kind: 'two-series',
+            caption: "Operating leverage. A 10% revenue swing becomes a 70% profit swing, because fixed costs do not move.",
+            a: "revenue",
+            b: "profit",
+            seriesA: [900, 950, 1000, 1050, 1100],
+            seriesB: [30, 65, 100, 135, 170],
+        },
         prereq: ['income-statement'],
         concept: [
             'A margin is a ratio, but a **margin trend across years** is evidence about competition. Sustained high margins mean customers keep paying more than the product costs, and competitors have not been able to undercut it. Something is stopping them, and identifying that something is most of the analysis.',
@@ -323,6 +379,14 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 9,
         outcome: 'Use a multiple as a compressed assumption rather than a verdict, and pick the right one.',
         where: { href: '/research', label: 'Look up a real P/E' },
+        visual: {
+            kind: 'gauge',
+            caption: "A multiple is not a verdict. It is a compressed claim about growth that you have to judge.",
+            value: 0.62,
+            a: "cheap \u2014 or earnings about to fall",
+            b: "expensive \u2014 or growth to come",
+            unit: "\u00d7 P/E",
+        },
         prereq: ['roe-and-roce'],
         concept: [
             'A **price-to-earnings ratio** is the price divided by earnings per share. A P/E of 25 means you are paying 25 rupees for each rupee of annual profit. Inverted, it is an earnings yield of 4%.',
@@ -366,6 +430,14 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 10,
         outcome: 'Explain what a valuation model actually asserts, and why most of the answer sits in assumptions.',
         where: { href: '/portfolio', label: 'Think about long-run compounding' },
+        visual: {
+            kind: 'split-bar',
+            caption: "Most of a DCF is the part beyond the forecast, computed from a growth rate assumed to hold forever.",
+            steps: [
+                { label: "years 1\u20135", note: "the part you actually modelled", tone: 'accent', value: 30 },
+                { label: "terminal value", note: "a guess, and most of the answer", tone: 'down', value: 70 },
+            ],
+        },
         prereq: ['valuation-multiples'],
         concept: [
             'A **discounted cash flow** model says something simple: a business is worth the cash it will produce for its owners, with future cash counted for less than cash today.',
@@ -413,6 +485,17 @@ export const COMPANY_LESSONS: Lesson[] = [
         minutes: 10,
         outcome: 'Run a governance and accounting checklist that has preceded most major corporate failures.',
         where: { href: '/research', label: 'Back to Research' },
+        visual: {
+            kind: 'ladder',
+            caption: "Any one is a question. Several together, in a company that will not answer them, is the exit.",
+            steps: [
+                { label: "auditor resigned", note: "the highest-value single signal", tone: 'down', value: 100 },
+                { label: "promoter pledging", note: "a decline becomes forced selling", tone: 'down', value: 80 },
+                { label: "profit without cash", note: "it is in receivables", tone: 'warn', value: 70 },
+                { label: "related-party flows", note: "money going out to insiders", tone: 'warn', value: 60 },
+                { label: "raising equity while profitable", note: "why does it need more?", tone: 'warn', value: 45 },
+            ],
+        },
         prereq: ['quality-of-earnings'],
         concept: [
             'Most large corporate failures were visible in the filings before they were visible in the price. Not certain — visible. The signals below recur across cases, and none requires special access.',

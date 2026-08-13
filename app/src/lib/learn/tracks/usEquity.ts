@@ -16,6 +16,16 @@ export const US_EQUITY_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Name the venues and the regulator, and stop believing there is one US stock market.',
         where: { href: '/terminal', label: 'Open a US instrument' },
+        visual: {
+            kind: 'flow',
+            caption: "There is no single US stock market. What makes it behave like one is the rule tying the venues together.",
+            steps: [
+                { label: "your order" },
+                { label: "best-execution routing", note: "across dozens of venues", tone: 'accent' },
+                { label: "consolidated tape", note: "one national best bid and offer", tone: 'up' },
+                { label: "a fill", note: "at the best available price" },
+            ],
+        },
         concept: [
             'The **NYSE** and **NASDAQ** are the two headline US exchanges — the first historically floor-based with designated market makers, the second electronic from the start. In practice the distinction has almost vanished: both are electronic, and a stock listed on one trades on both.',
             'That last point is the one that surprises people. The US has **dozens of trading venues** — the two big exchanges, a dozen smaller ones, and a large volume of off-exchange trading. A single stock trades simultaneously across all of them.',
@@ -52,6 +62,16 @@ export const US_EQUITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Know the route, the limit, and the two taxes that apply before you see a rupee.',
         where: { href: '/funds', label: 'See how currency is handled' },
+        visual: {
+            kind: 'waterfall',
+            caption: "What a dollar of US dividend is worth by the time it reaches you.",
+            steps: [
+                { label: "gross dividend", value: 100 },
+                { label: "US withholding", note: "deducted at source, treaty rate", tone: 'down', value: 25 },
+                { label: "reaches you", tone: 'accent', value: 75 },
+                { label: "Indian tax", note: "credit claimable, if you file for it", tone: 'warn', value: 15 },
+            ],
+        },
         prereq: ['nyse-nasdaq-sec'],
         concept: [
             'Indian residents invest abroad through the RBI\'s **Liberalised Remittance Scheme (LRS)**, which permits remittance up to an annual limit per person per financial year. That limit covers everything sent abroad — investment, travel, education, gifts — not investment alone.',
@@ -87,6 +107,14 @@ export const US_EQUITY_LESSONS: Lesson[] = [
         minutes: 7,
         outcome: 'Explain why the Dow and the S&P disagree, and what "the market was up" leaves out.',
         where: { href: '/terminal', label: 'Compare instruments' },
+        visual: {
+            kind: 'two-series',
+            caption: "The index rose. Most of its members did not. Breadth and index return are different measurements.",
+            a: "index level",
+            b: "% of members up",
+            seriesA: [100, 103, 106, 108, 111, 114, 117, 120],
+            seriesB: [60, 55, 48, 44, 40, 38, 35, 32],
+        },
         prereq: ['nyse-nasdaq-sec'],
         concept: [
             'An index is a rule for combining prices into one number. The rule matters more than most people assume.',
@@ -121,6 +149,14 @@ export const US_EQUITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Understand why an extended-hours price is unreliable and what payment for order flow means for you.',
         where: { href: '/orders', label: 'Review your fills' },
+        visual: {
+            kind: 'gauge',
+            caption: "Extended-hours volume is a fraction of the session. The price it prints is a thin quote, not a consensus.",
+            value: 0.12,
+            a: "pre-market",
+            b: "regular session",
+            unit: "%",
+        },
         prereq: ['us-indices'],
         concept: [
             'US stocks trade outside the 9:30–4:00 session in **pre-market** and **after-hours** sessions. Most earnings are released into those windows deliberately, so the headline "stock jumped 8% after results" almost always describes an extended-hours print.',
@@ -155,6 +191,14 @@ export const US_EQUITY_LESSONS: Lesson[] = [
         minutes: 8,
         outcome: 'Explain why a company can beat estimates and fall, and where to find the real filing.',
         where: { href: '/research', label: 'See the earnings calendar' },
+        visual: {
+            kind: 'two-series',
+            caption: "Price responds to the surprise, not the result. A company can grow 30% and fall.",
+            a: "actual earnings",
+            b: "what was expected",
+            seriesA: [100, 110, 122, 130],
+            seriesB: [100, 112, 125, 136],
+        },
         prereq: ['us-market-structure'],
         concept: [
             'US companies report quarterly, and the reports cluster into four **earnings seasons** a year. Each company files a **10-Q** for a quarter and a **10-K** for the year — the real documents, filed with the SEC, distinct from the press release and the slide deck that get reported.',
