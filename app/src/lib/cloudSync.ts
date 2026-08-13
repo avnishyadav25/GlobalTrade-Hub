@@ -122,6 +122,7 @@ const ENTRIES: Entry[] = [
             seenCoachMarks: s.seenCoachMarks,
             skipped: s.skipped,
             quizAnswers: s.quizAnswers,
+            programmeSteps: s.programmeSteps,
             guideEnabled: s.guideEnabled,
             rev: s.rev,
         }),

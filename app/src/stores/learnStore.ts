@@ -13,6 +13,13 @@ interface LearnStore {
     skipped: Record<string, number>;
     /** Quiz answers, so they survive navigation. Slug -> index per question. */
     quizAnswers: Record<string, number[]>;
+    /**
+     * Self-marked programme steps — the reflective ones no ledger can confirm.
+     * Step id -> when. Verified steps are NEVER stored here; they are recomputed from
+     * the paper ledger every render, which is what stops the programme becoming a
+     * checklist you can tick without doing anything.
+     */
+    programmeSteps: Record<string, number>;
     /** Guide-bar state. */
     guideEnabled: boolean;
     guideCollapsed: boolean;
@@ -37,6 +44,7 @@ interface LearnStore {
      * `verify(state) || completed[slug]`, so those reappear immediately. Resetting
      * the paper account is the other half, and is deliberately a separate action.
      */
+    toggleProgrammeStep: (id: string) => void;
     resetProgress: () => void;
 }
 
@@ -49,6 +57,7 @@ export const useLearnStore = create<LearnStore>()(
             seenCoachMarks: {},
             skipped: {},
             quizAnswers: {},
+            programmeSteps: {},
             guideEnabled: true,
             guideCollapsed: false,
             rev: 0,
@@ -73,6 +82,14 @@ export const useLearnStore = create<LearnStore>()(
                         ? s
                         : { seenCoachMarks: { ...s.seenCoachMarks, [topic]: Date.now() }, rev: s.rev + 1 }
                 ),
+
+            toggleProgrammeStep: (id) =>
+                set((s) => {
+                    const next = { ...(s.programmeSteps ?? {}) };
+                    if (next[id]) delete next[id];
+                    else next[id] = Date.now();
+                    return { programmeSteps: next, rev: s.rev + 1 };
+                }),
 
             skipLesson: (slug) => set((s) => ({ skipped: { ...s.skipped, [slug]: Date.now() }, rev: s.rev + 1 })),
 
@@ -102,6 +119,7 @@ export const useLearnStore = create<LearnStore>()(
                     seenCoachMarks: {},
                     skipped: {},
                     quizAnswers: {},
+                    programmeSteps: {},
                     guideCollapsed: false,
                     // rev must keep climbing, or cloud sync's isNewer guard treats the
                     // server's pre-reset copy as newer and restores what we just cleared.

@@ -120,6 +120,7 @@ export const NAV_SECTIONS: NavItem[] = [
   {
     key: 'learn', label: 'Learn', href: '/learn',
     children: [
+      { key: 'start', label: 'Start here', href: '/start' },
       { key: 'course', label: 'Course', href: '/learn' },
       { key: 'reading', label: 'Library', href: '/library' },
     ],
