@@ -362,6 +362,18 @@ const CORE_LESSONS: Lesson[] = [
         kind: 'practice',
         minutes: 8,
         outcome: 'Use a limit order to control your price, and know when it will cost you the trade.',
+        tradeoffs: {
+            pros: [
+                "You choose the price, and never pay worse than it",
+                "No slippage \u2014 the fill is exactly where you said",
+                "Resting orders can earn the maker side of a spread",
+            ],
+            cons: [
+                "It may never fill, and a missed entry costs nothing visible so it is easy to ignore",
+                "In a fast move it fills only when the market has already gone against you",
+                "Your capital is reserved while it waits",
+            ],
+        },
         where: { href: '/terminal', label: 'Place a limit order' },
         prereq: ['your-first-order'],
         visual: 'order-types',
@@ -552,6 +564,18 @@ const CORE_LESSONS: Lesson[] = [
         kind: 'practice',
         minutes: 8,
         outcome: 'Place a stop that caps your loss at an amount you chose while calm.',
+        tradeoffs: {
+            pros: [
+                "The loss is decided while you are calm, not while you are losing",
+                "It executes whether or not you are watching",
+                "It makes position sizing computable \u2014 risk per unit becomes a number",
+            ],
+            cons: [
+                "A stop becomes a market order, so it inherits every market-order risk exactly when conditions are worst",
+                "A gap fills you well beyond it \u2014 a stop is a level, not a guarantee",
+                "Too tight and ordinary noise takes you out of a correct trade",
+            ],
+        },
         where: { href: '/terminal', label: 'Protect a position' },
         prereq: ['closing-a-trade'],
         visual: 'order-types',
@@ -698,6 +722,18 @@ const CORE_LESSONS: Lesson[] = [
         kind: 'practice',
         minutes: 8,
         outcome: 'Explain how a short makes money, and why it is the riskier side.',
+        tradeoffs: {
+            pros: [
+                "Half of what markets do is invisible if you have only been long",
+                "It can hedge an existing holding without selling it",
+                "Falling markets become tradeable rather than something to sit through",
+            ],
+            cons: [
+                "Loss is unbounded \u2014 a price has no ceiling",
+                "Margin is held, so buying power falls rather than rises",
+                "You can be right and still be closed out by a squeeze before the fall arrives",
+            ],
+        },
         where: { href: '/holdings', label: 'Open a short' },
         prereq: ['closing-a-trade'],
         visual: 'long-vs-short',

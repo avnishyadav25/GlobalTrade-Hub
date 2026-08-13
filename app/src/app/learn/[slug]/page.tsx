@@ -86,6 +86,29 @@ export default function LessonPage({ params }: { params: Promise<{ slug: string 
                 </div>
             )}
 
+            {lesson.tradeoffs && (
+                <Panel title="What it buys you, and what it costs" className="mt-5">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <div className="mb-1.5 text-2xs font-bold tracking-wide text-up">WORKS BECAUSE</div>
+                            <ul className="flex flex-col gap-1.5">
+                                {lesson.tradeoffs.pros.map((p) => (
+                                    <li key={p} className="rounded-sm bg-up-dim px-2.5 py-1.5 text-xs text-up">{p}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div>
+                            <div className="mb-1.5 text-2xs font-bold tracking-wide text-down">COSTS YOU</div>
+                            <ul className="flex flex-col gap-1.5">
+                                {lesson.tradeoffs.cons.map((c) => (
+                                    <li key={c} className="rounded-sm bg-down-dim px-2.5 py-1.5 text-xs text-down">{c}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </Panel>
+            )}
+
             {lesson.formulas && lesson.formulas.length > 0 && (
                 <Panel title="The arithmetic" className="mt-5">
                     <div className="flex flex-col gap-3">

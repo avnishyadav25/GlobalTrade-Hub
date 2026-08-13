@@ -101,6 +101,18 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 8,
         outcome: 'Explain why cost dominates fund selection, and what an ETF adds over an index fund.',
+        tradeoffs: {
+            pros: [
+                "Cost is the one variable you control, and it compounds",
+                "You cannot underperform the index by picking badly",
+                "No manager risk, no style drift, no key-person departure",
+            ],
+            cons: [
+                "You take the full drawdown, always",
+                "Cap weighting means you hold most of whatever has already risen",
+                "No possibility of outperformance, by construction",
+            ],
+        },
         where: { href: '/portfolio', label: 'Compare to your own record' },
         visual: {
             kind: 'two-series',
@@ -238,6 +250,18 @@ export const OTHER_MARKET_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 9,
         outcome: 'Set a split you can hold through a drawdown, and rebalance mechanically.',
+        tradeoffs: {
+            pros: [
+                "It explains more of your outcome than any individual pick inside it",
+                "Rebalancing enforces sell-high buy-low behaviour that nobody executes discretionarily",
+                "A split you can hold through a crash beats an optimal one you abandon",
+            ],
+            cons: [
+                "Correlations rise in a crisis, so the measured diversification is partly absent when needed",
+                "Rebalancing always feels wrong \u2014 you are selling what is working",
+                "Getting the split right cannot rescue money you needed in two years and put in equity",
+            ],
+        },
         where: { href: '/portfolio', label: 'Look at your own mix' },
         visual: {
             kind: 'split-bar',

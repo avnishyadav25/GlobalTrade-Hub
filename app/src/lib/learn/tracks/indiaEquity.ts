@@ -64,6 +64,18 @@ export const INDIA_EQUITY_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 8,
         outcome: 'Choose the right product type, and know what it costs you in tax, margin and risk.',
+        tradeoffs: {
+            pros: [
+                "STT is sell-side only, so a round trip costs about a third of delivery",
+                "Leverage is available, so less capital is committed",
+                "No overnight gap risk \u2014 the position is closed before the market shuts",
+            ],
+            cons: [
+                "Taxed as speculative business income at your slab rate, and losses cannot offset capital gains",
+                "Your broker squares you off before the close at whatever price exists, and charges for it",
+                "Leverage compresses the time you have to be right",
+            ],
+        },
         where: { href: '/funds', label: 'See your charges' },
         visual: {
             kind: 'split-bar',

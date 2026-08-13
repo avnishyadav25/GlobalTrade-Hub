@@ -342,6 +342,18 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 9,
         outcome: 'Explain what each common structure trades away, and why nothing is free.',
+        tradeoffs: {
+            pros: [
+                "Defined risk \u2014 the maximum loss is known when you open it",
+                "Cheaper than the bare option, and less exposed to time decay",
+                "You can express a view on range rather than direction",
+            ],
+            cons: [
+                "Each leg pays its own spread and charges, twice \u2014 four-leg structures can cost more than the credit",
+                "Maximum loss is typically several times maximum gain, so a 90% win rate can still lose",
+                "Defined risk is not small risk",
+            ],
+        },
         where: { href: '/strategies', label: 'See what is and is not built' },
         visual: {
             kind: 'split-bar',
@@ -482,6 +494,18 @@ export const DERIVATIVES_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 9,
         outcome: 'Price a protective put honestly, including the cost of the insurance itself.',
+        tradeoffs: {
+            pros: [
+                "Downside is bounded at the strike for the life of the option",
+                "It lets you hold through an event rather than selling and re-entering",
+                "The cost is known in advance, unlike the loss it prevents",
+            ],
+            cons: [
+                "A put bought quarterly at 2% costs about 8% a year \u2014 much of a typical equity return",
+                "It usually expires worthless, which is the expected outcome and still feels like waste",
+                "It hedges the index, not your specific holdings",
+            ],
+        },
         where: { href: '/portfolio', label: 'Look at your concentration' },
         visual: {
             kind: 'waterfall',

@@ -58,6 +58,18 @@ export const CRYPTO_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 8,
         outcome: 'Choose a custody model deliberately, and know what each one exposes you to.',
+        tradeoffs: {
+            pros: [
+                "Nobody can freeze or seize a self-custodied balance",
+                "No counterparty can fail and take your assets with it",
+                "Settlement needs no permission from anyone",
+            ],
+            cons: [
+                "Lose the seed phrase and the funds are gone permanently, with no recovery",
+                "See it once and somebody else owns them",
+                "You become your own security team, forever",
+            ],
+        },
         where: { href: '/settings', label: 'See how this app handles secrets' },
         visual: {
             kind: 'nested',

@@ -148,6 +148,14 @@ export interface Lesson {
      * has no component fails to compile instead of rendering nothing.
      */
     visual?: LessonVisualSpec;
+    /**
+     * What this buys you and what it costs you.
+     *
+     * A structured field rather than prose, because markdown-lite has no two-column and
+     * no per-item colour — and because a trade-off buried in a paragraph is read as
+     * description rather than as a decision the reader has to make.
+     */
+    tradeoffs?: { pros: string[]; cons: string[] };
     formulas?: Formula[];
     /** Required for a `practice` lesson; absent on a `study` lesson. */
     exercise?: Exercise;

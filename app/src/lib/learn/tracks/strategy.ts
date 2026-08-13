@@ -195,6 +195,18 @@ export const STRATEGY_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 8,
         outcome: 'Size from risk rather than from conviction, and survive a losing streak.',
+        tradeoffs: {
+            pros: [
+                "Every position risks the same amount even though instruments behave nothing alike",
+                "It removes conviction from the calculation, and conviction is highest when you are most likely wrong",
+                "A survivable losing streak becomes arithmetic rather than hope",
+            ],
+            cons: [
+                "It feels wrong to size down exactly when you are most confident",
+                "Volatility measured on the past understates it before a shock, so you size UP into the quiet",
+                "It caps the upside of your best ideas as firmly as the downside of your worst",
+            ],
+        },
         where: { href: '/terminal', label: 'Size a position' },
         prereq: ['hypothesis-to-rules', 'position-sizing'],
         visual: 'risk-sizing',
@@ -366,6 +378,18 @@ export const STRATEGY_LESSONS: Lesson[] = [
         kind: 'study',
         minutes: 9,
         outcome: 'List what a paper record does and does not prove, and what changes when money is real.',
+        tradeoffs: {
+            pros: [
+                "It tests whether your rules are complete enough to execute",
+                "It shows whether the idea survives realistic costs",
+                "It builds the record-keeping habit before money is at stake",
+            ],
+            cons: [
+                "It cannot test how you behave when the loss is real, which is the thing that matters most",
+                "Fills are cleaner than reality \u2014 no depth, no circuit filters, no rejections",
+                "A good paper record builds confidence that has not been earned",
+            ],
+        },
         where: { href: '/settings', label: 'See the live-trading guard' },
         visual: {
             kind: 'split-bar',
