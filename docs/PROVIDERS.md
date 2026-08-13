@@ -1,5 +1,10 @@
 # Provider setup guide
 
+
+> **Staleness warning.** This document predates the options layer, walk-forward and
+> portfolio backtesting, and the current provider set. See [PENDING.md](PENDING.md) for
+> what is actually true today.
+
 Everything here is **optional** — GlobalTrade Hub runs with simulated data, a local
 paper engine, and a heuristic coach out of the box. Add keys to unlock real data,
 live trading, the AI agents, and notifications. All keys live in `app/.env.local`

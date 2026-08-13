@@ -1,5 +1,10 @@
 # GlobalTrade Hub - Getting Started Guide
 
+
+> **Staleness warning.** This document predates the options layer, walk-forward and
+> portfolio backtesting, and the current provider set. See [PENDING.md](PENDING.md) for
+> what is actually true today.
+
 Welcome to **GlobalTrade Hub** - a unified trading platform for Indian Equities, US Stocks, and Crypto/Commodities. This guide will help you set up the development environment and understand the project structure.
 
 ---

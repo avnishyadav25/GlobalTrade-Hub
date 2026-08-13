@@ -1,7 +1,7 @@
 # GlobalTrade Hub — defect audit and remediation backlog
 
 Audit date: **2026-08-10**. Covers every screen, every store, every engine, and every API route.
-**92 fixed, 5 partial, 1 open.** Status legend: `[ ]` open · `[x]` fixed · `[~]` partially fixed · `[wontfix]` accepted.
+**92 fixed, 5 partial, 0 open — see docs/PENDING.md for what is open NOW.** Status legend: `[ ]` open · `[x]` fixed · `[~]` partially fixed · `[wontfix]` accepted.
 
 Stage numbers refer to the remediation sequence at the bottom of this file.
 
@@ -110,7 +110,7 @@ reservation, determinism and aggregate exactness.
 | S4.3 | `[~]` | Five `as unknown as AnyStore` casts erase all type safety between the stores and the sync layer; a renamed field breaks sync silently at runtime. (`app/src/lib/cloudSync.ts:27-31`) |
 | S4.4 | `[x]` | Hydration is a sequential `await` loop with no loading state — the UI renders local data, then jumps. A `configured:false` mid-loop aborts the rest, leaving partial hydration. (`app/src/lib/cloudSync.ts:43-52`) → Hydration is concurrent, and a fully-unconfigured server leaves localStorage untouched rather than partially applying. |
 
-## S5 — Rule enforcement and kill-switch (partial — agent guardrails S5.5–S5.8 still open)
+## S5 — Rule enforcement and kill-switch (partial — only S5.8 remains open)
 
 | # | Status | Defect |
 |---|---|---|

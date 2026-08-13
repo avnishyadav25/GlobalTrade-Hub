@@ -1,5 +1,10 @@
 # GlobalTrade Hub — Architecture
 
+
+> **Staleness warning.** This document predates the options layer, walk-forward and
+> portfolio backtesting, and the current provider set. See [PENDING.md](PENDING.md) for
+> what is actually true today.
+
 Multi-asset trading terminal: crypto, Indian equity, US equity, forex and commodities, with a
 persistent paper-trading engine, a backtester, a market scanner and LLM-backed agents.
 

@@ -8,8 +8,10 @@ cannot fail — you will look at a number, it will be a number, and you will tic
 every check below says what the *wrong* answer looks like. If you cannot make a step fail, it
 is not testing anything.
 
-This document is for a person. The automated version lives in [`app/e2e/`](../app/e2e/) and is
-run with `npm run test:e2e`.
+This document is for a person. The automated version lives in [`app/e2e/`](../app/e2e/) —
+but note that **`@playwright/test` is not installed and that suite has never run**. See
+[PENDING.md](PENDING.md). Install it with `npm i -D @playwright/test` before trusting
+`npm run test:e2e`.
 
 ---
 
@@ -18,7 +20,7 @@ run with `npm run test:e2e`.
 ```bash
 cd app
 npm install
-npm run verify     # 577 tests, lint, build. Everything below assumes this is green.
+npm run verify     # 614 tests, lint, build. Everything below assumes this is green.
 npm run dev        # http://localhost:3000
 ```
 

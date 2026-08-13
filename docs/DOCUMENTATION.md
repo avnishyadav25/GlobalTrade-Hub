@@ -1,5 +1,10 @@
 # GlobalTrade Hub — Full Documentation
 
+
+> **Staleness warning.** This document predates the options layer, walk-forward and
+> portfolio backtesting, and the current provider set. See [PENDING.md](PENDING.md) for
+> what is actually true today.
+
 One screen, all markets. A multi-asset trading terminal (crypto, Indian & US
 equities, forex, commodities) with a realistic paper engine, backtesting, a market
 scanner, multi-provider AI agents (DeepSeek default), auto-trading, notifications,
@@ -42,7 +47,7 @@ and an optional Supabase backend.
 **Engine & data**
 - Realistic **paper engine** (`lib/paperEngine.ts`): market/limit/stop/stop-limit, resting orders, partial fills, slippage, fees, margin, multi-currency (₹ base), priced against live quotes; persistent.
 - **Market data** (`stores/marketStore.ts`): Binance public WebSocket for crypto (on by default) + simulation for the rest; server route for FX/commodity providers.
-- **Backtest** (`lib/backtestEngine.ts`), **Scanner** (`lib/scanner.ts`).
+- **Backtest** (`lib/strategies/backtest.ts`), **Scanner** (`lib/scanner.ts`).
 
 **AI (server-side, multi-provider)**
 - `lib/ai/index.ts` — `runLLM()` with **DeepSeek default**, + OpenAI / Gemini / Anthropic, automatic fallback, heuristic when no key.
