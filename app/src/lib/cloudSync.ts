@@ -13,6 +13,7 @@
 
 import { usePaperStore } from '@/stores/paperStore';
 import { useAgentStore } from '@/stores/agentStore';
+import { useStrategyStore } from '@/stores/strategyStore';
 import { mergeGuardrails } from '@/lib/agentGuardrails';
 import { useCoachStore } from '@/stores/coachStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -119,6 +120,48 @@ const ENTRIES: Entry[] = [
         apply: (server, local) => {
             if (isArr(server.customInstruments)) registerInstruments(server.customInstruments as unknown[]);
             return { ...local, ...server };
+        },
+    },
+    {
+        key: 'strategies',
+        store: useStrategyStore as unknown as AnyStore,
+        // WHICH strategies are running, on what, with what freedom. Previously
+        // localStorage-only, which meant the config existed on exactly one device and
+        // nothing server-side could discover it.
+        //
+        // `memory` is excluded on purpose, matching the store's own partialize: it is
+        // edge-trigger state, and replaying a stale decision as if it were new is worse
+        // than re-arming. That also keeps the two runners from disagreeing about it.
+        snapshot: (s) => ({
+            instances: s.instances,
+            riskPct: s.riskPct,
+            maxActive: s.maxActive,
+            rev: s.rev,
+        }),
+        // An instance drives real order placement, so a malformed row must be skipped
+        // rather than hydrated. Anything without the fields the runner dereferences
+        // would otherwise surface as an order on `undefined`.
+        validate: (v) =>
+            (v.instances === undefined ||
+                (isArr(v.instances) &&
+                    v.instances.every(
+                        (i) =>
+                            isObj(i) &&
+                            typeof i.id === 'string' &&
+                            typeof i.strategyId === 'string' &&
+                            typeof i.symbol === 'string' &&
+                            typeof i.timeframe === 'string' &&
+                            typeof i.enabled === 'boolean' &&
+                            (i.mode === 'review' || i.mode === 'auto')
+                    ))) &&
+            (v.riskPct === undefined || (typeof v.riskPct === 'number' && Number.isFinite(v.riskPct))),
+        // Same monotonic-rev guard the learn store uses: without it a stale server row
+        // silently re-enables an instance you just switched off, which for something
+        // that places orders is not a cosmetic loss.
+        isNewer: (server, local) => {
+            const s = typeof server.rev === 'number' ? server.rev : -1;
+            const l = typeof local.rev === 'number' ? local.rev : -1;
+            return s > l;
         },
     },
     {
