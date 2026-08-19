@@ -47,7 +47,10 @@ describe('every order records what placed it', () => {
         const offenders: string[] = [];
         for (const file of walk(SRC)) {
             for (const call of placeCalls(readFileSync(file, 'utf8'))) {
-                if (!/\bsource:/.test(call)) {
+                // Accepts shorthand (`source`) as well as `source:`; both genuinely
+                // pass provenance, and only matching the colon form rejected a correct
+                // call site the first time this ran.
+                if (!/\bsource\s*[,:}]/.test(call)) {
                     offenders.push(`${file.replace(SRC, 'src')} :: ${call.slice(0, 90).replace(/\s+/g, ' ')}`);
                 }
             }

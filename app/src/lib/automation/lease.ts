@@ -29,6 +29,14 @@ export interface AutomationLease {
     browserHeartbeatAt?: number;
     /** Epoch ms of the last server run that placed or evaluated. */
     serverRanAt?: number;
+    /**
+     * Signal ids already acted on, shared between the two runners.
+     *
+     * Lives on the lease rather than in per-runner memory because it is precisely the
+     * handover case it guards: whichever runner takes over starts with blank runtime
+     * memory and would otherwise re-place an order the other just made on the same bar.
+     */
+    actedSignalIds?: string[];
 }
 
 export type LeaseHolder = 'browser' | 'server' | 'idle';

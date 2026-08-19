@@ -13,6 +13,7 @@ import { placeSignal } from '@/lib/strategies/place';
 import { candlesUrl } from '@/lib/marketData/candlesUrl';
 import { marketOf } from '@/lib/paperEngine';
 import { sessionInfo } from '@/lib/sessions';
+import { HEARTBEAT_MS } from '@/lib/automation/lease';
 import type { Candle } from '@/lib/mockData';
 
 /**
@@ -121,12 +122,31 @@ export function StrategyEngine() {
             }
         };
 
+        // Claim the lease while this tab is running the loop.
+        //
+        // The server runner stands down whenever a heartbeat is recent, because the two
+        // cannot both write the paper ledger. Claimed whenever instances are enabled at
+        // all, not only automatic ones: if this tab is here, it is the one running them.
+        const heartbeat = async () => {
+            if (!useStrategyStore.getState().activeInstances().length) return;
+            try {
+                await fetch('/api/automation/heartbeat', { method: 'POST' });
+            } catch {
+                // A failed heartbeat means the server may take over. That is the safe
+                // direction to fail in, and noisier handling would only add a toast for
+                // something the user cannot act on.
+            }
+        };
+
         const timer = setInterval(tick, CYCLE_MS);
+        const beat = setInterval(heartbeat, HEARTBEAT_MS);
         tick();
+        heartbeat();
 
         return () => {
             active = false;
             clearInterval(timer);
+            clearInterval(beat);
         };
     }, []);
 

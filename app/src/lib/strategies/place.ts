@@ -5,9 +5,7 @@ import { useMarketStore } from '@/stores/marketStore';
 import { useSignalStore, type QueuedSignal } from '@/stores/signalStore';
 import { useStrategyStore } from '@/stores/strategyStore';
 import { useAgentStore } from '@/stores/agentStore';
-import { deriveFxRates, equity, isFractional, toBase } from '@/lib/paperEngine';
-import { checkGuardrails } from '@/lib/agentGuardrails';
-import { sizeForSignal } from './runtime';
+import { assessSignal } from '@/lib/automation/decide';
 
 // Turning an approved signal into an order.
 //
@@ -46,62 +44,22 @@ export function placeSignal(signal: QueuedSignal): PlaceOutcome {
 
     if (agent.killSwitch) return fail('Kill-switch is on — all order placement is halted.');
 
-    const quote = market.getQuote(signal.symbol);
-    const price = quote?.price;
-    // Never size from the signal's own reference price: it is the close of the bar that
-    // triggered it, and by the time you approve it the market has moved.
-    if (!price || price <= 0) return fail('No live price for this instrument — refusing to size from a stale reference.');
-
-    const fx = deriveFxRates(market.quotes);
-    const equityBase = equity(paper.state, market.quotes, fx);
-    const priceBase = toBase(signal.symbol, price, fx);
-
-    // Exposure caps apply to opening only — checkGuardrails reads `signal.intent`, so an
-    // exit is never blocked by the position count or the daily loss limit. Being unable
-    // to close the trade that breached a limit would be the opposite of a risk control.
-    // `actedIds` is empty because this path already dedupes by signal id in
-    // `signalStore.push`.
-    const verdict = checkGuardrails({
-        guardrails: agent.guardrails,
+    // Guardrails and sizing live in lib/automation/decide.ts, shared verbatim with the
+    // server runner. Two copies of this logic would mean a strategy could size
+    // differently, or apply a different cap, depending on whether a browser tab happened
+    // to be open — divergence that would be invisible until the books disagreed.
+    const assessment = assessSignal({
+        signal,
+        instanceId: signal.instanceId,
         book: paper.state,
-        sig: signal,
-        actedIds: [],
-        killSwitch: agent.killSwitch,
-        equityBase,
+        quotes: market.quotes,
+        guardrails: agent.guardrails,
+        riskPct: strategies.riskPct,
     });
-    if (!verdict.allowed) return fail(verdict.reason ?? 'Blocked by your guardrails.');
+    if (!assessment.ok) return fail(assessment.reason);
 
-    const qty =
-        signal.intent === 'exit'
-            ? Math.abs(paper.state.positions[signal.symbol]?.qty ?? 0)
-            : sizeForSignal({
-                  signal,
-                  equityBase,
-                  priceBase,
-                  riskPct: strategies.riskPct,
-                  fractional: isFractional(signal.symbol),
-                  maxOrderValueBase: agent.guardrails.maxOrderValueINR,
-              });
-
-    if (!(qty > 0)) {
-        return fail(
-            signal.intent === 'exit'
-                ? 'Nothing open in this instrument to close.'
-                : 'Position size worked out at zero — the order value cap is too small for one unit.'
-        );
-    }
-
-    const result = paper.place({
-        symbol: signal.symbol,
-        side: signal.side,
-        type: 'market',
-        qty,
-        // Stamp WHO placed it. Without this the book cannot distinguish an unattended
-        // strategy fill from something you typed into the order ticket, which is both a
-        // gap on the Orders screen and the reason a lesson could not be gated on a
-        // strategy having actually traded.
-        source: { kind: 'strategy', strategyId: signal.strategyId, instanceId: signal.instanceId },
-    });
+    const { qty, source } = assessment;
+    const result = paper.place({ symbol: signal.symbol, side: signal.side, type: 'market', qty, source });
     if (result.status === 'rejected') {
         return fail(result.reason ?? 'Rejected by the order chokepoint.');
     }
