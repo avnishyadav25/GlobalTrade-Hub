@@ -1,9 +1,25 @@
-// Simple, transparent backtesting engine: EMA-crossover + RSI filter with
-// stop/target and % position sizing, run over a synthetic OHLC history.
-// Produces the metrics, equity curve, drawdown and monthly-returns heatmap the
-// Backtest screen renders. Deterministic given (symbol, seed, params).
+// Transparent backtesting engine: EMA-crossover + RSI filter with stop/target and
+// % position sizing, run over candles supplied by the caller (real where a provider
+// covers the instrument, otherwise a clearly-labelled synthetic series).
+//
+// Modelling choices that make the numbers defensible — see docs/AUDIT.md:
+//  - Indicators return null during warm-up. They used to be seeded so that
+//    emaFast[0] === emaSlow[0], which manufactured a crossover on bar 1 of EVERY
+//    run, and RSI was pre-filled with a neutral 50 that disabled its own filter
+//    exactly during the warm-up window.
+//  - Signals are computed on bar i's close and executed at bar i+1's OPEN. Filling
+//    at the same close you used to generate the signal is look-ahead.
+//  - Stops and targets are checked intrabar against high/low, not just the close, and
+//    a gap through the level fills at the open. Stop resolves before target when a
+//    single bar touches both (conservative — bar ordering is unknowable).
+//  - Fees and slippage come from the paper engine, so both engines model one world.
+//  - A position still open on the last bar is force-closed and recorded, so the trade
+//    list reconciles with the equity curve.
 
-import { getAsset, type Candle } from './mockData';
+import { type Candle } from './mockData';
+import { ema, rsi } from './indicators';
+import { TAKER_SLIPPAGE_BPS, marketOf } from './paperEngine';
+import { chargeTotal } from './charges';
 import type { HeatRow } from '@/components/charts';
 
 export interface BacktestParams {
@@ -27,6 +43,7 @@ export interface BacktestTrade {
     exit: number;
     pnl: number;
     ret: number;
+    reason: 'signal' | 'stop' | 'target' | 'forced';
 }
 
 export interface BacktestResult {
@@ -38,6 +55,10 @@ export interface BacktestResult {
     netPct: number;
     maxDD: number;
     trades: number;
+    /** Non-null only when there is enough data to be meaningful. */
+    sharpe: number | null;
+    profitFactor: number | null;
+    warnings: string[];
 }
 
 export const DEFAULT_PARAMS: Omit<BacktestParams, 'symbol' | 'seed'> = {
@@ -52,159 +73,220 @@ export const DEFAULT_PARAMS: Omit<BacktestParams, 'symbol' | 'seed'> = {
     sizePct: 10,
 };
 
-function ema(values: number[], period: number): number[] {
-    const k = 2 / (period + 1);
-    const out: number[] = [];
-    let prev = values[0];
-    for (let i = 0; i < values.length; i++) {
-        prev = i === 0 ? values[0] : values[i] * k + prev * (1 - k);
-        out.push(prev);
-    }
-    return out;
+/** Clamp user-entered params so a cleared field can't produce Infinity or NaN. */
+export function sanitiseParams(p: BacktestParams): BacktestParams {
+    const int = (n: number, min: number, max: number, d: number) =>
+        Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : d;
+    const num = (n: number, min: number, max: number, d: number) =>
+        Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d;
+    const fast = int(p.fast, 2, 200, DEFAULT_PARAMS.fast);
+    const slow = int(p.slow, 3, 400, DEFAULT_PARAMS.slow);
+    return {
+        ...p,
+        fast: Math.min(fast, slow - 1), // fast must be strictly faster than slow
+        slow,
+        rsiPeriod: int(p.rsiPeriod, 2, 100, DEFAULT_PARAMS.rsiPeriod),
+        rsiMax: num(p.rsiMax, 1, 100, DEFAULT_PARAMS.rsiMax),
+        stopPct: num(p.stopPct, 0.1, 90, DEFAULT_PARAMS.stopPct),
+        takePct: num(p.takePct, 0.1, 500, DEFAULT_PARAMS.takePct),
+        sizePct: num(p.sizePct, 0.1, 100, DEFAULT_PARAMS.sizePct),
+        startingCapital: num(p.startingCapital, 1000, 1e9, DEFAULT_PARAMS.startingCapital),
+    };
 }
 
-function rsi(values: number[], period: number): number[] {
-    const out: number[] = new Array(values.length).fill(50);
-    let gain = 0, loss = 0;
-    for (let i = 1; i < values.length; i++) {
-        const d = values[i] - values[i - 1];
-        const g = Math.max(0, d), l = Math.max(0, -d);
-        if (i <= period) {
-            gain += g; loss += l;
-            if (i === period) {
-                gain /= period; loss /= period;
-                out[i] = 100 - 100 / (1 + gain / (loss || 1e-9));
-            }
-        } else {
-            gain = (gain * (period - 1) + g) / period;
-            loss = (loss * (period - 1) + l) / period;
-            out[i] = 100 - 100 / (1 + gain / (loss || 1e-9));
-        }
-    }
-    return out;
-}
+// Indicators moved to lib/indicators.ts so the backtester, the live series store and
+// the strategy library all share one implementation. Re-exported here because callers
+// and tests already import them from this module.
+export { ema, rsi };
 
-// Long history spanning ~Jan 2022 → now so the monthly heatmap has real buckets.
-function history(symbol: string, seed: number): Candle[] {
-    const base = getAsset(symbol)?.price ?? 100;
-    let s = seed * 2654435761 % 233280 || 7;
-    const rnd = () => ((s = (s * 9301 + 49297) % 233280), s / 233280);
-    const start = Date.UTC(2022, 0, 1) / 1000;
-    const now = Math.floor(Date.now() / 1000);
-    const n = 1300;
-    const step = Math.floor((now - start) / n);
-    const vol = base * 0.02;
-    let price = base * 0.4;
-    const out: Candle[] = [];
-    for (let i = 0; i < n; i++) {
-        const drift = 0.0008; // gentle uptrend
-        const open = price;
-        price = Math.max(base * 0.15, price * (1 + drift) + (rnd() - 0.5) * vol);
-        const close = price;
-        out.push({
-            time: start + i * step,
-            open, close,
-            high: Math.max(open, close) + rnd() * vol * 0.5,
-            low: Math.min(open, close) - rnd() * vol * 0.5,
-        });
-    }
-    return out;
-}
+const BARS_PER_YEAR = (seconds: number) => (365 * 24 * 3600) / Math.max(1, seconds);
 
-export function runBacktest(params: BacktestParams): BacktestResult {
-    const candles = history(params.symbol, params.seed);
+export function runBacktest(params: BacktestParams, candles: Candle[], barSeconds: number): BacktestResult {
+    const p = sanitiseParams(params);
+    const warnings: string[] = [];
+    // The SAME cost model the paper engine charges — itemised brokerage, STT, stamp
+    // duty, GST and the rest, not a blended constant. Without this the backtest and the
+    // simulator model different worlds and neither number means anything about the other.
+    const market = marketOf(p.symbol);
+    const costOf = (notional: number, side: 'buy' | 'sell', qty: number) =>
+        chargeTotal({ market, side, product: 'intraday', notionalBase: Math.abs(notional), maker: false, qty });
+    const slip = TAKER_SLIPPAGE_BPS / 10000;
+
     const closes = candles.map((c) => c.close);
-    const emaFast = ema(closes, params.fast);
-    const emaSlow = ema(closes, params.slow);
-    const rsiArr = rsi(closes, params.rsiPeriod);
+    const emaFast = ema(closes, p.fast);
+    const emaSlow = ema(closes, p.slow);
+    const rsiArr = rsi(closes, p.rsiPeriod);
 
-    let cash = params.startingCapital;
+    let cash = p.startingCapital;
     let equityVal = cash;
     let inPos = false;
-    let entryPrice = 0, entryTime = 0, qty = 0;
+    let entryPrice = 0;
+    let entryTime = 0;
+    let qty = 0;
+    let entryFee = 0;
+
     const trades: BacktestTrade[] = [];
     const equity: number[] = [];
-    let peak = cash;
     const drawdown: number[] = [];
-    // monthly equity snapshots
-    const monthly: Record<string, number> = {};
+    let peak = cash;
+    const monthEnd = new Map<string, number>();
 
+    const buy = (price: number) => {
+        const fill = price * (1 + slip);
+        const alloc = equityVal * (p.sizePct / 100);
+        qty = alloc / fill;
+        if (!(qty > 0) || !Number.isFinite(qty)) { qty = 0; return false; }
+        entryFee = costOf(qty * fill, 'buy', qty);
+        cash -= qty * fill + entryFee;
+        entryPrice = fill;
+        inPos = true;
+        return true;
+    };
+    const sell = (price: number, time: number, reason: BacktestTrade['reason']) => {
+        const fill = price * (1 - slip);
+        const exitFee = costOf(qty * fill, 'sell', qty);
+        cash += qty * fill - exitFee;
+        const pnl = qty * (fill - entryPrice) - exitFee - entryFee;
+        trades.push({ entryTime, exitTime: time, entry: entryPrice, exit: fill, pnl, ret: (fill - entryPrice) / entryPrice, reason });
+        inPos = false;
+        qty = 0;
+    };
+
+    // Signals from bar i-1's close execute at bar i's open — no same-bar look-ahead.
     for (let i = 1; i < candles.length; i++) {
-        const price = closes[i];
-        const crossUp = emaFast[i - 1] <= emaSlow[i - 1] && emaFast[i] > emaSlow[i];
-        const crossDown = emaFast[i - 1] >= emaSlow[i - 1] && emaFast[i] < emaSlow[i];
+        const bar = candles[i];
+        const s = i - 1; // signal bar
 
-        if (!inPos && crossUp && rsiArr[i] < params.rsiMax) {
-            const alloc = equityVal * (params.sizePct / 100);
-            qty = alloc / price;
-            entryPrice = price;
-            entryTime = candles[i].time;
-            cash -= qty * price;
-            inPos = true;
-        } else if (inPos) {
-            const ret = (price - entryPrice) / entryPrice;
-            const hitStop = ret <= -params.stopPct / 100;
-            const hitTake = ret >= params.takePct / 100;
-            if (crossDown || hitStop || hitTake) {
-                cash += qty * price;
-                const pnl = qty * (price - entryPrice);
-                trades.push({ entryTime, exitTime: candles[i].time, entry: entryPrice, exit: price, pnl, ret });
-                inPos = false;
-                qty = 0;
+        if (inPos) {
+            const stopPrice = entryPrice * (1 - p.stopPct / 100);
+            const takePrice = entryPrice * (1 + p.takePct / 100);
+            if (bar.open <= stopPrice) {
+                sell(bar.open, bar.time, 'stop');          // gapped through the stop
+            } else if (bar.open >= takePrice) {
+                sell(bar.open, bar.time, 'target');
+            } else if (bar.low <= stopPrice) {
+                sell(stopPrice, bar.time, 'stop');         // stop resolves before target
+            } else if (bar.high >= takePrice) {
+                sell(takePrice, bar.time, 'target');
             }
         }
 
-        equityVal = cash + (inPos ? qty * price : 0);
+        const f0 = emaFast[s - 1];
+        const f1 = emaFast[s];
+        const sl0 = emaSlow[s - 1];
+        const sl1 = emaSlow[s];
+        const r = rsiArr[s];
+        const ready = f0 != null && f1 != null && sl0 != null && sl1 != null;
+
+        if (ready) {
+            const crossUp = f0 <= sl0 && f1 > sl1;
+            const crossDown = f0 >= sl0 && f1 < sl1;
+            if (!inPos && crossUp && r != null && r < p.rsiMax) {
+                buy(bar.open);
+                entryTime = bar.time;
+            } else if (inPos && crossDown) {
+                sell(bar.open, bar.time, 'signal');
+            }
+        }
+
+        equityVal = cash + (inPos ? qty * bar.close : 0);
         equity.push(equityVal);
         peak = Math.max(peak, equityVal);
-        drawdown.push((equityVal / peak - 1) * 100);
+        drawdown.push(peak > 0 ? (equityVal / peak - 1) * 100 : 0);
 
-        const d = new Date(candles[i].time * 1000);
-        monthly[`${d.getUTCFullYear()}-${d.getUTCMonth()}`] = equityVal;
+        const d = new Date(bar.time * 1000);
+        monthEnd.set(`${d.getUTCFullYear()}-${d.getUTCMonth()}`, equityVal);
+    }
+
+    // Close anything still open, so trades reconcile with the equity curve.
+    if (inPos && candles.length) {
+        const last = candles[candles.length - 1];
+        sell(last.close, last.time, 'forced');
+        equityVal = cash;
+        if (equity.length) equity[equity.length - 1] = equityVal;
+        warnings.push('A position was open at the end of the series and was closed at the final price.');
     }
 
     const finalValue = equityVal;
-    const netPct = (finalValue / params.startingCapital - 1) * 100;
-    const maxDD = Math.min(0, ...drawdown);
+    const netPct = p.startingCapital > 0 ? (finalValue / p.startingCapital - 1) * 100 : 0;
+    const maxDD = drawdown.length ? drawdown.reduce((a, b) => Math.min(a, b), 0) : 0;
     const wins = trades.filter((t) => t.pnl > 0);
+    const losses = trades.filter((t) => t.pnl < 0);
     const grossWin = wins.reduce((a, t) => a + t.pnl, 0);
-    const grossLoss = Math.abs(trades.filter((t) => t.pnl < 0).reduce((a, t) => a + t.pnl, 0));
+    const grossLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
     const winRate = trades.length ? (wins.length / trades.length) * 100 : 0;
-    const profitFactor = grossLoss ? grossWin / grossLoss : grossWin > 0 ? 99 : 0;
+    // null, not a magic 99, when there are no losing trades to divide by.
+    const profitFactor = grossLoss > 0 ? grossWin / grossLoss : null;
 
-    // Sharpe from per-trade returns
-    const rets = trades.map((t) => t.ret);
-    const mean = rets.reduce((a, b) => a + b, 0) / (rets.length || 1);
-    const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length || 1);
-    const sharpe = variance ? (mean / Math.sqrt(variance)) * Math.sqrt(rets.length || 1) : 0;
+    // Sharpe from per-BAR equity returns, annualised by the real bar interval.
+    // The old version was mean/σ × √(trade count) — a t-statistic that grows without
+    // bound as trades accumulate.
+    let sharpe: number | null = null;
+    if (equity.length > 2) {
+        const rets: number[] = [];
+        for (let i = 1; i < equity.length; i++) {
+            if (equity[i - 1] > 0) rets.push(equity[i] / equity[i - 1] - 1);
+        }
+        if (rets.length > 2) {
+            const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+            const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length - 1); // sample
+            const sd = Math.sqrt(variance);
+            if (sd > 0) sharpe = (mean / sd) * Math.sqrt(BARS_PER_YEAR(barSeconds));
+        }
+    }
+
+    if (trades.length < 5) warnings.push(`Only ${trades.length} trade${trades.length === 1 ? '' : 's'} — the statistics below are not meaningful.`);
 
     const metrics = [
         { label: 'NET RETURN', value: `${netPct >= 0 ? '+' : ''}${netPct.toFixed(1)}%`, col: netPct >= 0 ? 'var(--up)' : 'var(--down)', sub: `final ₹${Math.round(finalValue).toLocaleString('en-IN')}` },
-        { label: 'WIN RATE', value: `${winRate.toFixed(0)}%`, sub: `${wins.length} / ${trades.length} trades` },
-        { label: 'PROFIT FACTOR', value: profitFactor.toFixed(2), sub: 'gross win / loss' },
+        { label: 'WIN RATE', value: trades.length ? `${winRate.toFixed(0)}%` : '—', col: trades.length ? (winRate >= 50 ? 'var(--up)' : 'var(--down)') : undefined, sub: `${wins.length} / ${trades.length} trades` },
+        { label: 'PROFIT FACTOR', value: profitFactor == null ? (grossWin > 0 ? '∞' : '—') : profitFactor.toFixed(2), sub: profitFactor == null ? 'no losing trades' : 'gross win / loss' },
         { label: 'MAX DRAWDOWN', value: `${maxDD.toFixed(1)}%`, col: 'var(--down)', sub: 'peak to trough' },
-        { label: 'SHARPE', value: sharpe.toFixed(2), sub: 'risk-adjusted' },
-        { label: 'TOTAL TRADES', value: String(trades.length), sub: 'over ~4.5 yrs' },
+        { label: 'SHARPE', value: sharpe == null ? '—' : sharpe.toFixed(2), sub: sharpe == null ? 'not enough data' : 'annualised, per bar' },
+        { label: 'TOTAL TRADES', value: String(trades.length), sub: `${candles.length} bars` },
     ];
 
-    return { metrics, equity, drawdown, heatRows: buildHeat(monthly, params.startingCapital), finalValue, netPct, maxDD, trades: trades.length };
+    return {
+        metrics,
+        equity,
+        drawdown,
+        heatRows: buildHeat(monthEnd, p.startingCapital),
+        finalValue,
+        netPct,
+        maxDD,
+        trades: trades.length,
+        sharpe,
+        profitFactor,
+        warnings,
+    };
 }
 
-function buildHeat(monthly: Record<string, number>, startCapital: number): HeatRow[] {
-    const years = [2022, 2023, 2024, 2025, 2026];
+/**
+ * Monthly returns from month-END equity snapshots.
+ * The previous version skipped empty months without advancing `prev`, so the next
+ * populated month reported a multi-month compounded return in a single cell; and the
+ * year list was hardcoded [2022..2026], silently dropping the current year from 2027.
+ */
+export function buildHeat(monthEnd: Map<string, number>, startCapital: number): HeatRow[] {
+    if (!monthEnd.size) return [];
+    const keys = [...monthEnd.keys()].map((k) => {
+        const [y, m] = k.split('-').map(Number);
+        return { y, m, key: k };
+    });
+    const years = [...new Set(keys.map((k) => k.y))].sort((a, b) => a - b);
+
     let prev = startCapital;
     const rows: HeatRow[] = [];
     for (const y of years) {
         const cells = [];
         for (let m = 0; m < 12; m++) {
-            const key = `${y}-${m}`;
-            const val = monthly[key];
+            const val = monthEnd.get(`${y}-${m}`);
             if (val == null) {
                 cells.push({ label: '', bg: 'transparent', col: 'transparent' });
                 continue;
             }
-            const ret = (val / prev - 1) * 100;
-            prev = val;
+            const ret = prev > 0 ? (val / prev - 1) * 100 : 0;
+            prev = val; // only advances on months that actually have data
             const a = Math.min(0.85, 0.14 + Math.abs(ret) / 16);
             const pos = ret >= 0;
             const bg = `rgba(${pos ? '47,212,126' : '255,84,112'},${a.toFixed(2)})`;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runLLM, parseJSON, type Provider } from '@/lib/ai';
+import { requireAdmin } from '@/lib/auth';
 
 // AI Trading Coach — server-side, multi-provider (DeepSeek default). Falls back to
 // source:'heuristic' when no LLM key is configured so the client keeps its report.
@@ -13,11 +14,19 @@ interface CoachRequest {
 }
 
 export async function POST(req: Request) {
+    // Unauthenticated callers would otherwise bill the owner's LLM key.
+    if (!(await requireAdmin(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
     let body: CoachRequest;
     try {
         body = await req.json();
     } catch {
         return NextResponse.json({ error: 'invalid body' }, { status: 400 });
+    }
+    // The client used to post a flat summary while this route read `body.stats`,
+    // so every prompt silently contained "Stats: undefined". Fail loudly instead.
+    if (!body?.stats || typeof body.stats !== 'object') {
+        return NextResponse.json({ error: 'body.stats is required' }, { status: 400 });
     }
 
     const system = 'You are a disciplined trading coach. Analyse the trader\'s recent trades and reply ONLY with minified JSON.';

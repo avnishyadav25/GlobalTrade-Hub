@@ -6,7 +6,9 @@
 // which pushes normalized quotes through `applyQuote` — the same path the sim uses.
 
 import { create } from 'zustand';
-import { WATCHLIST_ASSETS, type Asset } from '@/lib/mockData';
+import { type Asset } from '@/lib/mockData';
+import { allInstruments } from '@/lib/instruments';
+import { useSeriesStore } from './seriesStore';
 
 export interface LiveQuote {
     symbol: string;
@@ -17,21 +19,45 @@ export interface LiveQuote {
     high: number;
     low: number;
     volume: number;
+    /** When the price was fetched UPSTREAM — see lib/marketData/staleness.ts. */
     ts: number;
     dir: 'up' | 'down' | null;
+    /**
+     * True once a real provider has priced this symbol. Seed values from the
+     * instrument catalog are NOT real — they are stale mock numbers (the catalog
+     * has RELIANCE at ₹2,945 against a live ~₹1,327), so anything that renders a
+     * price must know the difference.
+     */
+    real: boolean;
 }
 
 type FeedDetach = () => void;
 type FeedFactory = (
     symbols: string[],
     push: (q: Partial<LiveQuote> & { symbol: string }) => void,
-    getQuote: (symbol: string) => LiveQuote | undefined
+    getQuote: (symbol: string) => LiveQuote | undefined,
+    onStatus?: (connected: boolean) => void
 ) => FeedDetach;
+
+export type FeedState = 'live' | 'delayed' | 'sim';
+
+export interface MarketFeedStatus {
+    state: FeedState;
+    provider: string;
+    delayMinutes: number;
+    at: number;
+}
 
 interface MarketState {
     quotes: Record<string, LiveQuote>;
     running: boolean;
     usingRealFeed: boolean;
+    /** Per-market provenance. One global flag was a lie in three directions. */
+    feedStatus: Record<string, MarketFeedStatus>;
+    setFeedStatus: (m: Record<string, MarketFeedStatus>) => void;
+    /** Symbols the rotation planner skipped this cycle — shown as "queued", not stale. */
+    deferredSymbols: string[];
+    setDeferred: (symbols: string[]) => void;
     _timer: ReturnType<typeof setInterval> | null;
     _detachFeed: FeedDetach | null;
 
@@ -56,17 +82,25 @@ function seedQuote(a: Asset): LiveQuote {
         volume: a.volume,
         ts: Date.now(),
         dir: null,
+        real: false,
     };
 }
 
+// Seeded from the registry rather than the raw catalog constant, so it stays correct
+// if the seed set ever changes. User-added instruments are NOT seeded here: they have
+// no price until one arrives, and a ₹0 placeholder is worse than an em-dash.
 const initialQuotes: Record<string, LiveQuote> = Object.fromEntries(
-    WATCHLIST_ASSETS.map((a) => [a.symbol, seedQuote(a)])
+    allInstruments().map((a) => [a.symbol, seedQuote(a)])
 );
 
 export const useMarketStore = create<MarketState>((set, get) => ({
     quotes: initialQuotes,
     running: false,
     usingRealFeed: false,
+    feedStatus: {},
+    setFeedStatus: (feedStatus) => set((s) => ({ feedStatus: { ...s.feedStatus, ...feedStatus } })),
+    deferredSymbols: [],
+    setDeferred: (deferredSymbols) => set({ deferredSymbols }),
     _timer: null,
     _detachFeed: null,
 
@@ -89,7 +123,16 @@ export const useMarketStore = create<MarketState>((set, get) => ({
                 volume: q.volume ?? prev?.volume ?? 0,
                 ts: q.ts ?? Date.now(),
                 dir: prev ? (price > prev.price ? 'up' : price < prev.price ? 'down' : prev.dir) : null,
+                // Sticky: once a real provider has priced this symbol it stays real,
+                // even across sim ticks.
+                real: q.real ?? prev?.real ?? false,
             };
+            // Feed the rolling series so indicators are computed from real observed
+            // prices rather than a symbol-seeded generator.
+            useSeriesStore.getState().ingest(q.symbol, price, next.ts);
+            if (q.high != null && q.low != null) {
+                useSeriesStore.getState().ingestRange(q.symbol, q.high, q.low);
+            }
             return { quotes: { ...state.quotes, [q.symbol]: next } };
         }),
 
@@ -99,6 +142,10 @@ export const useMarketStore = create<MarketState>((set, get) => ({
             const { quotes, applyQuote } = get();
             for (const symbol of Object.keys(quotes)) {
                 const cur = quotes[symbol];
+                // Never animate over a real price. Doing so would invent movement on a
+                // symbol the rotation planner merely deferred, making a queued quote
+                // indistinguishable from a live one.
+                if (cur.real) continue;
                 // volatility scaled to price magnitude, tighter for FX
                 const isFx = symbol.includes('/') && (symbol.startsWith('EUR') || symbol.startsWith('GBP') || symbol.startsWith('USD'));
                 const volPct = isFx ? 0.0004 : 0.0018;
@@ -120,8 +167,16 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         get().detachFeed();
         get().stop();
         const symbols = Object.keys(get().quotes);
-        const detach = factory(symbols, (q) => get().applyQuote(q), (s) => get().quotes[s]);
-        set({ usingRealFeed: true, _detachFeed: detach });
+        // `usingRealFeed` now tracks the socket's ACTUAL state, reported by the feed.
+        // Setting it true on attach meant a failed connection still showed "LIVE".
+        const detach = factory(
+            symbols,
+            // Anything arriving from an attached feed is a real price by definition.
+            (q) => get().applyQuote({ ...q, real: true }),
+            (s) => get().quotes[s],
+            (connected) => set({ usingRealFeed: connected })
+        );
+        set({ usingRealFeed: false, _detachFeed: detach });
     },
 
     detachFeed: () => {

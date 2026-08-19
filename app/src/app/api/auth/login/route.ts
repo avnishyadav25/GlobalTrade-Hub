@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { checkAdminCredentials, createSession, SESSION_COOKIE } from '@/lib/auth';
+import { checkAdminCredentials, createSession, SESSION_COOKIE, authConfigStatus, missingAuthVars } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +12,13 @@ export async function POST(req: Request) {
     }
     const email = body.email?.trim() ?? '';
     const password = body.password ?? '';
-    if (!checkAdminCredentials(email, password)) {
+    if (authConfigStatus() === 'misconfigured') {
+        return NextResponse.json(
+            { error: `Auth is misconfigured on the server: ${missingAuthVars().join(', ')} not set.` },
+            { status: 503 }
+        );
+    }
+    if (!(await checkAdminCredentials(email, password))) {
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
     const token = await createSession(email || 'admin');

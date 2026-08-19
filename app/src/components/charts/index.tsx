@@ -2,6 +2,7 @@
 
 // Lightweight theme-aware SVG charts (mirrors the AxisOne design primitives).
 import React from 'react';
+import { fmtPrice } from '@/lib/format';
 
 const ACCENT = 'var(--accent)';
 const UP = 'var(--up)';
@@ -128,8 +129,11 @@ export function Ring({ score, color = ACCENT, track = 'var(--border)', size = 92
 
 export function BarTrend({ vals, color = ACCENT, soft = 'var(--accent-soft)', height = 34 }: { vals: number[]; color?: string; soft?: string; height?: number }) {
     const W = 160, H = height, n = vals.length, gap = 5;
+    // n === 0 gave bw = Infinity and Math.max(...[]) = -Infinity. The trend can now
+    // legitimately be empty (a new account has no history), so this must hold.
+    if (n === 0) return null;
     const bw = (W - gap * (n - 1)) / n;
-    const max = Math.max(...vals) || 1;
+    const max = Math.max(...vals, 1);
     return (
         <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
             {vals.map((v, i) => (
@@ -201,7 +205,7 @@ export function CandleSvg({ series, height = 360 }: { series: { o: number; h: nu
                     <g key={i}>
                         <line x1={padL} x2={W - padR} y1={gy} y2={gy} stroke={GRID} strokeWidth={1} />
                         <text x={W - padR + 7} y={gy + 3.5} fill="var(--axis)" fontSize={10} className="mono">
-                            {Math.round(pv).toLocaleString()}
+                            {fmtPrice(pv)}
                         </text>
                     </g>
                 );
@@ -222,7 +226,7 @@ export function CandleSvg({ series, height = 360 }: { series: { o: number; h: nu
             <line x1={padL} x2={W - padR} y1={y(last)} y2={y(last)} stroke={ACCENT} strokeWidth={1} strokeDasharray="3 3" />
             <rect x={W - padR} y={y(last) - 8} width={padR} height={16} fill={ACCENT} rx={2} />
             <text x={W - padR + 7} y={y(last) + 3.5} fill="var(--cp-text)" fontSize={10} fontWeight={700} className="mono">
-                {Math.round(last).toLocaleString()}
+                {fmtPrice(last)}
             </text>
         </svg>
     );

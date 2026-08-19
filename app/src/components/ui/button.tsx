@@ -1,62 +1,66 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+'use client';
 
-import { cn } from "@/lib/utils"
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
+// Kite-style: flat, small radius, restrained colour. Blue is the only chrome accent;
+// green/red appear only for buy/sell. Hover, active and disabled are defined here so
+// no caller has to remember them — 40 of 59 controls previously had none.
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot : "button"
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'buy' | 'sell';
+type Size = 'sm' | 'md' | 'lg';
 
-  return (
-    <Comp
-      data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
+const VARIANT: Record<Variant, string> = {
+    primary: 'bg-accent text-[color:var(--cp-text)] border-transparent hover:opacity-90',
+    secondary: 'bg-panel text-foreground border-border hover:border-border-hover hover:bg-panel2',
+    ghost: 'bg-transparent text-foreground-muted border-transparent hover:text-foreground hover:bg-chip',
+    danger: 'bg-transparent text-down border-down/50 hover:bg-down-dim',
+    buy: 'bg-up text-[color:var(--cp-text)] border-transparent hover:opacity-90',
+    sell: 'bg-down text-[color:var(--cp-text)] border-transparent hover:opacity-90',
+};
+
+const SIZE: Record<Size, string> = {
+    sm: 'px-2.5 py-1 text-xs gap-1.5',
+    md: 'px-3 py-2 text-sm gap-2',
+    lg: 'px-4 py-2.5 text-md gap-2',
+};
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    variant?: Variant;
+    size?: Size;
+    loading?: boolean;
+    fullWidth?: boolean;
+    iconLeft?: ReactNode;
 }
 
-export { Button, buttonVariants }
+export function Button({
+    variant = 'secondary', size = 'md', loading, fullWidth, iconLeft, className = '', children, disabled, ...rest
+}: ButtonProps) {
+    return (
+        <button
+            {...rest}
+            disabled={disabled || loading}
+            aria-busy={loading || undefined}
+            className={`inline-flex items-center justify-center rounded-sm border font-semibold transition-colors
+                active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0
+                ${VARIANT[variant]} ${SIZE[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
+        >
+            {iconLeft}
+            {loading ? 'Working…' : children}
+        </button>
+    );
+}
+
+export function IconButton({ label, className = '', children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+    return (
+        <button
+            {...rest}
+            aria-label={label}
+            title={label}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-panel
+                text-foreground-muted transition-colors hover:text-foreground hover:border-border-hover
+                active:translate-y-px ${className}`}
+        >
+            {children}
+        </button>
+    );
+}

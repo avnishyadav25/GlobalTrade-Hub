@@ -1,8 +1,13 @@
 // Edge-compatible signed-session helpers (HMAC-SHA256 via Web Crypto — no deps,
 // works in middleware and route handlers). Single super-admin from env.
+//
+// Auth is all-or-nothing: either none of ADMIN_EMAIL / ADMIN_PASSWORD / AUTH_SECRET
+// are set (open demo mode), or all three are. A partial configuration is treated as
+// 'misconfigured' and fails CLOSED — previously a deployment with credentials but no
+// AUTH_SECRET would gate the app while signing sessions with a hardcoded constant,
+// so anyone could mint an admin cookie.
 
 export const SESSION_COOKIE = 'gth_session';
-const DEFAULT_SECRET = 'gth-dev-secret-change-me';
 
 function b64urlEncode(bytes: Uint8Array): string {
     let str = '';
@@ -33,8 +38,60 @@ async function hmac(data: string, secret: string): Promise<string> {
     return b64urlEncode(new Uint8Array(sig));
 }
 
+/**
+ * Constant-time string comparison.
+ *
+ * Both sides are hashed first so the comparison runs over fixed-length digests —
+ * that keeps the loop count independent of the inputs and avoids leaking the length
+ * of the secret, which a plain byte-wise compare would.
+ */
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+    const enc = new TextEncoder();
+    const [da, db] = await Promise.all([
+        crypto.subtle.digest('SHA-256', enc.encode(a)),
+        crypto.subtle.digest('SHA-256', enc.encode(b)),
+    ]);
+    const x = new Uint8Array(da);
+    const y = new Uint8Array(db);
+    let diff = 0;
+    for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+    return diff === 0;
+}
+
+export type AuthConfigStatus = 'disabled' | 'ready' | 'misconfigured';
+
+/**
+ * 'disabled'      — no auth env at all; open demo mode.
+ * 'ready'         — email + password + secret all present.
+ * 'misconfigured' — some but not all; callers MUST fail closed.
+ */
+export function authConfigStatus(): AuthConfigStatus {
+    const parts = [process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD, process.env.AUTH_SECRET];
+    const set = parts.filter((p) => Boolean(p && p.length)).length;
+    if (set === 0) return 'disabled';
+    if (set === parts.length) return 'ready';
+    return 'misconfigured';
+}
+
+/** Names of the auth env vars that are missing (for operator-facing error copy). */
+export function missingAuthVars(): string[] {
+    return (
+        [
+            ['ADMIN_EMAIL', process.env.ADMIN_EMAIL],
+            ['ADMIN_PASSWORD', process.env.ADMIN_PASSWORD],
+            ['AUTH_SECRET', process.env.AUTH_SECRET],
+        ] as const
+    )
+        .filter(([, v]) => !v)
+        .map(([k]) => k);
+}
+
 function secret(): string {
-    return process.env.AUTH_SECRET || DEFAULT_SECRET;
+    const s = process.env.AUTH_SECRET;
+    // No fallback constant. Reaching here without a secret is a bug in the caller —
+    // every entry point checks authConfigStatus() first.
+    if (!s) throw new Error('AUTH_SECRET is not set');
+    return s;
 }
 
 export interface Session {
@@ -50,10 +107,12 @@ export async function createSession(email: string, days = 7): Promise<string> {
 }
 
 export async function verifySession(token: string | undefined): Promise<Session | null> {
+    if (authConfigStatus() !== 'ready') return null;
     if (!token || !token.includes('.')) return null;
     const [body, sig] = token.split('.');
+    if (!body || !sig) return null;
     const expected = await hmac(body, secret());
-    if (sig !== expected) return null;
+    if (!(await timingSafeEqual(sig, expected))) return null;
     try {
         const payload = JSON.parse(b64urlDecodeStr(body)) as Session;
         if (!payload.exp || payload.exp < Date.now()) return null;
@@ -63,16 +122,21 @@ export async function verifySession(token: string | undefined): Promise<Session 
     }
 }
 
-export function checkAdminCredentials(email: string, password: string): boolean {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
+export async function checkAdminCredentials(email: string, password: string): Promise<boolean> {
+    const status = authConfigStatus();
+    // Fail closed on a partial configuration rather than accepting anything.
+    if (status === 'misconfigured') return false;
     // In demo mode (no admin configured) accept anything so the app stays usable.
-    if (!adminEmail || !adminPassword) return true;
-    return email === adminEmail && password === adminPassword;
+    if (status === 'disabled') return true;
+    const [emailOk, passwordOk] = await Promise.all([
+        timingSafeEqual(email, process.env.ADMIN_EMAIL!),
+        timingSafeEqual(password, process.env.ADMIN_PASSWORD!),
+    ]);
+    return emailOk && passwordOk;
 }
 
 export function isAuthConfigured(): boolean {
-    return Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD);
+    return authConfigStatus() === 'ready';
 }
 
 /** Parse the session cookie from a raw Request (works in node + edge). */
@@ -85,6 +149,21 @@ export async function getSessionFromRequest(req: Request): Promise<Session | nul
 
 /** True when the request is an authenticated admin (or auth is not configured). */
 export async function requireAdmin(req: Request): Promise<boolean> {
-    if (!isAuthConfigured()) return true;
+    const status = authConfigStatus();
+    if (status === 'misconfigured') return false;
+    if (status === 'disabled') return true;
     return Boolean(await getSessionFromRequest(req));
+}
+
+/**
+ * Only same-origin absolute paths are safe post-login redirect targets.
+ * Rejects absolute URLs, protocol-relative `//evil.com`, and backslash variants
+ * that some browsers normalise to `/`.
+ */
+export function safeNextPath(next: string | null | undefined, fallback = '/terminal'): string {
+    if (!next) return fallback;
+    if (!next.startsWith('/')) return fallback;
+    if (next.startsWith('//') || next.startsWith('/\\')) return fallback;
+    if (next.includes('\\')) return fallback;
+    return next;
 }

@@ -9,9 +9,11 @@ import { useUIStore } from '@/stores/uiStore';
 import {
     equity,
     openUnrealized,
-    realizedTotal,
+    realizedNetSince,
+    realizedNet,
     winRate,
     unrealizedPnlBase,
+    deriveFxRates,
     STARTING_CASH,
 } from '@/lib/paperEngine';
 import { fmtMoney, fmtSigned, fmtPrice, fmtNum } from '@/lib/format';
@@ -23,45 +25,59 @@ export default function PaperPage() {
     const quotes = useMarketStore((s) => s.quotes);
     const symbol = useUIStore((s) => s.selectedSymbol);
 
-    const eq = equity(state, quotes);
-    const realized = realizedTotal(state);
-    const open = openUnrealized(state, quotes);
+    const fx = deriveFxRates(quotes);
+    const eq = equity(state, quotes, fx);
+    // "Today" means today: the old code summed every fill ever under this label.
+    // Net of fees, so it reconciles with the cash movement behind it.
+    const startOfDay = new Date().setHours(0, 0, 0, 0);
+    const todayPnl = realizedNetSince(state, startOfDay);
+    const allTime = realizedNet(state);
+    const open = openUnrealized(state, quotes, fx);
     const positions = Object.values(state.positions);
     const fills = state.fills.slice(0, 8);
 
     const stats = [
         { label: 'EQUITY', value: fmtMoney(eq, 'INR', 0) },
-        { label: "TODAY'S P&L", value: fmtSigned(realized, 'INR', 0), col: realized >= 0 ? 'var(--up)' : 'var(--down)' },
+        { label: "TODAY'S P&L", value: fmtSigned(todayPnl, 'INR', 0), col: todayPnl >= 0 ? 'var(--up)' : 'var(--down)' },
+        { label: 'ALL-TIME P&L', value: fmtSigned(allTime, 'INR', 0), col: allTime >= 0 ? 'var(--up)' : 'var(--down)' },
         { label: 'OPEN P&L', value: fmtSigned(open, 'INR', 0), col: open >= 0 ? 'var(--up)' : 'var(--down)' },
-        { label: 'TRADES', value: String(state.fills.length) },
-        { label: 'WIN RATE', value: `${winRate(state).toFixed(0)}%` },
+        // Round trips, not fills — a 4-way partial exit is one trade, and this must
+        // agree with the win rate beside it.
+        { label: 'TRADES', value: String(state.account.roundTrips) },
+        { label: 'WIN RATE', value: state.account.roundTrips ? `${winRate(state).toFixed(0)}%` : '—' },
     ];
 
     return (
-        <div className="p-6" style={{ padding: '22px 26px' }}>
+        <div className="px-4 py-5 sm:px-6">
             {/* banner */}
             <div className="panel mb-5 flex flex-wrap items-end justify-between gap-4 px-5 py-4">
                 <div>
                     <div className="mb-1.5 flex items-center gap-2.5">
-                        <span className="text-xl font-extrabold">Paper Trading</span>
-                        <span className="rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide" style={{ background: 'rgba(224,160,32,.15)', color: 'var(--warn)' }}>
+                        <span className="text-xl font-bold">Paper Trading</span>
+                        <span className="rounded-full bg-warn-dim px-2.5 py-1 text-2xs font-semibold uppercase tracking-wide text-warn">
                             PAPER · VIRTUAL FUNDS
                         </span>
                     </div>
-                    <div className="text-[13px] text-foreground-muted">
+                    <div className="text-base text-foreground-muted">
                         Same data &amp; order types as live — zero risk. Build a track record before you go live.
                     </div>
                 </div>
                 <div className="flex items-center gap-6">
                     {stats.map((s) => (
                         <div key={s.label}>
-                            <div className="mb-1 text-[10px] font-bold tracking-wide text-faint">{s.label}</div>
-                            <div className="mono text-[19px] font-extrabold" style={{ color: s.col }}>{s.value}</div>
+                            <div className="mb-1 text-2xs font-bold tracking-wide text-faint">{s.label}</div>
+                            <div className="mono text-xl font-bold" style={{ color: s.col }}>{s.value}</div>
                         </div>
                     ))}
                     <button
-                        onClick={() => { reset(); toast.success('Paper session reset', { description: `Balance back to ${fmtMoney(STARTING_CASH, 'INR', 0)}` }); }}
-                        className="rounded-[9px] border border-border bg-background px-3.5 py-2.5 text-[12.5px] font-bold text-foreground-muted"
+                        onClick={() => {
+                            // Destroys all persisted positions, orders, fills and the
+                            // equity curve — confirm before doing it.
+                            if (!window.confirm('Reset the paper account?\n\nThis permanently deletes every position, order and trade in your history.')) return;
+                            reset();
+                            toast.success('Paper session reset', { description: `Balance back to ${fmtMoney(STARTING_CASH, 'INR', 0)}` });
+                        }}
+                        className="rounded-sm border border-border bg-background px-3.5 py-2.5 text-sm font-bold text-foreground-muted"
                     >
                         ↺ Reset session
                     </button>
@@ -71,12 +87,12 @@ export default function PaperPage() {
             <div className="grid items-start gap-5" style={{ gridTemplateColumns: '1fr 360px' }}>
                 <div className="flex min-w-0 flex-col gap-5">
                     {/* equity curve */}
-                    <div className="panel p-4.5" style={{ padding: 18 }}>
+                    <div className="panel p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-extrabold">Account equity <span className="text-[12px] font-medium text-faint">· this session</span></span>
-                            <span className="mono text-[12px] text-foreground-muted">start {fmtMoney(STARTING_CASH, 'INR', 0)} → {fmtMoney(eq, 'INR', 0)}</span>
+                            <span className="text-sm font-bold">Account equity <span className="text-sm font-medium text-faint">· this session</span></span>
+                            <span className="mono text-sm text-foreground-muted">start {fmtMoney(STARTING_CASH, 'INR', 0)} → {fmtMoney(eq, 'INR', 0)}</span>
                         </div>
-                        <div style={{ height: 200, marginTop: 12 }}>
+                        <div className="mt-3" style={{ height: 200 }}>
                             <AreaChart points={equityHistory} id="paper-eq" />
                         </div>
                     </div>
@@ -87,12 +103,12 @@ export default function PaperPage() {
                         {positions.length === 0 && <EmptyRow text="No open positions — place a paper order to begin" />}
                         {positions.map((p) => {
                             const ltp = quotes[p.symbol]?.price ?? p.avgPrice;
-                            const pnl = unrealizedPnlBase(p, quotes);
+                            const pnl = unrealizedPnlBase(p, quotes, fx);
                             const long = p.qty >= 0;
                             return (
                                 <Row key={p.symbol} cols="1.4fr .8fr .8fr 1fr 1fr 1fr">
                                     <span className="font-bold">{p.symbol}</span>
-                                    <span className="text-[10px] font-bold" style={{ color: long ? 'var(--up)' : 'var(--down)' }}>{long ? 'LONG' : 'SHORT'}</span>
+                                    <span className="text-2xs font-bold" style={{ color: long ? 'var(--up)' : 'var(--down)' }}>{long ? 'LONG' : 'SHORT'}</span>
                                     <span className="mono text-right">{fmtNum(Math.abs(p.qty), Math.abs(p.qty) < 1 ? 4 : 2)}</span>
                                     <span className="mono text-right text-foreground-muted">{fmtPrice(p.avgPrice)}</span>
                                     <span className="mono text-right">{fmtPrice(ltp)}</span>
@@ -109,10 +125,10 @@ export default function PaperPage() {
                         {fills.map((f) => (
                             <Row key={f.id} cols="1.4fr .7fr .8fr 1fr 1fr .8fr">
                                 <span className="font-bold">{f.symbol}</span>
-                                <span className="text-[10px] font-bold" style={{ color: f.side === 'buy' ? 'var(--up)' : 'var(--down)' }}>{f.side.toUpperCase()}</span>
+                                <span className="text-2xs font-bold" style={{ color: f.side === 'buy' ? 'var(--up)' : 'var(--down)' }}>{f.side.toUpperCase()}</span>
                                 <span className="mono text-right">{fmtNum(f.qty, f.qty < 1 ? 4 : 2)}</span>
                                 <span className="mono text-right text-foreground-muted">{fmtPrice(f.price)}</span>
-                                <span className="mono text-right font-bold" style={{ color: f.pnl >= 0 ? 'var(--up)' : 'var(--down)' }}>{f.pnl ? fmtSigned(f.pnl, 'INR', 0) : '—'}</span>
+                                <span className="mono text-right font-bold" style={{ color: f.pnl >= 0 ? 'var(--up)' : 'var(--down)' }}>{f.kind === 'open' || f.kind === 'add' ? '—' : fmtSigned(f.pnl - f.fee, 'INR', 0)}</span>
                                 <span className="mono text-right text-faint">{new Date(f.ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </Row>
                         ))}
@@ -120,7 +136,7 @@ export default function PaperPage() {
                 </div>
 
                 {/* order ticket */}
-                <div className="panel p-4.5" style={{ padding: 18 }}>
+                <div className="panel p-4">
                     <OrderTicket symbol={symbol} forcePaper />
                 </div>
             </div>
@@ -131,25 +147,25 @@ export default function PaperPage() {
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="panel overflow-hidden">
-            <div className="px-4.5 pb-2.5 pt-3.5 text-sm font-extrabold" style={{ paddingLeft: 18, paddingRight: 18 }}>{title}</div>
+            <div className="px-4 pb-2.5 pt-3.5 text-md font-semibold">{title}</div>
             {children}
         </div>
     );
 }
 function TableHead({ cols, head }: { cols: string; head: string[] }) {
     return (
-        <div className="grid border-b border-t border-border2 px-4.5 py-2 text-[10px] font-bold tracking-wide text-faint" style={{ gridTemplateColumns: cols, paddingLeft: 18, paddingRight: 18 }}>
+        <div className="grid border-b border-t border-border2 px-4 py-2 text-2xs font-semibold uppercase tracking-wide text-faint" style={{ gridTemplateColumns: cols }}>
             {head.map((h, i) => <span key={i} className={i === 0 ? '' : 'text-right'}>{h}</span>)}
         </div>
     );
 }
 function Row({ cols, children }: { cols: string; children: React.ReactNode }) {
     return (
-        <div className="grid items-center border-b border-border2 px-4.5 py-2.5 text-[12.5px]" style={{ gridTemplateColumns: cols, paddingLeft: 18, paddingRight: 18 }}>
+        <div className="grid items-center border-b border-border2 px-4 py-2.5 text-sm hover:bg-panel2" style={{ gridTemplateColumns: cols }}>
             {children}
         </div>
     );
 }
 function EmptyRow({ text }: { text: string }) {
-    return <div className="px-4.5 py-6 text-center text-[12px] text-faint" style={{ paddingLeft: 18 }}>{text}</div>;
+    return <div className="px-4 py-8 text-center text-sm text-faint">{text}</div>;
 }

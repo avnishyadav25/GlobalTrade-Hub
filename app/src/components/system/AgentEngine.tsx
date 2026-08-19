@@ -2,24 +2,33 @@
 
 // Auto-trading runner. When mode !== 'manual' and the kill-switch is off, it
 // periodically asks the signals agent for ideas and executes accepted ones under
-// the configured guardrails. auto-paper → paper engine; auto-live → broker route
-// (requires an armed live connection, else degrades to paper with a warning).
+// the configured guardrails (shared with the manual "Trade →" path via
+// lib/agentGuardrails, so both enforce exactly the same rules).
+//
+// auto-live routes to the broker API. If that route fails it SKIPS the signal and
+// says so — it does not silently place a paper order instead, which would be a
+// surprising substitution of a simulated trade for a real one.
 
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { useMarketStore } from '@/stores/marketStore';
 import { usePaperStore } from '@/stores/paperStore';
 import { useAgentStore } from '@/stores/agentStore';
-import { useConnectionsStore } from '@/stores/connectionsStore';
-import { fxRate } from '@/lib/paperEngine';
-import { WATCHLIST_ASSETS } from '@/lib/mockData';
+import { deriveFxRates } from '@/lib/paperEngine';
+import { checkGuardrails, sizeFromGuardrails, signalKey, priceForSignal } from '@/lib/agentGuardrails';
+import { allInstruments } from '@/lib/instruments';
 import type { TradeSignal } from '@/lib/ai/types';
 
 const CYCLE_MS = 60000;
 
 async function notify(text: string) {
     try {
-        await fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ event: 'auto-trade', text }) });
+        await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            // The route reads `text` and `subject`; `event` was silently dropped.
+            body: JSON.stringify({ text, subject: 'GlobalTrade Hub — auto-trade' }),
+        });
     } catch {
         /* best effort */
     }
@@ -35,16 +44,12 @@ export function AgentEngine() {
             const quotes = useMarketStore.getState().quotes;
             const paper = usePaperStore.getState();
 
-            // daily-loss guardrail
-            const startOfDay = new Date().setHours(0, 0, 0, 0);
-            const lossToday = paper.state.fills.filter((f) => f.ts >= startOfDay).reduce((s, f) => s + Math.min(0, f.pnl), 0);
-            if (-lossToday >= a.guardrails.maxDailyLossINR) return;
-            if (Object.keys(paper.state.positions).length >= a.guardrails.maxOpenPositions) return;
-
-            const market = WATCHLIST_ASSETS.map((asset) => {
-                const q = quotes[asset.symbol];
-                return { symbol: asset.symbol, price: q?.price ?? asset.price, changePercent: q?.changePercent ?? asset.changePercent };
-            });
+            // Only instruments with a real quote. Feeding the agent catalog seed prices
+            // would have it reason about numbers that were never market data.
+            const market = allInstruments()
+                .map((asset) => ({ asset, q: quotes[asset.symbol] }))
+                .filter(({ q }) => q != null)
+                .map(({ asset, q }) => ({ symbol: asset.symbol, price: q.price, changePercent: q.changePercent }));
             const positions = Object.values(paper.state.positions).map((p) => ({ symbol: p.symbol, qty: p.qty, avgPrice: p.avgPrice }));
 
             let signals: TradeSignal[] = [];
@@ -54,49 +59,92 @@ export function AgentEngine() {
                     headers: { 'content-type': 'application/json' },
                     body: JSON.stringify({ market, positions, provider: a.provider || undefined }),
                 });
+                if (!res.ok) return;
                 const data = await res.json();
-                signals = data.signals ?? [];
+                signals = Array.isArray(data.signals) ? data.signals : [];
                 useAgentStore.getState().setSignals(signals);
             } catch {
                 return;
             }
 
-            const liveConn = useConnectionsStore.getState().connections.find((c) => c.mode === 'live' && c.status === 'connected');
+            // The server is the source of truth for what is actually connected — the
+            // old local store recorded a "connected" flag for credentials that had
+            // never been verified or stored.
+            let liveConn: { broker_id: string; label: string } | null = null;
+            if (a.mode === 'auto-live') {
+                try {
+                    const res = await fetch('/api/brokers/connect');
+                    const data = await res.json();
+                    liveConn = (data.connections ?? []).find(
+                        (c: { mode: string; status: string }) => c.mode === 'live' && c.status === 'connected'
+                    ) ?? null;
+                } catch {
+                    liveConn = null;
+                }
+            }
 
             for (const sig of signals) {
-                if (sig.confidence < a.guardrails.minConfidence) continue;
-                const key = `${sig.symbol}:${sig.side}:${Math.round(sig.entry)}`;
-                if (useAgentStore.getState().autoActedIds.includes(key)) continue;
+                // Re-read state each iteration: an order placed earlier in this loop
+                // changes the position count and the daily-loss total.
+                const agent = useAgentStore.getState();
+                if (agent.killSwitch) break;
 
-                const price = quotes[sig.symbol]?.price ?? sig.entry;
-                const fx = fxRate(sig.symbol);
-                const rawQty = a.guardrails.maxOrderValueINR / (price * fx);
-                const qty = sig.symbol.includes('/') ? +rawQty.toFixed(4) : Math.max(1, Math.floor(rawQty));
+                const book = usePaperStore.getState().state;
+                const verdict = checkGuardrails({
+                    guardrails: agent.guardrails,
+                    book,
+                    sig,
+                    actedIds: agent.autoActedIds,
+                    killSwitch: agent.killSwitch,
+                });
+                if (!verdict.allowed) continue;
+
+                // Quotes are re-read here rather than reused from before the await —
+                // by the time signals return, the captured snapshot is seconds stale.
+                const freshQuotes = useMarketStore.getState().quotes;
+                const fx = deriveFxRates(freshQuotes);
+                const price = priceForSignal(sig, freshQuotes);
+                const qty = sizeFromGuardrails(sig.symbol, price, agent.guardrails, fx);
                 if (qty <= 0) continue;
 
-                useAgentStore.getState().markActed(key);
+                // NOT marked as acted yet. Marking before placement burns the dedupe key
+                // even when the order is refused, so a signal blocked by a transient
+                // condition — no buying power, a cooldown — could never be retried.
+                const acted = () => useAgentStore.getState().markActed(signalKey(sig));
 
-                if (a.mode === 'auto-live' && a.liveArmed && liveConn) {
+                if (agent.mode === 'auto-live') {
+                    if (!agent.liveArmed || !liveConn) {
+                        toast.message('Auto-live not armed', { description: 'Arm live trading and connect a live broker to route real orders.' });
+                        continue;
+                    }
                     try {
-                        const res = await fetch(`/api/brokers/${liveConn.brokerId}/order`, {
+                        const res = await fetch(`/api/brokers/${liveConn.broker_id}/order`, {
                             method: 'POST',
                             headers: { 'content-type': 'application/json' },
-                            body: JSON.stringify({ symbol: sig.symbol, side: sig.side, type: 'market', qty }),
+                            body: JSON.stringify({ symbol: sig.symbol, side: sig.side, type: 'market', qty, mode: 'live' }),
                         });
                         if (res.ok) {
+                            acted();
                             toast.success(`Live: ${sig.side} ${qty} ${sig.symbol}`);
                             notify(`🤖 LIVE ${sig.side.toUpperCase()} ${qty} ${sig.symbol} — ${sig.rationale}`);
-                            continue;
+                        } else {
+                            const detail = await res.json().catch(() => ({}));
+                            toast.error('Live order failed — signal skipped', { description: detail.message ?? `${liveConn.label}: routing unavailable` });
+                            notify(`⚠️ LIVE order FAILED for ${sig.symbol}: ${detail.message ?? 'routing unavailable'}. No paper substitute was placed.`);
                         }
-                        // fall through to paper on non-ok
-                        toast.message('Live routing unavailable — using paper', { description: `${liveConn.label}: credentials/route not ready` });
                     } catch {
-                        /* degrade to paper */
+                        toast.error('Live order failed — signal skipped');
                     }
+                    continue; // never substitute paper for a failed live order
                 }
 
-                // paper execution (default + degrade path)
-                paper.place({ symbol: sig.symbol, side: sig.side, type: 'market', qty });
+                // auto-paper
+                const result = usePaperStore.getState().place({ symbol: sig.symbol, side: sig.side, type: 'market', qty });
+                if (result.status === 'rejected') {
+                    toast.error(`Auto-paper rejected ${sig.symbol}`, { description: result.reason });
+                    continue;   // deliberately NOT marked acted — a refusal can be retried
+                }
+                acted();
                 toast.success(`Auto-paper: ${sig.side} ${qty} ${sig.symbol}`, { description: `conf ${sig.confidence} · ${sig.rationale}` });
                 notify(`🤖 PAPER ${sig.side.toUpperCase()} ${qty} ${sig.symbol} (conf ${sig.confidence}) — ${sig.rationale}`);
             }

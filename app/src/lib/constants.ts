@@ -66,15 +66,57 @@ export const COLORS = {
 } as const;
 
 // Top navigation sections
-export const NAV_SECTIONS = [
-  { key: 'terminal', label: 'Terminal', href: '/terminal' },
-  { key: 'backtest', label: 'Backtest', href: '/backtest' },
-  { key: 'paper', label: 'Paper', href: '/paper' },
-  { key: 'portfolio', label: 'Portfolio', href: '/portfolio' },
-  { key: 'insights', label: 'Insights', href: '/insights' },
-  { key: 'scanner', label: 'Scanner', href: '/scanner' },
-  { key: 'agents', label: 'Agents', href: '/agents' },
-] as const;
+export interface NavItem {
+  key: string;
+  label: string;
+  href: string;
+  children?: { key: string; label: string; href: string }[];
+}
+
+/**
+ * Six primaries with a per-section sub-nav. Thirteen flat entries would be unusable,
+ * and the split mirrors how Kite separates Orders / Holdings / Funds.
+ * `/paper` still resolves for deep links; it just left the primary bar.
+ */
+export const NAV_SECTIONS: NavItem[] = [
+  {
+    key: 'terminal', label: 'Terminal', href: '/terminal',
+    children: [
+      { key: 'chart', label: 'Chart', href: '/terminal' },
+      { key: 'watchlists', label: 'Watchlists', href: '/watchlists' },
+      { key: 'alerts', label: 'Alerts', href: '/alerts' },
+      { key: 'scanner', label: 'Scanner', href: '/scanner' },
+    ],
+  },
+  { key: 'orders', label: 'Orders', href: '/orders' },
+  {
+    key: 'portfolio', label: 'Portfolio', href: '/portfolio',
+    children: [
+      { key: 'overview', label: 'Overview', href: '/portfolio' },
+      { key: 'holdings', label: 'Holdings', href: '/holdings' },
+      { key: 'paper', label: 'Paper session', href: '/paper' },
+    ],
+  },
+  { key: 'funds', label: 'Funds', href: '/funds' },
+  {
+    key: 'insights', label: 'Insights', href: '/insights',
+    children: [
+      { key: 'coach', label: 'Coach', href: '/insights' },
+      { key: 'backtest', label: 'Backtest', href: '/backtest' },
+      { key: 'agents', label: 'Agents', href: '/agents' },
+    ],
+  },
+  { key: 'learn', label: 'Learn', href: '/learn' },
+];
+
+/** Which primary a path belongs to, for highlighting. */
+export function sectionForPath(pathname: string): NavItem | undefined {
+  return (
+    NAV_SECTIONS.find((s) => s.children?.some((c) => c.href === pathname)) ??
+    NAV_SECTIONS.find((s) => s.href === pathname) ??
+    NAV_SECTIONS.find((s) => s.href !== '/' && pathname.startsWith(s.href))
+  );
+}
 
 export type Market = typeof MARKETS[keyof typeof MARKETS];
 export type OrderType = typeof ORDER_TYPES[keyof typeof ORDER_TYPES];

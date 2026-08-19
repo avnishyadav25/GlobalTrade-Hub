@@ -9,6 +9,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { MarketEngine } from "@/components/system/MarketEngine";
 import { AgentEngine } from "@/components/system/AgentEngine";
 import { CloudSync } from "@/components/system/CloudSync";
+import { GuideBar } from "@/components/learn/GuideBar";
+import { StrategyEngine } from "@/components/system/StrategyEngine";
 
 const hanken = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -55,6 +57,8 @@ export default function RootLayout({
               <MarketEngine />
               <AgentEngine />
               <CloudSync />
+              <StrategyEngine />
+              <GuideBar />
               <TopBar />
               <main className="min-h-0 flex-1 overflow-auto">{children}</main>
             </div>
