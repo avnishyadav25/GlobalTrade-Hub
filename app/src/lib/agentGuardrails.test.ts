@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     checkGuardrails, normaliseGuardrails, sizeFromGuardrails, signalKey,
-    lossToday, ordersToday, symbolExposurePct, priceForSignal,
+    lossToday, ordersToday, symbolExposurePct, priceForSignal, mergeGuardrails,
 } from './agentGuardrails';
 import { newPaperState, placeOrder, DEFAULT_FX, type PaperState } from './paperEngine';
 import type { Guardrails } from '@/stores/agentStore';
@@ -359,5 +359,46 @@ describe('exits are never blocked by an exposure cap', () => {
 
     it('still refuses everything when the kill switch is on', () => {
         expect(check({ sig: exit, killSwitch: true }).allowed).toBe(false);
+    });
+});
+
+describe('merging guardrails across devices', () => {
+    // Cloud sync used to replace the guardrail object wholesale with the server's copy.
+    // A row written before the four newer caps existed has no such keys, so every reload
+    // silently switched them back off. Reproduced in a browser before this was fixed:
+    // set TRADE ONLY WHEN OPEN, reload, and it is off again with nothing said.
+    const OLD_SERVER_ROW = {
+        maxOrderValueINR: 100_000,
+        maxDailyLossINR: 25_000,
+        maxOpenPositions: 8,
+        minConfidence: 60,
+    };
+
+    it('keeps local caps the server row predates', () => {
+        const local: Guardrails = { ...GUARDS, tradeOnlyWhenOpen: true, maxOrdersPerDay: 5, maxPerSymbolPct: 20, squareOffBufferMin: 15 };
+        const merged = mergeGuardrails(local, OLD_SERVER_ROW);
+        expect(merged.tradeOnlyWhenOpen).toBe(true);
+        expect(merged.maxOrdersPerDay).toBe(5);
+        expect(merged.maxPerSymbolPct).toBe(20);
+        expect(merged.squareOffBufferMin).toBe(15);
+    });
+
+    it('still lets the server win on keys it actually carries', () => {
+        // Otherwise multi-device sync would stop working, which is the opposite failure.
+        const local: Guardrails = { ...GUARDS, maxOpenPositions: 2 };
+        expect(mergeGuardrails(local, OLD_SERVER_ROW).maxOpenPositions).toBe(8);
+    });
+
+    it('normalises the result, so a malformed row cannot produce undefined caps', () => {
+        const merged = mergeGuardrails(GUARDS, { maxOpenPositions: 'nonsense', minConfidence: 999 });
+        expect(Number.isFinite(merged.maxOpenPositions)).toBe(true);
+        expect(merged.minConfidence).toBeLessThanOrEqual(100);
+        expect(merged.maxOrderValueINR).toBeGreaterThan(0);
+    });
+
+    it('survives null or non-object input from either side', () => {
+        expect(() => mergeGuardrails(null, undefined)).not.toThrow();
+        expect(Number.isFinite(mergeGuardrails(null, undefined).maxOpenPositions)).toBe(true);
+        expect(mergeGuardrails(GUARDS, 'garbage').maxOpenPositions).toBe(8);
     });
 });

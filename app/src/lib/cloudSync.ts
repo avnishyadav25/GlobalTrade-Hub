@@ -13,6 +13,7 @@
 
 import { usePaperStore } from '@/stores/paperStore';
 import { useAgentStore } from '@/stores/agentStore';
+import { mergeGuardrails } from '@/lib/agentGuardrails';
 import { useCoachStore } from '@/stores/coachStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWatchlistStore } from '@/stores/watchlistStore';
@@ -87,6 +88,20 @@ const ENTRIES: Entry[] = [
         apply: (server, local) => ({
             ...server,
             killSwitch: Boolean(local.killSwitch) || Boolean(server.killSwitch),
+            // Guardrails are merged FIELD-WISE, not replaced.
+            //
+            // Replacing wholesale silently reverted any guardrail the server row predates:
+            // a row written before maxPerSymbolPct / maxOrdersPerDay / squareOffBufferMin /
+            // tradeOnlyWhenOpen existed simply has no such key, so `...server` dropped them
+            // back to undefined on the next reload. Watching a risk control you just set
+            // turn itself off — with nothing said — is exactly the failure this codebase
+            // cares most about.
+            //
+            // Spreading local first means keys the server actually carries still win, so
+            // cross-device sync is unchanged; only keys it has never heard of are kept.
+            // normaliseGuardrails then guarantees a well-formed object rather than one
+            // with undefined caps, which is what makes the sizing maths safe.
+            guardrails: mergeGuardrails(local.guardrails, server.guardrails),
         }),
     },
     {

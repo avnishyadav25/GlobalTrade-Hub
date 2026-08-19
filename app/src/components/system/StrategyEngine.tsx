@@ -12,6 +12,7 @@ import { evaluateStrategy } from '@/lib/strategies/runtime';
 import { placeSignal } from '@/lib/strategies/place';
 import { candlesUrl } from '@/lib/marketData/candlesUrl';
 import { marketOf } from '@/lib/paperEngine';
+import { sessionInfo } from '@/lib/sessions';
 import type { Candle } from '@/lib/mockData';
 
 /**
@@ -46,10 +47,19 @@ export function StrategyEngine() {
             // filling up while trading is halted is noise you would have to clear later.
             if (useAgentStore.getState().killSwitch) return;
 
+            const guardrails = useAgentStore.getState().guardrails;
+
             for (const instance of instances) {
                 if (!active) return;
                 const strategy = strategyById(instance.strategyId);
                 if (!strategy || strategy.signalOnly) continue;
+
+                // Skip a shut market BEFORE spending a candle fetch on it. With three
+                // markets on a 60-second loop this is most of the request budget, and
+                // the resulting order would be refused by checkGuardrails anyway. Gated
+                // on the guardrail so that turning it off still evaluates out of hours,
+                // which is what someone watching signals overnight expects.
+                if (guardrails.tradeOnlyWhenOpen && !sessionInfo(marketOf(instance.symbol)).open) continue;
 
                 const barSeconds = TIMEFRAME_SECONDS[instance.timeframe] ?? 86_400;
                 let bars: Candle[] = [];

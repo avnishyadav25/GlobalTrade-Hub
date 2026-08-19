@@ -69,6 +69,23 @@ export function normaliseGuardrails(g: Guardrails): Guardrails {
     };
 }
 
+/**
+ * Combine a local guardrail set with one loaded from the server.
+ *
+ * Field-wise, local first, so that a key the SERVER ROW PREDATES survives instead of
+ * reverting to undefined. Cloud sync used to replace the object wholesale, which meant a
+ * row written before `maxPerSymbolPct`, `maxOrdersPerDay`, `squareOffBufferMin` and
+ * `tradeOnlyWhenOpen` existed silently switched all four back off on the next reload —
+ * a risk control turning itself off with nothing said.
+ *
+ * Keys the server actually carries still win, so multi-device sync is unchanged. Both
+ * sides are untrusted, so the result always goes through `normaliseGuardrails`.
+ */
+export function mergeGuardrails(local: unknown, server: unknown): Guardrails {
+    const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+    return normaliseGuardrails({ ...obj(local), ...obj(server) } as unknown as Guardrails);
+}
+
 /** Realized net loss (negative number) booked since local midnight. */
 export function lossToday(state: PaperState, now = Date.now()): number {
     const startOfDay = new Date(now).setHours(0, 0, 0, 0);
