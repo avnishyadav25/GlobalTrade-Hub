@@ -1,0 +1,10 @@
+# Repo root. The Next.js app has its own app/.gitignore; this covers what lands
+# at the top level.
+#
+# This file did not exist until 2026-08-19, which is why node_modules/ was
+# committed at the root: `npm install` was run here once (there is a root
+# package-lock.json), and with nothing ignoring it two build artefacts went in.
+node_modules/
+
+# Vitest/Vite caches, which is what actually got committed.
+.vite/
