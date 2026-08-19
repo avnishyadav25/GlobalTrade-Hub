@@ -71,6 +71,36 @@ export const placedByStrategy = (strategyId: string) => (c: VerifyContext): Veri
     );
 };
 
+/** Any strategy at all placed an order — the automation loop demonstrably ran. */
+export const placedByAnyStrategy = (c: VerifyContext): VerifyResult => {
+    const mine = c.state.orders.filter((o) => o.source?.kind === 'strategy');
+    const names = [...new Set(mine.map((o) => o.source?.strategyId).filter(Boolean))];
+    return mine.length
+        ? ok(`${mine.length} order${mine.length === 1 ? '' : 's'} placed by ${names.join(', ')}.`)
+        : {
+              done: false,
+              hint: 'Enable any strategy on an instrument, then approve its signal on **/signals** — or switch that instance to automatic and let it place unattended.',
+          };
+};
+
+/**
+ * A guardrail actually refused something.
+ *
+ * The point of the exercise is to be BLOCKED. A limit that has never refused you has
+ * never been tested, and finding out which one bites — and how it reads — is worth more
+ * than reading the list of them.
+ */
+export const refusedByAGuardrail = (c: VerifyContext): VerifyResult => {
+    const refused = c.state.orders.filter((o) => o.status === 'rejected' && o.rejectReason);
+    if (!refused.length) {
+        return {
+            done: false,
+            hint: 'No refused order yet. Set a guardrail deliberately low on **/agents** — MAX ORDERS / DAY of 1 is the quickest — then let a strategy try to trade again.',
+        };
+    }
+    return ok(`Refused ${refused.length} time${refused.length === 1 ? '' : 's'}. Most recent: "${refused[0].rejectReason}"`);
+};
+
 export const closedARoundTrip = (c: VerifyContext): VerifyResult =>
     c.state.account.roundTrips >= 1
         ? ok(`${c.state.account.roundTrips} round trip${c.state.account.roundTrips === 1 ? '' : 's'} completed.`)

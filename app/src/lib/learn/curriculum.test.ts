@@ -26,9 +26,9 @@ const emptyCtx = (): VerifyContext => ({
 });
 
 describe('curriculum integrity', () => {
-    it('spans fifteen declared tracks and four levels', () => {
+    it('spans sixteen declared tracks and four levels', () => {
         expect(LESSONS.length).toBeGreaterThanOrEqual(16);
-        expect(TRACKS).toHaveLength(15);
+        expect(TRACKS).toHaveLength(16);
         expect(LEVELS).toHaveLength(4);
     });
 

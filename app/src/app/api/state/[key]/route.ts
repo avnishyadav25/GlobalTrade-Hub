@@ -81,6 +81,41 @@ export async function PUT(req: Request, { params }: { params: Promise<{ key: str
         }
     }
 
+    // MONOTONICITY GUARD on the strategy config, for the same reason and by the same
+    // mechanism as the book above — `rev` here instead of `seq`.
+    //
+    // This is not hypothetical. A tab left open on an older copy silently reverted a
+    // strategy instance from `auto` back to `review` while the server runner was being
+    // tested: the runner then correctly reported "no enabled automatic instances" and
+    // did nothing, and the config had changed under it with nothing said.
+    //
+    // cloudSync already trusts `rev` to decide which copy is newer when HYDRATING, but
+    // that only governs server -> local. Nothing governed local -> server, so the newest
+    // writer won rather than the newest state.
+    if (key === 'strategies') {
+        const { data: existing } = await supabase
+            .from('gth_app_state')
+            .select('value')
+            .eq('user_id', uid)
+            .eq('key', key)
+            .maybeSingle();
+
+        const prevRev = (existing?.value as { rev?: number } | null)?.rev;
+        const nextRev = (value as { rev?: number } | null)?.rev;
+        if (typeof prevRev === 'number' && typeof nextRev === 'number' && nextRev < prevRev) {
+            return NextResponse.json(
+                {
+                    configured: true,
+                    ok: false,
+                    reason: 'stale',
+                    detail: 'Newer strategy configuration is already stored. This write was refused rather than overwriting it.',
+                    serverRev: prevRev,
+                },
+                { status: 409 }
+            );
+        }
+    }
+
     const { error } = await supabase
         .from('gth_app_state')
         .upsert({ user_id: uid, key, value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });

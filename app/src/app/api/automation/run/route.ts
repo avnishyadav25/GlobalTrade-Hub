@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchQuotes, fetchCandles } from '@/lib/marketData/router';
+import { usdInr } from '@/lib/marketData/providers/fx';
 import { resolveOne, resolveUniverse } from '@/lib/marketData/universe';
 import { registerInstruments } from '@/lib/instruments';
 import { strategyById } from '@/lib/strategies/defs';
@@ -7,7 +8,7 @@ import { evaluateStrategy } from '@/lib/strategies/runtime';
 import { assessSignal } from '@/lib/automation/decide';
 import { serverMayAct, recordActed, type AutomationLease } from '@/lib/automation/lease';
 import { readState, readLease, mergeLease, writePaperIfUnchanged } from '@/lib/automation/store';
-import { deriveFxRates, placeOrder, marketOf, type PaperState } from '@/lib/paperEngine';
+import { deriveFxRates, placeOrder, marketOf, quoteCcyOf, type PaperState } from '@/lib/paperEngine';
 import type { LiveQuote } from '@/stores/marketStore';
 import type { Guardrails } from '@/stores/agentStore';
 
@@ -80,9 +81,14 @@ export async function GET(req: Request) {
     if (Array.isArray(watch?.customInstruments)) registerInstruments(watch!.customInstruments);
 
     // 5. Quotes, including the FX pairs the whole ₹ book is priced from.
+    // USD/INR is NOT in the instrument catalog, so the universe resolver cannot produce
+    // it and fetchQuotes never will. It has its own fetcher with a Yahoo -> frankfurter
+    // -> last-known-good chain, which is what /api/marketdata uses and MarketEngine
+    // injects into the quote map. The runner has to do the same, or every run refuses
+    // itself for want of the one rate the whole ₹ book is priced from.
     const symbols = [...new Set([...instances.map((i) => i.symbol), ...FX_SYMBOLS])];
     const { universe } = resolveUniverse(symbols, watch?.customInstruments);
-    const batch = await fetchQuotes(universe);
+    const [batch, inr] = await Promise.all([fetchQuotes(universe), usdInr()]);
     const quotes: Record<string, LiveQuote> = {};
     for (const q of batch.quotes) {
         quotes[q.symbol] = {
@@ -94,13 +100,41 @@ export async function GET(req: Request) {
         };
     }
 
-    // 6. Refuse to trade on guessed FX. deriveFxRates falls back to constants and flags
-    //    itself stale; that fallback was once 14.5% wrong, which would misprice every
+    // 6. Refuse to trade on guessed FX. deriveFxRates falls back to constants when a rate
+    //    is missing; that fallback was once 14.5% wrong, which would misprice every
     //    non-INR position in the book. A run that does nothing is recoverable.
+    //
+    //    But `fx.stale` is set when EITHER pair is missing, and USD/JPY only matters if
+    //    something JPY-quoted is involved. Refusing an all-crypto run because a yen rate
+    //    was unavailable would be a guard that never lets anything trade — so check the
+    //    rates this book actually depends on, and say which one is missing rather than
+    //    reporting a bare "stale".
+    if (inr.rate > 0) {
+        quotes['USD/INR'] = {
+            symbol: 'USD/INR', price: inr.rate, prevClose: inr.rate, change: 0, changePercent: 0,
+            high: inr.rate, low: inr.rate, volume: 0, ts: inr.at, dir: null, real: inr.source !== 'fallback',
+        };
+    }
+
     const fx = deriveFxRates(quotes);
-    if (fx.stale) {
+    const touched = [...new Set([...instances.map((i) => i.symbol), ...Object.keys(book.positions)])];
+    const needsJpy = touched.some((sym) => quoteCcyOf(sym) === 'JPY');
+    const missing: string[] = [];
+    // `source: 'fallback'` means both providers failed and this is the hardcoded
+    // constant — the exact case worth refusing, and more precise than "no quote".
+    if (inr.source === 'fallback') missing.push('USD/INR');
+    if (needsJpy && !quotes['USD/JPY']) missing.push('USD/JPY');
+    if (missing.length) {
         await mergeLease({ serverRanAt: now });
-        return NextResponse.json({ ok: false, ran: true, reason: 'FX rates are stale — refusing to price the book on a fallback constant', placed: [] });
+        return NextResponse.json({
+            ok: false,
+            ran: true,
+            reason: `no live rate for ${missing.join(' and ')} — refusing to price the book on a fallback constant`,
+            missingRates: missing,
+            usdInrSource: inr.source,
+            quotesFetched: Object.keys(quotes),
+            placed: [],
+        });
     }
 
     const guardrails = (await readState<{ guardrails?: Guardrails; killSwitch?: boolean }>('agents')) ?? {};

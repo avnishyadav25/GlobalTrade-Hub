@@ -17,6 +17,7 @@ import { CRYPTO_ADVANCED } from './tracks/cryptoAdvanced';
 import { RISK_ADVANCED } from './tracks/riskAdvanced';
 import { AIRDROP_LESSONS } from './tracks/airdrops';
 import { IPO_LESSONS } from './tracks/ipo';
+import { AUTOMATION_LESSONS } from './tracks/automation';
 
 // The course. Sixteen lessons across five modules.
 //
@@ -1126,6 +1127,7 @@ export const LESSONS: Lesson[] = [
     ...CRYPTO_ADVANCED,
     ...RISK_ADVANCED,
     ...IPO_LESSONS,
+    ...AUTOMATION_LESSONS,
 ];
 
 export const lessonBySlug = (slug: string) => LESSONS.find((l) => l.slug === slug);
