@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/auth';
 // Per-user cloud state (gth_app_state), keyed by ADMIN_USER_ID. Service-role only.
 export const runtime = 'nodejs';
 
-const ALLOWED = new Set(['paper', 'agents', 'coach', 'ui', 'watchlists', 'alerts', 'learn']);
+const ALLOWED = new Set(['paper', 'agents', 'coach', 'ui', 'watchlists', 'alerts', 'learn', 'strategies']);
 
 function userId(): string | null {
     return process.env.ADMIN_USER_ID || null;

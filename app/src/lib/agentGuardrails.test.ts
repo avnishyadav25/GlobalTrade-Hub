@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     checkGuardrails, normaliseGuardrails, sizeFromGuardrails, signalKey,
-    lossToday, ordersToday, symbolExposurePct, priceForSignal,
+    lossToday, ordersToday, symbolExposurePct, priceForSignal, mergeGuardrails,
 } from './agentGuardrails';
 import { newPaperState, placeOrder, DEFAULT_FX, type PaperState } from './paperEngine';
 import type { Guardrails } from '@/stores/agentStore';
@@ -248,5 +248,157 @@ describe('priceForSignal', () => {
 
     it('falls back to the signal entry when nothing is quoted', () => {
         expect(priceForSignal(sig(), {})).toBe(200);
+    });
+});
+
+// ---------------------------------------------------------------------------------
+// The deterministic (rule-based) path.
+//
+// Until this module became the single risk regime, `lib/strategies/place.ts` honoured
+// only the kill switch, the coach rules and the order-value cap. These tests pin the two
+// things that had to be true before it could be routed through here.
+
+/** A rule-based signal: no confidence score, and an explicit intent. */
+const ruleSig = (over: Partial<{ symbol: string; side: 'buy' | 'sell'; intent: 'enter' | 'exit' }> = {}) =>
+    ({ symbol: 'RELIANCE', side: 'buy' as const, intent: 'enter' as const, ...over });
+
+/** A book carrying a realised loss big enough to breach the daily limit. */
+function withRealisedLoss(ts = US_OPEN): PaperState {
+    const held = withPosition('RELIANCE', 100, 1327, ts);
+    const { state, result } = placeOrder(
+        held,
+        { symbol: 'RELIANCE', side: 'sell', type: 'market', qty: 100 },
+        quote('RELIANCE', 1000),
+        DEFAULT_FX,
+        ts
+    );
+    if (result.status === 'rejected') throw new Error(`fixture close was refused: ${result.reason}`);
+    return state;
+}
+
+describe('rule-based signals carry no confidence', () => {
+    it('does not apply minConfidence when there is no score', () => {
+        // The old check was `!Number.isFinite(sig.confidence)`, which refused every
+        // deterministic signal outright. Absent must mean "not applicable", not zero.
+        expect(check({ sig: ruleSig() }).allowed).toBe(true);
+    });
+
+    it('still refuses an LLM signal whose score is broken', () => {
+        expect(check({ sig: sig({ confidence: Number.NaN }) }).allowed).toBe(false);
+    });
+
+    it('binds a rule-based signal to the position limit when opening', () => {
+        const verdict = check({
+            sig: ruleSig({ symbol: 'AAPL' }),
+            book: withPosition('RELIANCE', 100, 1327),
+            guardrails: { ...GUARDS, maxOpenPositions: 1 },
+        });
+        expect(verdict.allowed).toBe(false);
+        expect(verdict.reason).toMatch(/position limit/);
+    });
+});
+
+describe('exits are never blocked by an exposure cap', () => {
+    // Every cap here limits how much you may TAKE ON. Applying them to a close would
+    // trap you in the exact position that breached the limit.
+    const exit = ruleSig({ intent: 'exit' });
+
+    it('lets you close at the position limit', () => {
+        const verdict = check({
+            sig: exit,
+            book: withPosition('RELIANCE', 100, 1327),
+            guardrails: { ...GUARDS, maxOpenPositions: 1 },
+        });
+        expect(verdict.allowed).toBe(true);
+    });
+
+    it('lets you close after the daily loss limit is breached', () => {
+        const book = withRealisedLoss();
+        // Guard the fixture: if this book is not actually past the limit, the assertion
+        // below would pass for the wrong reason.
+        expect(-lossToday(book, US_OPEN)).toBeGreaterThan(GUARDS.maxDailyLossINR);
+        expect(check({ sig: exit, book, now: US_OPEN }).allowed).toBe(true);
+        // ...and the same book still refuses to OPEN.
+        expect(check({ sig: ruleSig(), book, now: US_OPEN }).allowed).toBe(false);
+    });
+
+    it('lets you close after the daily order count is spent', () => {
+        const book = withPosition('RELIANCE', 100, 1327, US_OPEN);
+        const guardrails = { ...GUARDS, maxOrdersPerDay: 1 };
+        expect(check({ sig: exit, book, guardrails, now: US_OPEN }).allowed).toBe(true);
+        expect(check({ sig: ruleSig(), book, guardrails, now: US_OPEN }).allowed).toBe(false);
+    });
+
+    it('lets you close a position that is over the concentration cap', () => {
+        const book = withPosition('RELIANCE', 100, 1327);
+        const guardrails = { ...GUARDS, maxPerSymbolPct: 1 };
+        expect(check({ sig: exit, book, guardrails }).allowed).toBe(true);
+        expect(check({ sig: ruleSig(), book, guardrails }).allowed).toBe(false);
+    });
+
+    it('lets you square off inside the square-off buffer', () => {
+        // The rule is "no NEW intraday positions near the close" — blocking the exit
+        // would defeat its own purpose.
+        const guardrails = { ...GUARDS, squareOffBufferMin: 600 };
+        // Paired assertion: without proving the ENTER is refused, this test would pass
+        // just as happily if the buffer never triggered at all.
+        expect(check({ sig: ruleSig({ symbol: 'AAPL' }), guardrails, now: US_OPEN }).allowed).toBe(false);
+        expect(check({ sig: ruleSig({ symbol: 'AAPL', intent: 'exit' }), guardrails, now: US_OPEN }).allowed).toBe(true);
+    });
+
+    it('lets you close even with no order-value cap set', () => {
+        // Exit size comes from the open position, not from the cap.
+        expect(check({ sig: exit, guardrails: { ...GUARDS, maxOrderValueINR: 0 } }).allowed).toBe(true);
+    });
+
+    it('still refuses an exit when the market is shut, which is physics not risk', () => {
+        const verdict = check({ sig: exit, guardrails: { ...GUARDS, tradeOnlyWhenOpen: true }, now: WEEKEND });
+        expect(verdict.allowed).toBe(false);
+        expect(verdict.reason).toMatch(/closed/);
+    });
+
+    it('still refuses everything when the kill switch is on', () => {
+        expect(check({ sig: exit, killSwitch: true }).allowed).toBe(false);
+    });
+});
+
+describe('merging guardrails across devices', () => {
+    // Cloud sync used to replace the guardrail object wholesale with the server's copy.
+    // A row written before the four newer caps existed has no such keys, so every reload
+    // silently switched them back off. Reproduced in a browser before this was fixed:
+    // set TRADE ONLY WHEN OPEN, reload, and it is off again with nothing said.
+    const OLD_SERVER_ROW = {
+        maxOrderValueINR: 100_000,
+        maxDailyLossINR: 25_000,
+        maxOpenPositions: 8,
+        minConfidence: 60,
+    };
+
+    it('keeps local caps the server row predates', () => {
+        const local: Guardrails = { ...GUARDS, tradeOnlyWhenOpen: true, maxOrdersPerDay: 5, maxPerSymbolPct: 20, squareOffBufferMin: 15 };
+        const merged = mergeGuardrails(local, OLD_SERVER_ROW);
+        expect(merged.tradeOnlyWhenOpen).toBe(true);
+        expect(merged.maxOrdersPerDay).toBe(5);
+        expect(merged.maxPerSymbolPct).toBe(20);
+        expect(merged.squareOffBufferMin).toBe(15);
+    });
+
+    it('still lets the server win on keys it actually carries', () => {
+        // Otherwise multi-device sync would stop working, which is the opposite failure.
+        const local: Guardrails = { ...GUARDS, maxOpenPositions: 2 };
+        expect(mergeGuardrails(local, OLD_SERVER_ROW).maxOpenPositions).toBe(8);
+    });
+
+    it('normalises the result, so a malformed row cannot produce undefined caps', () => {
+        const merged = mergeGuardrails(GUARDS, { maxOpenPositions: 'nonsense', minConfidence: 999 });
+        expect(Number.isFinite(merged.maxOpenPositions)).toBe(true);
+        expect(merged.minConfidence).toBeLessThanOrEqual(100);
+        expect(merged.maxOrderValueINR).toBeGreaterThan(0);
+    });
+
+    it('survives null or non-object input from either side', () => {
+        expect(() => mergeGuardrails(null, undefined)).not.toThrow();
+        expect(Number.isFinite(mergeGuardrails(null, undefined).maxOpenPositions)).toBe(true);
+        expect(mergeGuardrails(GUARDS, 'garbage').maxOpenPositions).toBe(8);
     });
 });

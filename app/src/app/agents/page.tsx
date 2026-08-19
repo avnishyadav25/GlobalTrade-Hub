@@ -162,11 +162,37 @@ export default function AgentsPage() {
             </div>
 
             {/* guardrails */}
-            <div className="panel mb-6 grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Guard label="MAX ORDER VALUE ₹" value={store.guardrails.maxOrderValueINR} onChange={(v) => store.setGuardrails({ maxOrderValueINR: v })} />
-                <Guard label="MAX DAILY LOSS ₹" value={store.guardrails.maxDailyLossINR} onChange={(v) => store.setGuardrails({ maxDailyLossINR: v })} />
-                <Guard label="MAX OPEN POSITIONS" value={store.guardrails.maxOpenPositions} onChange={(v) => store.setGuardrails({ maxOpenPositions: v })} />
-                <Guard label="MIN CONFIDENCE" value={store.guardrails.minConfidence} onChange={(v) => store.setGuardrails({ minConfidence: v })} max={100} />
+            <div className="panel mb-6 p-4">
+                <div className="mb-3 border-b border-border2 pb-3">
+                    <div className="text-sm font-bold">Guardrails</div>
+                    <p className="mt-1 max-w-[80ch] text-xs text-foreground-muted">
+                        These bind <strong>every automated path</strong> — the agents on this page and the
+                        deterministic strategies on <a href="/signals" className="text-accent underline underline-offset-2">/signals</a> alike.
+                        Caps on exposure apply when opening a position; none of them can stop you closing one.
+                        A value of <span className="mono">0</span> disables that cap.
+                    </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <Guard label="MAX ORDER VALUE ₹" value={store.guardrails.maxOrderValueINR} onChange={(v) => store.setGuardrails({ maxOrderValueINR: v })} />
+                    <Guard label="MAX DAILY LOSS ₹" value={store.guardrails.maxDailyLossINR} onChange={(v) => store.setGuardrails({ maxDailyLossINR: v })} />
+                    <Guard label="MAX OPEN POSITIONS" value={store.guardrails.maxOpenPositions} onChange={(v) => store.setGuardrails({ maxOpenPositions: v })} />
+                    <Guard label="MAX ORDERS / DAY" value={store.guardrails.maxOrdersPerDay} onChange={(v) => store.setGuardrails({ maxOrdersPerDay: v })} />
+                    <Guard label="MAX PER SYMBOL %" value={store.guardrails.maxPerSymbolPct} onChange={(v) => store.setGuardrails({ maxPerSymbolPct: v })} max={100} />
+                    <Guard label="SQUARE-OFF BUFFER MIN" value={store.guardrails.squareOffBufferMin} onChange={(v) => store.setGuardrails({ squareOffBufferMin: v })} />
+                    <Guard
+                        label="MIN CONFIDENCE (AI ONLY)"
+                        value={store.guardrails.minConfidence}
+                        onChange={(v) => store.setGuardrails({ minConfidence: v })}
+                        max={100}
+                        hint="Rule-based strategies carry no confidence score, so this does not apply to them."
+                    />
+                    <Toggle
+                        label="TRADE ONLY WHEN OPEN"
+                        checked={store.guardrails.tradeOnlyWhenOpen}
+                        onChange={(v) => store.setGuardrails({ tradeOnlyWhenOpen: v })}
+                        hint="Crypto is always open; NSE and forex are not."
+                    />
+                </div>
             </div>
 
             <div className="grid gap-5" style={{ gridTemplateColumns: '1.3fr 1fr' }}>
@@ -228,7 +254,25 @@ export default function AgentsPage() {
     );
 }
 
-function Guard({ label, value, onChange, max }: { label: string; value: number; onChange: (v: number) => void; max?: number }) {
+function Toggle({ label, checked, onChange, hint }: { label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
+    return (
+        <div>
+            <div className="mb-1 text-2xs font-bold tracking-wide text-faint">{label}</div>
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    className="accent-[color:var(--accent)]"
+                />
+                <span className="text-sm">{checked ? 'On' : 'Off'}</span>
+            </label>
+            {hint && <div className="mt-1 text-2xs text-faint">{hint}</div>}
+        </div>
+    );
+}
+
+function Guard({ label, value, onChange, max, hint }: { label: string; value: number; onChange: (v: number) => void; max?: number; hint?: string }) {
     return (
         <div>
             <div className="mb-1 text-2xs font-bold tracking-wide text-faint">{label}</div>
@@ -246,6 +290,7 @@ function Guard({ label, value, onChange, max }: { label: string; value: number; 
                 }}
                 className="mono w-full rounded-lg border border-border bg-background px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]"
             />
+            {hint && <div className="mt-1 text-2xs text-faint">{hint}</div>}
         </div>
     );
 }

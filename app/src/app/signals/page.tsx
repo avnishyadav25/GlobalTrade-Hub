@@ -54,7 +54,7 @@ export default function SignalsPage() {
         <PageShell
             title="Signals"
             coachTopic="signals"
-            subtitle="What your strategies want to do, and why. Nothing is placed until you approve it — unless you have switched that strategy to automatic."
+            subtitle="What your strategies want to do, and why. Nothing is placed until you approve it — unless you have switched that strategy to automatic. Automatic orders still pass the same guardrails as the AI agents: order value, daily loss, open positions, orders per day, concentration and market hours. Those caps limit what you can open; none of them can stop you closing a position."
             actions={history.length > 0 ? <Button size="sm" variant="ghost" onClick={clearDecided}>Clear history</Button> : undefined}
         >
             <Tabs

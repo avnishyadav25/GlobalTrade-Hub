@@ -17,8 +17,33 @@ export interface GuardrailVerdict {
 }
 
 /** Stable key used to avoid acting on the same signal twice. */
-export function signalKey(sig: TradeSignal): string {
-    return `${sig.symbol}:${sig.side}:${Math.round(sig.entry)}`;
+export function signalKey(sig: { symbol: string; side: string; entry?: number }): string {
+    return `${sig.symbol}:${sig.side}:${Math.round(sig.entry ?? 0)}`;
+}
+
+/**
+ * The minimum a signal must carry to be risk-checked.
+ *
+ * Deliberately structural rather than a union of TradeSignal | StrategySignal: the LLM
+ * signal and the deterministic one are produced by unrelated code and should not have to
+ * know about each other. Both satisfy this shape as-is.
+ */
+export interface GuardrailSignal {
+    symbol: string;
+    side: 'buy' | 'sell';
+    /**
+     * 0-100. ABSENT on rule-based signals, which have no such notion — and inventing one
+     * would be a fabricated number sitting beside real ones. `minConfidence` is therefore
+     * an LLM-only control and does not apply when this is undefined.
+     */
+    confidence?: number;
+    /** Reference price. Only used to build the dedupe key. */
+    entry?: number;
+    /**
+     * Whether this OPENS or CLOSES exposure. Defaults to 'enter', so the AI path — which
+     * only ever opens — is unchanged.
+     */
+    intent?: 'enter' | 'exit';
 }
 
 /**
@@ -42,6 +67,23 @@ export function normaliseGuardrails(g: Guardrails): Guardrails {
         squareOffBufferMin: Math.floor(nonNeg(g.squareOffBufferMin, 0)),
         tradeOnlyWhenOpen: g.tradeOnlyWhenOpen ?? false,
     };
+}
+
+/**
+ * Combine a local guardrail set with one loaded from the server.
+ *
+ * Field-wise, local first, so that a key the SERVER ROW PREDATES survives instead of
+ * reverting to undefined. Cloud sync used to replace the object wholesale, which meant a
+ * row written before `maxPerSymbolPct`, `maxOrdersPerDay`, `squareOffBufferMin` and
+ * `tradeOnlyWhenOpen` existed silently switched all four back off on the next reload —
+ * a risk control turning itself off with nothing said.
+ *
+ * Keys the server actually carries still win, so multi-device sync is unchanged. Both
+ * sides are untrusted, so the result always goes through `normaliseGuardrails`.
+ */
+export function mergeGuardrails(local: unknown, server: unknown): Guardrails {
+    const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+    return normaliseGuardrails({ ...obj(local), ...obj(server) } as unknown as Guardrails);
 }
 
 /** Realized net loss (negative number) booked since local midnight. */
@@ -80,7 +122,7 @@ export interface GuardrailInput {
     guardrails: Guardrails;
     /** The book the limits are measured against. */
     book: PaperState;
-    sig: TradeSignal;
+    sig: GuardrailSignal;
     actedIds: string[];
     killSwitch: boolean;
     /** Equity in base currency, for the per-symbol exposure cap. */
@@ -95,43 +137,64 @@ export function checkGuardrails({ guardrails, book, sig, actedIds, killSwitch, e
 
     const g = normaliseGuardrails(guardrails);
 
-    if (g.maxOrderValueINR <= 0) {
+    // Does this signal ADD exposure? Every cap below except the session rules exists to
+    // limit how much you can take on, so none of them may block a close.
+    //
+    // This distinction did not exist while the only caller was the AI path, which never
+    // emits an exit. Applying those caps to an exit would be actively dangerous: at the
+    // position limit, or past the daily loss limit, you would be unable to close the very
+    // positions that put you there. A risk control that traps you in a losing trade is
+    // not a risk control.
+    const opening = (sig.intent ?? 'enter') === 'enter';
+
+    if (opening && g.maxOrderValueINR <= 0) {
         return { allowed: false, reason: 'Max order value is not set — nothing can be sized.' };
     }
-    if (!Number.isFinite(sig.confidence) || sig.confidence < g.minConfidence) {
+
+    // minConfidence is an LLM-only control: a rule-based signal has no confidence score,
+    // and defaulting one would invent a number. Absent means "not applicable", while a
+    // present-but-broken value (NaN from a bad model response) is still refused.
+    if (sig.confidence !== undefined && (!Number.isFinite(sig.confidence) || sig.confidence < g.minConfidence)) {
         return { allowed: false, reason: `Confidence ${sig.confidence} is below the ${g.minConfidence} minimum.` };
     }
-    if (actedIds.includes(signalKey(sig))) {
+
+    // Only the AI path tracks acted-on keys; the deterministic path dedupes by signal id
+    // in signalStore.push and passes an empty list here.
+    if (actedIds.length && actedIds.includes(signalKey(sig))) {
         return { allowed: false, reason: 'This signal has already been acted on.' };
     }
-    if (Object.keys(book.positions).length >= g.maxOpenPositions) {
-        return { allowed: false, reason: `Already at the ${g.maxOpenPositions}-position limit.` };
-    }
-    if (g.maxDailyLossINR > 0 && -lossToday(book, now) >= g.maxDailyLossINR) {
-        return { allowed: false, reason: `Daily loss limit of ₹${g.maxDailyLossINR.toLocaleString('en-IN')} reached.` };
-    }
-    if (g.maxOrdersPerDay > 0 && ordersToday(book, now) >= g.maxOrdersPerDay) {
-        return { allowed: false, reason: `Already placed ${g.maxOrdersPerDay} orders today.` };
-    }
 
-    // Concentration. The position limit counts instruments; this one counts money, and a
-    // book of eight positions all in the same name passes the first and fails this.
-    if (g.maxPerSymbolPct > 0 && equityBase != null) {
-        const held = symbolExposurePct(book, sig.symbol, equityBase);
-        if (held >= g.maxPerSymbolPct) {
-            return { allowed: false, reason: `${sig.symbol} is already ${held.toFixed(0)}% of equity, at the ${g.maxPerSymbolPct}% cap.` };
+    if (opening) {
+        if (Object.keys(book.positions).length >= g.maxOpenPositions) {
+            return { allowed: false, reason: `Already at the ${g.maxOpenPositions}-position limit.` };
+        }
+        if (g.maxDailyLossINR > 0 && -lossToday(book, now) >= g.maxDailyLossINR) {
+            return { allowed: false, reason: `Daily loss limit of ₹${g.maxDailyLossINR.toLocaleString('en-IN')} reached.` };
+        }
+        if (g.maxOrdersPerDay > 0 && ordersToday(book, now) >= g.maxOrdersPerDay) {
+            return { allowed: false, reason: `Already placed ${g.maxOrdersPerDay} orders today.` };
+        }
+
+        // Concentration. The position limit counts instruments; this one counts money, and
+        // a book of eight positions all in the same name passes the first and fails this.
+        if (g.maxPerSymbolPct > 0 && equityBase != null) {
+            const held = symbolExposurePct(book, sig.symbol, equityBase);
+            if (held >= g.maxPerSymbolPct) {
+                return { allowed: false, reason: `${sig.symbol} is already ${held.toFixed(0)}% of equity, at the ${g.maxPerSymbolPct}% cap.` };
+            }
         }
     }
 
-    // Session rules. A market that is shut cannot fill an order, and an intraday
-    // position opened minutes before the close will be squared off by the broker — at
-    // its price, with its charges.
+    // Session rules apply to BOTH directions: a market that is shut cannot fill an order
+    // in either direction, so this is physics rather than a risk appetite.
     const market = marketOf(sig.symbol);
     const session = sessionInfo(market, now);
     if (g.tradeOnlyWhenOpen && !session.open) {
         return { allowed: false, reason: `${session.label} is closed (${session.reason ?? 'outside hours'}).` };
     }
-    if (g.squareOffBufferMin > 0 && shouldSquareOff(market, now, g.squareOffBufferMin)) {
+    // The square-off buffer is explicitly about NEW intraday positions — squaring off IS
+    // an exit, so blocking exits here would defeat the rule's own purpose.
+    if (opening && g.squareOffBufferMin > 0 && shouldSquareOff(market, now, g.squareOffBufferMin)) {
         return { allowed: false, reason: `Within ${g.squareOffBufferMin} minutes of the close — no new intraday positions.` };
     }
 

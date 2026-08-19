@@ -6,6 +6,7 @@ import { useSignalStore, type QueuedSignal } from '@/stores/signalStore';
 import { useStrategyStore } from '@/stores/strategyStore';
 import { useAgentStore } from '@/stores/agentStore';
 import { deriveFxRates, equity, isFractional, toBase } from '@/lib/paperEngine';
+import { checkGuardrails } from '@/lib/agentGuardrails';
 import { sizeForSignal } from './runtime';
 
 // Turning an approved signal into an order.
@@ -15,6 +16,15 @@ import { sizeForSignal } from './runtime';
 // `usePaperStore.place()` — the single chokepoint — which is what applies the kill
 // switch and the coach rules, and what RECORDS a refusal on the Orders screen instead
 // of letting it vanish into a toast.
+//
+// It ALSO runs `checkGuardrails`, the same module the LLM path uses. Before that, this
+// path honoured only the kill switch, the coach rules, and the order-value cap: a
+// deterministic strategy left on `auto` had no daily-loss limit, no position cap, no
+// orders-per-day cap, no concentration cap and no market-hours check — while the Agents
+// screen presented those limits as if they governed automation generally. That is the
+// same defect this file's sibling `agentGuardrails.ts` was written to fix for the AI
+// path, and it existed here in mirror image. One module, both paths, no second
+// implementation to drift.
 
 export interface PlaceOutcome {
     ok: boolean;
@@ -45,6 +55,21 @@ export function placeSignal(signal: QueuedSignal): PlaceOutcome {
     const fx = deriveFxRates(market.quotes);
     const equityBase = equity(paper.state, market.quotes, fx);
     const priceBase = toBase(signal.symbol, price, fx);
+
+    // Exposure caps apply to opening only — checkGuardrails reads `signal.intent`, so an
+    // exit is never blocked by the position count or the daily loss limit. Being unable
+    // to close the trade that breached a limit would be the opposite of a risk control.
+    // `actedIds` is empty because this path already dedupes by signal id in
+    // `signalStore.push`.
+    const verdict = checkGuardrails({
+        guardrails: agent.guardrails,
+        book: paper.state,
+        sig: signal,
+        actedIds: [],
+        killSwitch: agent.killSwitch,
+        equityBase,
+    });
+    if (!verdict.allowed) return fail(verdict.reason ?? 'Blocked by your guardrails.');
 
     const qty =
         signal.intent === 'exit'
