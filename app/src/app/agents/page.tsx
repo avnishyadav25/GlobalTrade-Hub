@@ -113,7 +113,7 @@ export default function AgentsPage() {
             toast.error('Cannot size this order', { description: 'One unit already exceeds your max order value.' });
             return;
         }
-        const result = place({ symbol: sig.symbol, side: sig.side, type: 'market', qty });
+        const result = place({ symbol: sig.symbol, side: sig.side, type: 'market', qty, source: { kind: 'agent' } });
         if (result.status === 'rejected') {
             toast.error('Order rejected', { description: result.reason });
             return;

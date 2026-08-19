@@ -42,6 +42,35 @@ export const sizedBetween = (lo: number, hi: number) => (c: VerifyContext): Veri
     return { done: false, hint: `Place a trade worth between ${lo * 100}% and ${hi * 100}% of your equity — check "Order value" against "Buying power" on the ticket.` };
 };
 
+/**
+ * An order the LEDGER attributes to this strategy.
+ *
+ * Reads provenance recorded on the order rather than the strategy store or the signal
+ * queue. That matters for two reasons: the book is what cloud-syncs, so this progress
+ * follows you between devices; and enabling a strategy is an intention, whereas an order
+ * carrying its source is something that actually happened. A lesson gated on intention
+ * would be completable by clicking, which is the one thing the curriculum refuses to be.
+ *
+ * Counts refused orders too, deliberately: a strategy that fired and was blocked by a
+ * guardrail DID run, and watching it be refused is the more valuable lesson.
+ */
+export const placedByStrategy = (strategyId: string) => (c: VerifyContext): VerifyResult => {
+    const mine = c.state.orders.filter((o) => o.source?.kind === 'strategy' && o.source.strategyId === strategyId);
+    if (!mine.length) {
+        return {
+            done: false,
+            hint: `No order from this strategy yet. Enable it on an instrument, then approve its signal on **/signals** — or switch that instance to automatic and let it place on its own.`,
+        };
+    }
+    const filled = mine.filter((o) => o.status === 'filled').length;
+    const refused = mine.filter((o) => o.status === 'rejected').length;
+    return ok(
+        filled
+            ? `${filled} order${filled === 1 ? '' : 's'} placed by this strategy.`
+            : `This strategy fired ${refused} time${refused === 1 ? '' : 's'} and was refused — it ran, which is what this step asked for.`
+    );
+};
+
 export const closedARoundTrip = (c: VerifyContext): VerifyResult =>
     c.state.account.roundTrips >= 1
         ? ok(`${c.state.account.roundTrips} round trip${c.state.account.roundTrips === 1 ? '' : 's'} completed.`)

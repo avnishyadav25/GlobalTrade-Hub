@@ -139,7 +139,7 @@ export function AgentEngine() {
                 }
 
                 // auto-paper
-                const result = usePaperStore.getState().place({ symbol: sig.symbol, side: sig.side, type: 'market', qty });
+                const result = usePaperStore.getState().place({ symbol: sig.symbol, side: sig.side, type: 'market', qty, source: { kind: 'agent' } });
                 if (result.status === 'rejected') {
                     toast.error(`Auto-paper rejected ${sig.symbol}`, { description: result.reason });
                     continue;   // deliberately NOT marked acted — a refusal can be retried

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { PageShell, Panel, Tabs, DataTable, EmptyState, Button, Badge, SideBadge, PriceText, type Column } from '@/components/ui';
 import { usePaperStore } from '@/stores/paperStore';
-import { ordersByStatus, fillsForOrder, type PaperOrder } from '@/lib/paperEngine';
+import { ordersByStatus, fillsForOrder, type PaperOrder, type OrderSource } from '@/lib/paperEngine';
 import { fmtNum, fmtMoney } from '@/lib/format';
 
 type Tab = 'open' | 'executed' | 'rejected';
@@ -33,6 +33,14 @@ export default function OrdersPage() {
         },
         { key: 'type', header: 'Type', width: '.7fr', render: (o) => <span className="text-xs uppercase text-foreground-muted">{o.type}</span> },
         { key: 'qty', header: 'Qty', width: '.8fr', align: 'right', render: (o) => <span className="mono">{fmtNum(o.qty, o.qty < 1 ? 4 : 2)}</span> },
+        {
+            // WHO placed it. The book could not say until orders started recording a
+            // source, so an unattended strategy fill and something you typed into the
+            // ticket looked identical here. Orders written before that show a dash
+            // rather than being labelled manual, because we genuinely do not know.
+            key: 'source', header: 'Placed by', width: '1.2fr',
+            render: (o) => <SourceCell source={o.source} />,
+        },
     ];
 
     const byTab: Record<Tab, Column<PaperOrder>[]> = {
@@ -112,4 +120,20 @@ export default function OrdersPage() {
             </Panel>
         </PageShell>
     );
+}
+
+/** How an order's provenance reads in the table. */
+function SourceCell({ source }: { source?: OrderSource }) {
+    if (!source) return <span className="text-faint">—</span>;
+    if (source.kind === 'strategy') {
+        return (
+            <span className="flex items-center gap-1.5">
+                <Badge tone="accent">strategy</Badge>
+                <span className="mono truncate text-2xs text-foreground-muted">{source.strategyId ?? ''}</span>
+            </span>
+        );
+    }
+    if (source.kind === 'agent') return <Badge tone="warn">agent</Badge>;
+    if (source.kind === 'settlement') return <Badge>expiry</Badge>;
+    return <span className="text-xs text-foreground-muted">you</span>;
 }

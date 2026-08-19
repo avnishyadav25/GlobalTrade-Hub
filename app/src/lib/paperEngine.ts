@@ -41,7 +41,7 @@ export type FillKind = 'open' | 'add' | 'reduce' | 'close' | 'flip' | 'settle';
 /** How the legs of a group relate to each other. */
 export type OrderGroupKind = 'multileg' | 'oco' | 'bracket';
 
-export const PAPER_STATE_VERSION = 2;
+export const PAPER_STATE_VERSION = 3;
 
 /**
  * Oldest shape this build can carry forward without discarding the book.
@@ -51,6 +51,23 @@ export const PAPER_STATE_VERSION = 2;
  * from v2 on is additive-optional and loads as-is.
  */
 export const MIN_COMPATIBLE_PAPER_VERSION = 2;
+
+/**
+ * What placed this order.
+ *
+ * The book could not previously say. `/orders` therefore showed a manual ticket and an
+ * unattended strategy fill identically, and the curriculum could not gate a lesson on
+ * "this strategy actually traded" — the ledger simply did not know. Optional, because
+ * every order written before this existed has no answer, and inventing one would be
+ * worse than admitting it.
+ */
+export interface OrderSource {
+    kind: 'manual' | 'strategy' | 'agent' | 'settlement';
+    /** Which rule set, for `kind: 'strategy'`. */
+    strategyId?: string;
+    /** Which running instance of it, so two instances of one strategy stay distinct. */
+    instanceId?: string;
+}
 
 export interface PaperOrder {
     id: string;
@@ -72,6 +89,8 @@ export interface PaperOrder {
     rejectReason?: string;
     /** Base-currency cash held against this resting order; released on fill/cancel. */
     reservedBase: number;
+    /** What placed it. Absent on orders written before provenance was recorded. */
+    source?: OrderSource;
 
     /* ---- group membership. All optional: an order without them is a singleton, which
        is exactly what every order was before multi-leg existed. ---- */
@@ -730,6 +749,8 @@ export interface PlaceOrderInput {
     stopPrice?: number;
     /** May only reduce a position, and reserves nothing. Used for bracket exits. */
     reduceOnly?: boolean;
+    /** What is placing this. Callers that leave it unset are recorded as unattributed. */
+    source?: OrderSource;
 }
 
 export type PlaceStatus = 'filled' | 'accepted' | 'rejected';
@@ -830,6 +851,7 @@ export function placeOrder(
         updatedAt: ts,
         reservedBase: 0,
         ...(input.reduceOnly ? { reduceOnly: true } : {}),
+        ...(input.source ? { source: input.source } : {}),
     };
 
     const reason = validate(state, input, refPrice, fx);
@@ -1084,6 +1106,9 @@ export function settleExpiries(
             side,
             type: 'market',
             qty,
+            // Nobody placed this: expiry did. Labelling it 'manual' would put a trade in
+            // your record that you never made.
+            source: { kind: 'settlement' },
             filledQty: qty,
             avgFillPrice: intrinsicValue,
             status: 'filled',
@@ -1169,6 +1194,10 @@ export function recordRejection(
         side: input.side,
         type: input.type,
         qty: input.qty,
+        // A REFUSAL carries its source too. "Which strategy keeps getting blocked, and
+        // by what" is the question the Orders screen exists to answer; dropping the
+        // attribution on rejects would lose exactly the diagnostic that matters.
+        ...(input.source ? { source: input.source } : {}),
         limitPrice: input.limitPrice,
         stopPrice: input.stopPrice,
         filledQty: 0,

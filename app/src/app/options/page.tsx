@@ -171,7 +171,7 @@ export default function OptionsPage() {
         useMarketStore.getState().applyQuote({ symbol, price: ticket.premium, real: true });
 
         const qty = lots * ticket.contract.lotSize;
-        const result = place({ symbol, side: ticket.side, type: 'market', qty });
+        const result = place({ symbol, side: ticket.side, type: 'market', qty, source: { kind: 'manual' } });
 
         if (result.status === 'rejected') toast.error('Order refused', { description: result.reason });
         else toast.success(`${ticket.side === 'buy' ? 'Bought' : 'Wrote'} ${lots} lot${lots === 1 ? '' : 's'}`, { description: formatContract(ticket.contract) });

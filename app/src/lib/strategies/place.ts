@@ -91,7 +91,17 @@ export function placeSignal(signal: QueuedSignal): PlaceOutcome {
         );
     }
 
-    const result = paper.place({ symbol: signal.symbol, side: signal.side, type: 'market', qty });
+    const result = paper.place({
+        symbol: signal.symbol,
+        side: signal.side,
+        type: 'market',
+        qty,
+        // Stamp WHO placed it. Without this the book cannot distinguish an unattended
+        // strategy fill from something you typed into the order ticket, which is both a
+        // gap on the Orders screen and the reason a lesson could not be gated on a
+        // strategy having actually traded.
+        source: { kind: 'strategy', strategyId: signal.strategyId, instanceId: signal.instanceId },
+    });
     if (result.status === 'rejected') {
         return fail(result.reason ?? 'Rejected by the order chokepoint.');
     }
