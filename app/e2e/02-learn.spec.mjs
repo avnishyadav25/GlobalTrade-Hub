@@ -1,4 +1,4 @@
-import { suite, test, expect, BASE, shot } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 
 // Every lesson renders WITH its visual.
 //
@@ -15,7 +15,7 @@ export default function ({ page }) {
 
     suite('Learn: every lesson and its visual', () => {
         test('discovers lessons by crawling the tracks, not from a hardcoded list', async () => {
-            await page.goto(BASE + '/learn', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/learn');
             const tracks = await page.locator('a[href^="/learn/track/"]').evaluateAll(
                 (els) => [...new Set(els.map((e) => e.getAttribute('href')))]);
             expect(tracks.length, 'tracks found').toBeGreaterThanOrEqual(16);
@@ -37,7 +37,7 @@ export default function ({ page }) {
             const noFigure = [];
             const collapsed = [];
             for (const href of lessons) {
-                await page.goto(BASE + href, { waitUntil: 'domcontentloaded', timeout: 90000 });
+                await goto(page, BASE + href);
                 await page.waitForTimeout(220);   // let the intersection observer mount it
                 const figs = await page.locator('figure').all();
                 if (!figs.length) { noFigure.push(href); continue; }
@@ -53,7 +53,7 @@ export default function ({ page }) {
         });
 
         test('the automation track is reachable and teaches the lease', async () => {
-            await page.goto(BASE + '/learn/one-writer-only', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/learn/one-writer-only');
             const body = await page.locator('body').innerText();
             expect(body).toContain('lease');
             await shot(page, 'learn-lease', 'A lesson explaining why only one runner may write the ledger.', { section: 'Learn' });

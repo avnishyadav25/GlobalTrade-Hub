@@ -1,4 +1,4 @@
-import { suite, test, expect, BASE, shot } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 
 // The order path, end to end, against the real paper book.
 //
@@ -9,7 +9,7 @@ import { suite, test, expect, BASE, shot } from './harness.mjs';
 export default function ({ page }) {
     suite('Trading: the manual order path', () => {
         test('the ticket places a market order and the book records it', async () => {
-            await page.goto(BASE + '/terminal', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/terminal');
             await page.waitForTimeout(2500);   // let a live price arrive
 
             const before = await page.evaluate(() => {
@@ -39,7 +39,7 @@ export default function ({ page }) {
         });
 
         test('orders shows who placed each one', async () => {
-            await page.goto(BASE + '/orders', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/orders');
             await page.waitForTimeout(1200);
             const body = await page.locator('body').innerText();
             // Rendered uppercase by the table header, so match case-insensitively —
@@ -49,10 +49,10 @@ export default function ({ page }) {
         });
 
         test('the portfolio and funds screens reconcile with the book', async () => {
-            await page.goto(BASE + '/portfolio', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/portfolio');
             await page.waitForTimeout(1200);
             await shot(page, 'portfolio', 'The portfolio: positions, equity curve and the record so far.', { section: 'Trading' });
-            await page.goto(BASE + '/funds', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/funds');
             await page.waitForTimeout(1000);
             const body = await page.locator('body').innerText();
             expect(body.length).toBeGreaterThan(200);
@@ -62,7 +62,7 @@ export default function ({ page }) {
 
     suite('Trading: persistence', () => {
         test('the book survives a reload', async () => {
-            await page.goto(BASE + '/orders', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/orders');
             await page.waitForTimeout(1000);
             const before = await page.evaluate(() => {
                 try { return JSON.parse(localStorage.getItem('gth-paper') || '{}').state?.state?.seq ?? -1; } catch { return -1; }

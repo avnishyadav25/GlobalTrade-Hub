@@ -1,4 +1,4 @@
-import { suite, test, expect, BASE, shot, realErrors } from './harness.mjs';
+import { suite, test, expect, BASE, shot, realErrors, goto } from './harness.mjs';
 
 // Every route renders, authenticated, with no uncaught error and no error boundary.
 //
@@ -21,7 +21,7 @@ export default function ({ page, errors }) {
         for (const route of ROUTES) {
             test(`${route} renders`, async () => {
                 errors.length = 0;
-                const res = await page.goto(BASE + route, { waitUntil: 'domcontentloaded', timeout: 90000 });
+                const res = await goto(page, BASE + route);
                 expect(res?.status() ?? 0, `${route} status`).toBeGreaterThanOrEqual(200);
                 expect(res.status() < 400, `${route} status ${res.status()}`).toBeTruthy();
                 await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
@@ -35,7 +35,7 @@ export default function ({ page, errors }) {
         }
 
         test('the terminal is worth a picture', async () => {
-            await page.goto(BASE + '/terminal', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/terminal');
             await page.waitForTimeout(1500);
             await shot(page, 'terminal', 'The terminal: live prices, the chart, and the order ticket.', { section: 'Orientation' });
         });

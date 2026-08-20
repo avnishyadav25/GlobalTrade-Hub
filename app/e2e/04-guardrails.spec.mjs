@@ -1,11 +1,11 @@
-import { suite, test, expect, BASE, shot } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 
 // Guardrails: all eight reachable, and the copy honest about what they bind.
 
 export default function ({ page }) {
     suite('Guardrails: reachable and honest', () => {
         test('all eight controls exist on the agents screen', async () => {
-            await page.goto(BASE + '/agents', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/agents');
             await page.waitForTimeout(800);
             const body = await page.locator('body').innerText();
             for (const label of [
@@ -18,7 +18,7 @@ export default function ({ page }) {
         });
 
         test('says the caps bind every automated path', async () => {
-            await page.goto(BASE + '/agents', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/agents');
             const body = await page.locator('body').innerText();
             expect(body).toMatch(/every automated path/i);
             // minConfidence is meaningless for a rule-based signal and must say so.
@@ -28,7 +28,7 @@ export default function ({ page }) {
         test('a guardrail survives a reload', async () => {
             // The bug this pins: cloud sync replaced the guardrail object wholesale with
             // the server's copy, so any cap the stored row predated reverted on reload.
-            await page.goto(BASE + '/agents', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/agents');
             await page.waitForTimeout(800);
             const box = page.locator('input[type="checkbox"]').first();
             const before = await box.isChecked();
@@ -44,7 +44,7 @@ export default function ({ page }) {
         });
 
         test('signals explains that exits are never blocked', async () => {
-            await page.goto(BASE + '/signals', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/signals');
             const body = await page.locator('body').innerText();
             expect(body).toMatch(/closing a position|stop you closing/i);
             await shot(page, 'signals', 'The signal queue, and what actually binds an automatic order.', { section: 'Risk' });

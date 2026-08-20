@@ -1,4 +1,4 @@
-import { suite, test, expect, BASE, shot } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 
 // The automation control surface: what is running, and can you stop it.
 //
@@ -9,7 +9,7 @@ import { suite, test, expect, BASE, shot } from './harness.mjs';
 export default function ({ page }) {
     suite('Automation: control surface', () => {
         test('the screen reports a status derived from a real check-in', async () => {
-            await page.goto(BASE + '/automation', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/automation');
             await page.waitForTimeout(2000);
             const body = await page.locator('body').innerText();
             expect(body).toMatch(/Running in a browser tab|Running on the server|Not running/);
@@ -19,7 +19,7 @@ export default function ({ page }) {
         });
 
         test('lists every instance, across strategies', async () => {
-            await page.goto(BASE + '/automation', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/automation');
             await page.waitForTimeout(800);
             const body = await page.locator('body').innerText();
             const m = body.match(/Running instances \((\d+)\)/);
@@ -30,7 +30,7 @@ export default function ({ page }) {
         });
 
         test('pause and delete are different actions, and delete confirms', async () => {
-            await page.goto(BASE + '/automation', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/automation');
             await page.waitForTimeout(800);
             const pause = await page.getByRole('button', { name: /^(Pause|Resume)$/ }).count();
             const del = await page.getByRole('button', { name: /^Delete$/ }).count();
@@ -69,7 +69,7 @@ export default function ({ page }) {
 
     suite('Automation: the strategy page no longer lies', () => {
         test('does not claim nothing is placed without approval', async () => {
-            await page.goto(BASE + '/strategies/ma-crossover', { waitUntil: 'domcontentloaded', timeout: 90000 });
+            await goto(page, BASE + '/strategies/ma-crossover');
             await page.waitForTimeout(600);
             const body = await page.locator('body').innerText();
             // The old copy ended at "Nothing is placed until you approve it." full stop,

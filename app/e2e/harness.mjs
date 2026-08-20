@@ -173,6 +173,31 @@ const IGNORED = [
 ];
 export const realErrors = (errors) => errors.filter((e) => !IGNORED.some((re) => re.test(e)));
 
+/**
+ * Navigate, retrying ONCE on a timeout.
+ *
+ * Pages here can block on a market-data provider that is rate-limiting us, and a run that
+ * reports three 90-second navigation timeouts as three broken pages is worse than no run:
+ * it buries the real signal in noise you then learn to ignore.
+ *
+ * Deliberately narrow. Only a timeout is retried — an error page, a bad status or a
+ * console error is a real result and is never retried away. Retries are reported, because
+ * a page that needs two attempts is worth knowing about even when it passes.
+ */
+export async function goto(page, url, opts = {}) {
+    try {
+        return await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000, ...opts });
+    } catch (err) {
+        if (!/Timeout/i.test(String(err.message))) throw err;
+        retried.push(url);
+        console.log(`        (slow: retrying ${url})`);
+        return await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000, ...opts });
+    }
+}
+
+const retried = [];
+export const retriedNavigations = () => retried;
+
 /* ----------------------------------------------------------------- runner */
 
 export async function run() {
@@ -199,6 +224,10 @@ export async function run() {
 
     const secs = ((Date.now() - started) / 1000).toFixed(1);
     console.log(`\n${passed} passed, ${failures.length} failed  (${secs}s)`);
+    if (retried.length) {
+        console.log(`${retried.length} navigation(s) needed a retry — the market-data provider was throttling:`);
+        for (const u of [...new Set(retried)]) console.log(`  slow: ${u}`);
+    }
     if (manifest.length) {
         writeFileSync(join(SHOTS, 'manifest.json'), JSON.stringify(manifest, null, 1));
         console.log(`${manifest.length} screenshots -> ${SHOTS}`);
