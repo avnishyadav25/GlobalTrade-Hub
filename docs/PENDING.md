@@ -7,8 +7,9 @@ This is not `docs/AUDIT.md` — that stays as the historical record of the defec
 remediation. This file answers a different question: **if you sat down to use this app
 today, what would you find, and what would you not.**
 
-Verified against the code on **2026-08-12**. Counts: **621 tests across 31 files · 117
-lessons · 24 strategies · 30 page routes · 16 API routes.**
+Verified against the code on **2026-08-20**. Counts: **661 unit tests across 33 files ·
+135 lessons across 16 tracks · 24 strategies · 31 page routes · 19 API routes**, plus an
+end-to-end suite of ~50 checks in `app/e2e/`.
 
 ---
 
@@ -135,9 +136,9 @@ adapter, and all of `lib/notify` and `lib/ai`.
 ### 6. Stale documentation
 | File | State |
 |---|---|
-| `ARCHITECTURE.md` | Predates the options layer, workers, walk-forward and portfolio backtest. |
-| `DOCUMENTATION.md` | References `lib/backtestEngine.ts`, which does not exist. |
-| `PROVIDERS.md` | No Finnhub, no EIA, no NSE; still frames Twelve Data as current. |
+| `ARCHITECTURE.md` | **Updated 2026-08-20** — now covers automation, the lease, provenance and the real test counts. |
+| `DOCUMENTATION.md` | **Updated** — the phantom `lib/backtestEngine.ts` reference is gone. |
+| `PROVIDERS.md` | **Updated** — it no longer tells you to set two variables the app never reads. |
 | `MARKET-DATA.md` | Mostly current; no row for the NSE option chain. |
 | `AUDIT.md` | Header says "1 open" but no `[ ]` row exists; the S5 heading claims S5.5–S5.7 are open when they are marked done. |
 | `E2E_TESTING.md` | **Deleted** — described a suite that was never written and prescribed a script that does not exist. Superseded by `USER-ACCEPTANCE.md`. |

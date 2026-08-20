@@ -188,12 +188,23 @@ keys** from mainnet.
 
 Two layers:
 
-1. **localStorage** via Zustand `persist` — `gth-paper`, `gth-agents`, `gth-coach`, `gth-ui`.
+1. **localStorage** via Zustand `persist` — `gth-paper`, `gth-agents`, `gth-coach`, `gth-ui`,
+   `gth-strategies`, `gth-signals`, `gth-learn`, `gth-watchlists`, `gth-alerts`.
 2. **Supabase `gth_app_state`** via `lib/cloudSync.ts`, hydrating concurrently on load and
    debounce-persisting changes.
 
 Server JSON is untrusted: every sync entry declares a `validate` guard, and a row that fails it is
 skipped with a console warning rather than written into the store.
+
+`cloudSync` **subscribes before it hydrates**. It used to attach its subscribers only after the
+hydration fetch resolved, leaving a window in which a setting the user changed was written to
+localStorage and never sent to the server at all — the next reload then hydrated the older row over
+it. Hydration also skips any store the user touched while it was loading, or the fix would send the
+change and then immediately overwrite it locally.
+
+Every order records **what placed it** (`source`: manual, strategy, agent or settlement), which is
+what lets `/orders` show provenance and lets a lesson be gated on a strategy having actually
+traded.
 
 > Changing a persisted store's shape requires a `version` + `migrate` **and** a matching validator,
 > or existing users hydrate into `NaN`. `PaperState` is at version 2; v1 blobs are reset with a
@@ -224,9 +235,48 @@ trading is a per-session decision.
 ## Background work
 
 `MarketEngine` (mounted once) drives the feed, matches resting orders every second and samples the
-equity curve. `AgentEngine` runs the auto-trading loop on a 60s cycle. `CloudSync` hydrates and
-persists. `/api/cron/tick` produces the daily briefing and is secured by `CRON_SECRET` (required
-in production).
+equity curve. `AgentEngine` runs the LLM auto-trading loop on a 60s cycle. `StrategyEngine` runs the
+deterministic one, evaluating enabled instances against the **same candle endpoint the backtester
+uses** — anything else would make a backtest unable to say anything about live behaviour.
+`CloudSync` hydrates and persists. `/api/cron/tick` produces the daily briefing and snapshots the
+NIFTY/BANKNIFTY option chains.
+
+---
+
+## Automation
+
+Strategies can run with no browser open, via `/api/automation/run` driven by a self-hosted
+scheduler (`scripts/scheduler.sh`). Vercel Cron is not used: the Hobby tier allows one run a day.
+
+**Only one runner may act at a time**, because the paper ledger cannot survive two writers. The
+monotonicity guard in `api/state/[key]` rejects a write with an older `seq`, but an EQUAL seq
+passes — so a tab and a runner both starting from seq 100 can each place an order, each write 101,
+and one order vanishes while both books still balance perfectly. Nothing looks broken.
+
+Two mechanisms make that impossible rather than unlikely:
+
+- **A lease.** The browser posts a heartbeat every 45s while it has instances to evaluate; the
+  runner stands down if one landed within 3 minutes. The browser always wins — if a tab is open it
+  is already doing the work.
+- **A compare-and-set write.** The runner reads `seq` at the start and writes back only if the row
+  still carries it. A tab can open *mid-run*, so the lease alone is not enough.
+
+A third, narrower duplicate is possible across a *handover* rather than concurrently: signal ids are
+deterministic (`strategyId:symbol:barTime:action`), and runtime memory is never persisted, so a
+runner starting fresh would re-place an order the other just made. The lease therefore also carries
+the acted-on signal ids.
+
+The lease lives in **two rows** — `automation` (browser) and `automation-server` (runner) — each
+replaced wholesale by its owner. One shared row meant read-modify-write from two writers, and it
+lost `serverRanAt` and the acted-id list within hours of being built.
+
+Everything risk-bearing is shared with the browser loop through `lib/automation/decide.ts`. Only
+the commit differs: the browser goes through `usePaperStore.place()`, the runner calls `placeOrder()`
+against a book read from Supabase.
+
+The runner refuses to trade on stale FX, on generated candles, on a `review`-mode instance, or with
+the kill switch on. `/automation` reports what is running, derived from a real check-in rather than
+from a setting — a scheduler on a sleeping laptop is not running.
 
 ---
 
@@ -236,6 +286,8 @@ in production).
 cd app && npm test
 ```
 
-64 tests over `paperEngine`, `backtestEngine`, `coach` and `auth`. They encode the invariants that
+661 unit tests over the pure modules, plus an end-to-end suite in `app/e2e/` run via
+`scripts/e2e.mjs`. Note that `npm run test:e2e` still does **not** work: `@playwright/test` has
+never installed on this machine, so the suite runs on a separately-supplied Playwright. They encode the invariants that
 are easy to regress: the ledger identity, currency conversion, buying power, determinism,
 indicator warm-up, look-ahead bias, and order-independence of the coach rules.
