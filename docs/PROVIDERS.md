@@ -1,9 +1,11 @@
 # Provider setup guide
 
 
-> **Staleness warning.** This document predates the options layer, walk-forward and
-> portfolio backtesting, and the current provider set. See [PENDING.md](PENDING.md) for
-> what is actually true today.
+Verified against the code on **2026-08-20**: every variable named here is one the app
+actually reads. Two that this document previously told you to set —
+`MARKETDATA_PROVIDER` and `MARKETDATA_API_KEY` — are read by nothing and have been
+removed, along with the Twelve Data setup they belonged to. Instructions for configuring
+something inert are worse than no instructions.
 
 Everything here is **optional** — GlobalTrade Hub runs with simulated data, a local
 paper engine, and a heuristic coach out of the box. Add keys to unlock real data,
@@ -30,28 +32,38 @@ Switch the active one with `LLM_PROVIDER=` or per-run in the **Agents** page.
 
 ---
 
-## B. FX / commodity market data (item 6) — free tiers
+## B. Market data — mostly no key required
 
-Pick one; set `MARKETDATA_PROVIDER` + `MARKETDATA_API_KEY`.
+Most of the data layer needs **nothing configured**. Everything routes through
+`cachedFetch` (TTL, single-flight, token bucket, circuit breaker); providers are never
+called directly. See [MARKET-DATA.md](MARKET-DATA.md) for the per-market table.
 
-### 1) Twelve Data — recommended (best free coverage)
-1. https://twelvedata.com → **Sign up** (free).
-2. Dashboard → **API Keys** → copy your key.
-3. `.env.local`: `MARKETDATA_PROVIDER=twelvedata`, `MARKETDATA_API_KEY=...`
-Free: ~800 requests/day, 8/min. Covers `EUR/USD`, `XAU/USD`, `XAG/USD`, `WTI/USD`, etc.
+| Source | Covers | Key needed |
+|---|---|---|
+| **Binance websocket** | crypto, live ticks | none (`NEXT_PUBLIC_ENABLE_BINANCE_FEED=false` to disable) |
+| **Yahoo** | India, US, FX, commodities — quotes and candles | none |
+| **frankfurter.app** | `USD/INR` backup when Yahoo fails | none |
+| **NSE** | NIFTY / BANKNIFTY option chains | none |
+| **Finnhub** | US real-time quotes, fundamentals, earnings | `FINNHUB_API_KEY` |
+| **EIA** | energy inventories; one strategy is disabled without it | `EIA_API_KEY` |
 
-### 2) Finnhub — good forex backup
+`USD/INR` is load-bearing: `deriveFxRates()` prices the **entire ₹ book** from it, and the
+server-side automation runner refuses to trade when only the hardcoded fallback is
+available — that constant was once 14.5% wrong.
+
+Yahoo's *search* endpoint is throttled far harder than its chart endpoint, so search has
+its own 8/min budget and an exact-ticker fallback. It will IP-block on abuse; running the
+end-to-end suite repeatedly is enough to trip the circuit breaker.
+
+### Finnhub (optional)
 1. https://finnhub.io → **Get free API key** → register.
-2. Dashboard → copy key. Free tier, forex + some commodities.
+2. `.env.local`: `FINNHUB_API_KEY=...`
+Powers US real-time quotes, `/research`, `/api/fundamentals` and `/api/earnings`.
 
-### 3) Alpha Vantage — instant, low limit (fallback)
-1. https://www.alphavantage.co/support/#api-key → enter email → instant key.
-2. Free: 25 requests/day (fine as a fallback). Covers FX + WTI/Brent/gold.
-
-> The app polls `GET /api/marketdata` server-side; if no key is set those
-> instruments keep simulating so nothing breaks.
-
----
+### EIA (optional)
+1. https://www.eia.gov/opendata/register.php → request a key.
+2. `.env.local`: `EIA_API_KEY=...`
+Without it the inventory-shock strategy stays disabled and says so.
 
 ## C. Live broker / paper trading (item 7) — free & paper
 
