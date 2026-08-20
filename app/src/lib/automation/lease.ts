@@ -37,6 +37,20 @@ export interface AutomationLease {
      * memory and would otherwise re-place an order the other just made on the same bar.
      */
     actedSignalIds?: string[];
+    /**
+     * What the last server run actually did.
+     *
+     * Recorded so the UI can report evidence rather than intent. "Automation is on" is a
+     * setting; "the last run placed nothing because BTC/USDT gave no signal" is a fact,
+     * and only the second one tells you whether anything is working.
+     */
+    lastRun?: {
+        at: number;
+        placed: number;
+        refused: number;
+        /** Why nothing happened, when nothing happened. */
+        reason?: string;
+    };
 }
 
 export type LeaseHolder = 'browser' | 'server' | 'idle';

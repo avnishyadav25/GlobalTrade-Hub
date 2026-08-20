@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
-import { mergeLease } from '@/lib/automation/store';
+import { recordHeartbeat } from '@/lib/automation/store';
 
 // The browser says "I am here and I am trading".
 //
@@ -15,6 +15,6 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
     if (!(await requireAdmin(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    const ok = await mergeLease({ browserHeartbeatAt: Date.now() });
+    const ok = await recordHeartbeat(Date.now());
     return NextResponse.json({ ok });
 }

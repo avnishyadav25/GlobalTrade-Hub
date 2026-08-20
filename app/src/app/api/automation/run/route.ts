@@ -7,7 +7,7 @@ import { strategyById } from '@/lib/strategies/defs';
 import { evaluateStrategy } from '@/lib/strategies/runtime';
 import { assessSignal } from '@/lib/automation/decide';
 import { serverMayAct, recordActed, type AutomationLease } from '@/lib/automation/lease';
-import { readState, readLease, mergeLease, writePaperIfUnchanged } from '@/lib/automation/store';
+import { readState, readLease, recordServerRun, writePaperIfUnchanged } from '@/lib/automation/store';
 import { deriveFxRates, placeOrder, marketOf, quoteCcyOf, type PaperState } from '@/lib/paperEngine';
 import type { LiveQuote } from '@/stores/marketStore';
 import type { Guardrails } from '@/stores/agentStore';
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     const all = Array.isArray(strategies?.instances) ? strategies!.instances : [];
     const instances = all.filter((i) => i.enabled && i.mode === 'auto').slice(0, strategies?.maxActive ?? 10);
     if (!instances.length) {
-        await mergeLease({ serverRanAt: now });
+        await recordServerRun({ serverRanAt: now, actedSignalIds: lease.actedSignalIds, lastRun: { at: now, placed: 0, refused: 0, reason: 'no enabled automatic instances' } });
         return NextResponse.json({ ok: true, ran: true, placed: [], reason: 'no enabled automatic instances', enabledTotal: all.length });
     }
 
@@ -125,11 +125,12 @@ export async function GET(req: Request) {
     if (inr.source === 'fallback') missing.push('USD/INR');
     if (needsJpy && !quotes['USD/JPY']) missing.push('USD/JPY');
     if (missing.length) {
-        await mergeLease({ serverRanAt: now });
+        const why = `no live rate for ${missing.join(' and ')} — refusing to price the book on a fallback constant`;
+        await recordServerRun({ serverRanAt: now, actedSignalIds: lease.actedSignalIds, lastRun: { at: now, placed: 0, refused: 0, reason: why } });
         return NextResponse.json({
             ok: false,
             ran: true,
-            reason: `no live rate for ${missing.join(' and ')} — refusing to price the book on a fallback constant`,
+            reason: why,
             missingRates: missing,
             usdInrSource: inr.source,
             quotesFetched: Object.keys(quotes),
@@ -139,7 +140,7 @@ export async function GET(req: Request) {
 
     const guardrails = (await readState<{ guardrails?: Guardrails; killSwitch?: boolean }>('agents')) ?? {};
     if (guardrails.killSwitch) {
-        await mergeLease({ serverRanAt: now });
+        await recordServerRun({ serverRanAt: now, actedSignalIds: lease.actedSignalIds, lastRun: { at: now, placed: 0, refused: 0, reason: 'kill-switch is on' } });
         return NextResponse.json({ ok: true, ran: true, reason: 'kill-switch is on', placed: [] });
     }
 
@@ -209,6 +210,15 @@ export async function GET(req: Request) {
         }
     }
 
-    await mergeLease({ serverRanAt: now, actedSignalIds: acted });
+    await recordServerRun({
+        serverRanAt: now,
+        actedSignalIds: acted,
+        lastRun: {
+            at: now,
+            placed: placed.length,
+            refused: refused.length,
+            reason: placed.length || refused.length ? undefined : (skipped[0] ?? 'nothing to do'),
+        },
+    });
     return NextResponse.json({ ok: true, ran: true, placed, refused, skipped, evaluated: instances.length });
 }

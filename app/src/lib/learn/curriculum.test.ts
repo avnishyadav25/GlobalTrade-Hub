@@ -14,7 +14,7 @@ const ROUTES = new Set([
     '/terminal', '/orders', '/holdings', '/portfolio', '/funds', '/watchlists',
     '/alerts', '/scanner', '/insights', '/agents', '/settings', '/backtest', '/paper',
     '/learn', '/library', '/strategies', '/strategies/unavailable', '/signals', '/research',
-    '/backtest/walk-forward', '/backtest/portfolio', '/options', '/start',
+    '/backtest/walk-forward', '/backtest/portfolio', '/options', '/start', '/automation',
 ]);
 
 /** A fresh account with nothing done — every verifier must cope with this. */

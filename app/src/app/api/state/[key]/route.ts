@@ -6,6 +6,9 @@ import { requireAdmin } from '@/lib/auth';
 export const runtime = 'nodejs';
 
 const ALLOWED = new Set(['paper', 'agents', 'coach', 'ui', 'watchlists', 'alerts', 'learn', 'strategies']);
+// NOTE: the automation lease rows ('automation', 'automation-server') are deliberately
+// NOT here. They are written by dedicated endpoints that own their shape; letting a
+// generic client PUT over them is exactly how the lease lost serverRanAt once already.
 
 function userId(): string | null {
     return process.env.ADMIN_USER_ID || null;

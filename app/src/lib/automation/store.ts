@@ -9,10 +9,32 @@ import type { AutomationLease } from './lease';
 // monotonicity guard living in that route does NOT protect it, and has to be rebuilt
 // here as an explicit precondition. See `writePaperIfUnchanged`.
 
-const LEASE_KEY = 'automation';
+// TWO ROWS, NOT ONE.
+//
+// The browser owns "I am here"; the runner owns "I ran, and here is what happened".
+// Keeping both in one row meant read-modify-write from two different writers, and it
+// lost data within hours of being built: a heartbeat whose read came back empty wrote
+// `{browserHeartbeatAt}` over the whole row, discarding serverRanAt AND actedSignalIds
+// — the list that stops a handover re-placing an order.
+//
+// Splitting them means each writer replaces only its own row wholesale. There is no
+// merge to lose, and no race to reason about. The runner's row is written by one runner
+// at a time because the lease already guarantees that.
+const HEARTBEAT_KEY = 'automation';
+const RUNNER_KEY = 'automation-server';
 
 function uid(): string | null {
     return process.env.ADMIN_USER_ID || null;
+}
+
+async function write(key: string, value: Record<string, unknown>): Promise<boolean> {
+    const supabase = getServiceClient();
+    const user = uid();
+    if (!supabase || !user) return false;
+    const { error } = await supabase
+        .from('gth_app_state')
+        .upsert({ user_id: user, key, value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
+    return !error;
 }
 
 export async function readState<T = Record<string, unknown>>(key: string): Promise<T | null> {
@@ -29,21 +51,28 @@ export async function readState<T = Record<string, unknown>>(key: string): Promi
     return (data?.value as T) ?? null;
 }
 
+/** Both halves, combined for reading only. Nothing ever writes this shape back. */
 export async function readLease(): Promise<AutomationLease | null> {
-    return await readState<AutomationLease>(LEASE_KEY);
+    const [beat, runner] = await Promise.all([
+        readState<Pick<AutomationLease, 'browserHeartbeatAt'>>(HEARTBEAT_KEY),
+        readState<Omit<AutomationLease, 'browserHeartbeatAt'>>(RUNNER_KEY),
+    ]);
+    if (!beat && !runner) return null;
+    return { ...(runner ?? {}), ...(beat ?? {}) };
 }
 
-/** Merge-write the lease. Read-modify-write, so a heartbeat cannot clobber serverRanAt. */
-export async function mergeLease(patch: Partial<AutomationLease>): Promise<boolean> {
-    const supabase = getServiceClient();
-    const user = uid();
-    if (!supabase || !user) return false;
-    const current = (await readLease()) ?? {};
-    const { error } = await supabase
-        .from('gth_app_state')
-        .upsert({ user_id: user, key: LEASE_KEY, value: { ...current, ...patch }, updated_at: new Date().toISOString() },
-                { onConflict: 'user_id,key' });
-    return !error;
+/** The browser's half. One field, replaced wholesale — nothing to merge, nothing to lose. */
+export async function recordHeartbeat(at: number): Promise<boolean> {
+    return await write(HEARTBEAT_KEY, { browserHeartbeatAt: at });
+}
+
+/**
+ * The runner's half. The caller passes the COMPLETE state it wants stored, including the
+ * acted-signal list it read at the start of the run, so this is a replace rather than a
+ * merge and cannot half-apply.
+ */
+export async function recordServerRun(state: Omit<AutomationLease, 'browserHeartbeatAt'>): Promise<boolean> {
+    return await write(RUNNER_KEY, state as Record<string, unknown>);
 }
 
 /**
