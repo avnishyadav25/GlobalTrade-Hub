@@ -6,7 +6,7 @@ import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 // no way to see both running instances, a "stop" that silently deleted your parameters,
 // and no indication of whether anything was running at all.
 
-export default function ({ page }) {
+function automationSpec({ page }) {
     suite('Automation: control surface', () => {
         test('the screen reports a status derived from a real check-in', async () => {
             await goto(page, BASE + '/automation');
@@ -80,3 +80,5 @@ export default function ({ page }) {
         });
     });
 }
+
+export default automationSpec;

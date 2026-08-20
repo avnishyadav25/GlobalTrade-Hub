@@ -154,7 +154,10 @@ export async function login(page) {
     const email = process.env.ADMIN_EMAIL;
     const password = process.env.ADMIN_PASSWORD;
     if (!email || !password) throw new Error('ADMIN_EMAIL / ADMIN_PASSWORD must be in the environment');
-    await page.goto(BASE + '/auth/login', { waitUntil: 'networkidle' });
+    // NOT networkidle: this app holds a live market-data websocket open, so the network
+    // never goes idle and the wait runs to its timeout. That produced "login timed out"
+    // failures that looked like a broken server.
+    await page.goto(BASE + '/auth/login', { waitUntil: 'domcontentloaded', timeout: 90000 });
     await page.waitForSelector('form button', { state: 'visible' });
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', password);
@@ -197,6 +200,29 @@ export async function goto(page, url, opts = {}) {
 
 const retried = [];
 export const retriedNavigations = () => retried;
+
+/**
+ * Wait until a persisted store has finished hydrating.
+ *
+ * Zustand rehydrates from localStorage and cloudSync then applies the server row. A
+ * control changed inside that window can be overwritten by either — the change is
+ * accepted by the UI and then quietly reverted. Tests that interact too early report
+ * that as a persistence failure, which points at entirely the wrong thing.
+ *
+ * Waits for the key to exist and then to stop changing, which covers both stages
+ * without needing the app to expose a hydration flag.
+ */
+export async function waitForHydration(page, storeKey, settleMs = 1200) {
+    const read = () => page.evaluate((k) => localStorage.getItem(k), storeKey);
+    let last = await read();
+    for (let i = 0; i < 25; i++) {
+        await page.waitForTimeout(settleMs / 3);
+        const now = await read();
+        if (now && now === last) return true;
+        last = now;
+    }
+    return false;
+}
 
 /* ----------------------------------------------------------------- runner */
 

@@ -211,6 +211,44 @@ export function startCloudSync(): () => void {
     const unsubs: Array<() => void> = [];
     const timers: Record<string, ReturnType<typeof setTimeout>> = {};
 
+    // WATCH BEFORE HYDRATING.
+    //
+    // Subscriptions used to be attached only AFTER the hydration fetch resolved, which
+    // left a window — the length of eight parallel requests — where no subscriber
+    // existed. A setting changed in that window was written to localStorage by zustand
+    // and never PUT to the server at all; the next reload then hydrated the server's
+    // older row over it and the change vanished with nothing said.
+    //
+    // Found by the end-to-end suite: "a guardrail survives a reload" passed alone and
+    // failed in the full run, because the busier server widened the window.
+    //
+    // Two things are needed to close it. Subscribing first captures the user's change.
+    // Recording which stores the user touched lets hydration SKIP them, so the server's
+    // older copy cannot overwrite something newer that it has not seen yet.
+    let hydrating = true;
+    const touched = new Set<string>();
+
+    for (const e of ENTRIES) {
+        const unsub = e.store.subscribe(() => {
+            // Changes we cause ourselves while applying server rows are not user edits.
+            if (hydrating) return;
+            touched.add(e.key);
+            clearTimeout(timers[e.key]);
+            timers[e.key] = setTimeout(() => {
+                delete timers[e.key];
+                fetch(`/api/state/${e.key}`, {
+                    method: 'PUT',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ value: e.snapshot(e.store.getState()) }),
+                }).catch(() => {});
+            }, 1500);
+        });
+        unsubs.push(unsub);
+    }
+    // The fetch phase is NOT part of `hydrating`: a change made while requests are in
+    // flight is a genuine user edit and must be persisted.
+    hydrating = false;
+
     (async () => {
         // Hydrate. Fetch concurrently — the old sequential loop meant the UI rendered
         // local defaults and then jumped, once per store.
@@ -232,8 +270,15 @@ export function startCloudSync(): () => void {
         // rather than applying a partial hydration.
         if (results.every((r) => !r.configured)) return;
 
+        hydrating = true;
         for (const { e, value } of results) {
             if (!isObj(value)) continue;
+            // The user changed this while we were fetching. Their edit is newer than the
+            // row we just read, so applying it would silently undo what they just did.
+            if (touched.has(e.key)) {
+                console.info(`[cloudSync] not overwriting "${e.key}" — changed while loading`);
+                continue;
+            }
             if (!e.validate(value)) {
                 console.warn(`[cloudSync] ignoring malformed "${e.key}" row from the server`);
                 continue;
@@ -245,22 +290,7 @@ export function startCloudSync(): () => void {
             }
             e.store.setState(e.apply ? e.apply(value, local) : value);
         }
-
-        // persist on change (debounced)
-        for (const e of ENTRIES) {
-            const unsub = e.store.subscribe(() => {
-                clearTimeout(timers[e.key]);
-                timers[e.key] = setTimeout(() => {
-                    delete timers[e.key];
-                    fetch(`/api/state/${e.key}`, {
-                        method: 'PUT',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ value: e.snapshot(e.store.getState()) }),
-                    }).catch(() => {});
-                }, 1500);
-            });
-            unsubs.push(unsub);
-        }
+        hydrating = false;
     })();
 
     return () => {

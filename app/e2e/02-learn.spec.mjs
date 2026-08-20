@@ -10,7 +10,7 @@ import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 
 const MIN_FIGURE_HEIGHT = 40;
 
-export default function ({ page }) {
+function learnSpec({ page }) {
     let lessons = [];
 
     suite('Learn: every lesson and its visual', () => {
@@ -68,3 +68,5 @@ export default function ({ page }) {
         });
     });
 }
+
+export default learnSpec;

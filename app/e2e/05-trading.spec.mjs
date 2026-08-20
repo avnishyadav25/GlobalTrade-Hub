@@ -6,7 +6,7 @@ import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 // proves nothing, and the ledger identity is asserted by unit tests precisely so that
 // exercising it here is safe.
 
-export default function ({ page }) {
+function tradingSpec({ page }) {
     suite('Trading: the manual order path', () => {
         test('the ticket places a market order and the book records it', async () => {
             await goto(page, BASE + '/terminal');
@@ -78,3 +78,5 @@ export default function ({ page }) {
         });
     });
 }
+
+export default tradingSpec;

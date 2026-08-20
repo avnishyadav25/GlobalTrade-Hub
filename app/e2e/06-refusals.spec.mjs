@@ -9,15 +9,7 @@ import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 //
 // Each of these deliberately provokes the failure, then puts the setting back.
 
-async function setGuardrail(page, label, value) {
-    await goto(page, BASE + '/agents');
-    await page.waitForTimeout(1200);
-    const field = page.locator('div', { hasText: new RegExp(`^${label}$`) }).locator('xpath=..').locator('input[type="number"]').first();
-    if (await field.count()) { await field.fill(String(value)); await page.waitForTimeout(1500); return true; }
-    return false;
-}
-
-export default function ({ page }) {
+function refusalSpec({ page }) {
     suite('Refusals: what it looks like when the app says no', () => {
         test('an order too large for the cash in the account is refused, and recorded', async () => {
             await goto(page, BASE + '/terminal');
@@ -75,3 +67,5 @@ export default function ({ page }) {
         });
     });
 }
+
+export default refusalSpec;

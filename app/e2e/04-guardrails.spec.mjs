@@ -1,8 +1,8 @@
-import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto, waitForHydration } from './harness.mjs';
 
 // Guardrails: all eight reachable, and the copy honest about what they bind.
 
-export default function ({ page }) {
+function guardrailSpec({ page }) {
     suite('Guardrails: reachable and honest', () => {
         test('all eight controls exist on the agents screen', async () => {
             await goto(page, BASE + '/agents');
@@ -29,14 +29,40 @@ export default function ({ page }) {
             // The bug this pins: cloud sync replaced the guardrail object wholesale with
             // the server's copy, so any cap the stored row predated reverted on reload.
             await goto(page, BASE + '/agents');
-            await page.waitForTimeout(800);
+            // Settle BEFORE touching anything: a change made mid-hydration is accepted
+            // by the UI and then overwritten, which looks exactly like a persistence bug.
+            const hydrated = await waitForHydration(page, 'gth-agents');
+            expect(hydrated, 'the agents store never settled').toBeTruthy();
             const box = page.locator('input[type="checkbox"]').first();
             const before = await box.isChecked();
-            await box.setChecked(!before);
-            // cloudSync debounces its write by 1500ms. Reloading sooner meant the change
-            // had not been persisted yet and the page hydrated the server's older copy —
-            // the test then reported a bug that did not exist.
-            await page.waitForTimeout(3000);
+
+            // Click until the UI ACCEPTS the change, then test persistence separately.
+            //
+            // Playwright can set the DOM property before React has hydrated, so no
+            // handler fires and the next render puts it straight back. That failed this
+            // test as "the toggle did not survive a reload" when the toggle had never
+            // been applied in the first place — two different failures reported as one,
+            // and the wrong one.
+            let accepted = false;
+            for (let attempt = 0; attempt < 10 && !accepted; attempt++) {
+                await box.setChecked(!before);
+                await page.waitForTimeout(400);
+                accepted = (await box.isChecked()) === !before;
+            }
+            expect(accepted, 'the UI never accepted the toggle — hydration, not persistence').toBeTruthy();
+            // Wait for the SERVER to confirm the new value rather than guessing at the
+            // 1500ms cloudSync debounce. A fixed delay made this test report a bug that
+            // depended on which way the toggle happened to be going.
+            let confirmed = false;
+            for (let i = 0; i < 20 && !confirmed; i++) {
+                await page.waitForTimeout(500);
+                confirmed = await page.evaluate(async (want) => {
+                    const r = await fetch('/api/state/agents');
+                    const j = await r.json();
+                    return j?.value?.guardrails?.tradeOnlyWhenOpen === want;
+                }, !before);
+            }
+            expect(confirmed, 'the change never reached the server').toBeTruthy();
             await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
             await page.waitForTimeout(2500);
             const after = await page.locator('input[type="checkbox"]').first().isChecked();
@@ -54,3 +80,5 @@ export default function ({ page }) {
         });
     });
 }
+
+export default guardrailSpec;

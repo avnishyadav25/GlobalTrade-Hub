@@ -110,16 +110,29 @@ enter on a gap between implied and realised volatility, and a synthetic chain ha
 equal by construction. The backtester says so explicitly rather than reporting a silent
 zero.
 
-### 3. `lib/scanner.ts` has three fixed defects and no regression test
+### 3. A setting changed mid-hydration can be silently reverted
+Zustand rehydrates a persisted store from localStorage, and `cloudSync` then applies the
+server row on top. A control changed inside that window is accepted by the UI and then
+overwritten by either stage — no error, no notice.
+
+Found while writing the end-to-end suite, which reported it as "a guardrail does not
+survive a reload". It does; the change had simply been made before the store settled. The
+window is short and a person is unlikely to hit it, but a risk control that reverts
+without saying so is exactly the failure this codebase keeps having to correct.
+
+No hydration flag is exposed, so nothing in the UI can currently disable a control until
+its store has settled. The test works around it by waiting for the store to stop changing.
+
+### 4. `lib/scanner.ts` has three fixed defects and no regression test
 AUDIT S8.1–S8.3 were fixed with nothing to stop them returning. Highest-value missing
 test in the repo.
 
-### 4. Other untested modules
+### 5. Other untested modules
 `strategies/place.ts` (the order chokepoint), `cloudSync.ts`, `instruments.ts`,
 `options/snapshot.ts` (the cron writer), every market-data provider, every broker
 adapter, and all of `lib/notify` and `lib/ai`.
 
-### 5. Stale documentation
+### 6. Stale documentation
 | File | State |
 |---|---|
 | `ARCHITECTURE.md` | Predates the options layer, workers, walk-forward and portfolio backtest. |

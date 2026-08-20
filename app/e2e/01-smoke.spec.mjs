@@ -38,7 +38,7 @@ const ROUTES = [
 
 const BROKEN = /This page could not be found|Something went wrong|Application error|Unhandled Runtime|Module not found/i;
 
-export default function ({ page, errors }) {
+function smokeSpec({ page, errors }) {
     suite('Smoke: every route renders', () => {
         for (const [route, caption, section] of ROUTES) {
             test(`${route} renders`, async () => {
@@ -50,8 +50,14 @@ export default function ({ page, errors }) {
 
                 const body = await page.locator('body').innerText();
                 expect(BROKEN.test(body), `${route} rendered an error page`).toBeFalsy();
-                // A route that renders almost nothing is broken in a way a 200 hides.
-                expect(body.trim().length, `${route} body length`).toBeGreaterThan(120);
+                if (route === '/') {
+                    // The root is a pure redirect and has no content of its own. What
+                    // matters is that it lands somewhere real.
+                    expect(new URL(page.url()).pathname, 'root must redirect').notToContain('/auth/login');
+                } else {
+                    // A route that renders almost nothing is broken in a way a 200 hides.
+                    expect(body.trim().length, `${route} body length`).toBeGreaterThan(120);
+                }
                 expect(realErrors(errors).join(' | '), `${route} console`).toBe('');
 
                 // Capture only once the page has settled, so the walkthrough does not
@@ -62,3 +68,5 @@ export default function ({ page, errors }) {
         }
     });
 }
+
+export default smokeSpec;
