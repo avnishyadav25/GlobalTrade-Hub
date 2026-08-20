@@ -33,14 +33,17 @@ export default function ({ page }) {
             const box = page.locator('input[type="checkbox"]').first();
             const before = await box.isChecked();
             await box.setChecked(!before);
-            await page.waitForTimeout(1200);
+            // cloudSync debounces its write by 1500ms. Reloading sooner meant the change
+            // had not been persisted yet and the page hydrated the server's older copy —
+            // the test then reported a bug that did not exist.
+            await page.waitForTimeout(3000);
             await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(2500);
             const after = await page.locator('input[type="checkbox"]').first().isChecked();
             expect(after, 'the toggle must survive a reload').toBe(!before);
             // put it back
             await page.locator('input[type="checkbox"]').first().setChecked(before);
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(2000);   // let the restore persist too
         });
 
         test('signals explains that exits are never blocked', async () => {

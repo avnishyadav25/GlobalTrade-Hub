@@ -38,13 +38,21 @@ export default function ({ page }) {
             const collapsed = [];
             for (const href of lessons) {
                 await goto(page, BASE + href);
-                await page.waitForTimeout(220);   // let the intersection observer mount it
                 const figs = await page.locator('figure').all();
                 if (!figs.length) { noFigure.push(href); continue; }
+
+                // POLL until the figure has settled, rather than measuring at a fixed
+                // instant. A visual mounts via an intersection observer and the server
+                // can be slow, so a single 220ms sample reported eleven lessons as
+                // having a 0px visual when every one of them rendered fine — a false
+                // alarm that would have sent someone hunting a bug that was not there.
                 let tallest = 0;
-                for (const f of figs) {
-                    const box = await f.boundingBox().catch(() => null);
-                    if (box && box.height > tallest) tallest = box.height;
+                for (let attempt = 0; attempt < 12 && tallest < MIN_FIGURE_HEIGHT; attempt++) {
+                    await page.waitForTimeout(250);
+                    for (const f of figs) {
+                        const box = await f.boundingBox().catch(() => null);
+                        if (box && box.height > tallest) tallest = box.height;
+                    }
                 }
                 if (tallest < MIN_FIGURE_HEIGHT) collapsed.push(`${href} (${Math.round(tallest)}px)`);
             }
