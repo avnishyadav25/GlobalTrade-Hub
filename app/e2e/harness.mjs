@@ -220,6 +220,23 @@ const retried = [];
 export const retriedNavigations = () => retried;
 
 /**
+ * Wait for a persisted store key to exist.
+ *
+ * Weaker than waitForHydration on purpose. That one also waits for the value to STOP
+ * changing, which is what you need before writing — but a store that ticks on its own
+ * never settles, and demanding stability there fails a test that only wanted to read.
+ */
+export async function waitForStore(page, storeKey, timeoutMs = 15000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const v = await page.evaluate((k) => localStorage.getItem(k), storeKey);
+        if (v) return true;
+        await page.waitForTimeout(300);
+    }
+    return false;
+}
+
+/**
  * Wait until a persisted store has finished hydrating.
  *
  * Zustand rehydrates from localStorage and cloudSync then applies the server row. A

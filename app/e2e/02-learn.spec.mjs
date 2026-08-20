@@ -38,7 +38,16 @@ function learnSpec({ page }) {
             const collapsed = [];
             for (const href of lessons) {
                 await goto(page, BASE + href);
-                const figs = await page.locator('figure').all();
+
+                // Poll for the figure to EXIST as well as to have height. Checking
+                // existence once, immediately after navigation, reported /learn/the-greeks
+                // as having no visual at all — it renders reliably at 146px when given a
+                // moment. Two different waits were needed and only one was there.
+                let figs = [];
+                for (let attempt = 0; attempt < 12 && figs.length === 0; attempt++) {
+                    figs = await page.locator('figure').all();
+                    if (!figs.length) await page.waitForTimeout(250);
+                }
                 if (!figs.length) { noFigure.push(href); continue; }
 
                 // POLL until the figure has settled, rather than measuring at a fixed

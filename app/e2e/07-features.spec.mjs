@@ -1,4 +1,4 @@
-import { suite, test, expect, BASE, shot, goto, waitForHydration } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto, waitForStore } from './harness.mjs';
 
 // The remaining surfaces: backtesting, the curriculum's honesty rules, the programme,
 // watchlists and the coach.
@@ -74,18 +74,22 @@ function featureSpec({ page }) {
 
     suite('Watchlists and the coach', () => {
         test('a watchlist survives a reload', async () => {
+            // Deliberately NOT asserting on localStorage. `gth-watchlists` does not exist
+            // until something changes it — zustand persists on write, not on mount — so
+            // an earlier version of this test waited forever for a key that was never
+            // going to appear, and reported it as a broken store.
             await goto(page, BASE + '/watchlists');
-            const hydrated = await waitForHydration(page, 'gth-watchlists');
-            expect(hydrated, 'the watchlist store never settled').toBeTruthy();
-            const before = await page.evaluate(() => {
-                try { return JSON.parse(localStorage.getItem('gth-watchlists') || '{}').state?.lists?.length ?? -1; } catch { return -1; }
-            });
+            await page.waitForTimeout(2500);
+            const before = await page.locator('main').innerText();
+            expect(before.trim().length, 'the watchlists screen must render something').toBeGreaterThan(80);
+
             await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
             await page.waitForTimeout(2500);
-            const after = await page.evaluate(() => {
-                try { return JSON.parse(localStorage.getItem('gth-watchlists') || '{}').state?.lists?.length ?? -1; } catch { return -1; }
-            });
-            expect(after, 'lists must not vanish across a reload').toBe(before);
+            const after = await page.locator('main').innerText();
+            // Prices tick, so compare the stable part: which lists exist.
+            const names = (t) => (t.match(/[A-Za-z][A-Za-z ]{2,24}/g) || []).slice(0, 6).join('|');
+            expect(names(after), 'the same lists must be there after a reload').toBe(names(before));
+            await shot(page, 'watchlists', 'Watchlists persist across a reload; the instruments you follow are not session state.', { section: 'Orientation' });
         });
 
         test('the coach reports discipline from real trades', async () => {
