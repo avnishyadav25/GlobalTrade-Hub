@@ -19,6 +19,7 @@ function guardrailSpec({ page }) {
 
         test('says the caps bind every automated path', async () => {
             await goto(page, BASE + '/agents');
+            await page.waitForTimeout(1200);
             const body = await page.locator('body').innerText();
             expect(body).toMatch(/every automated path/i);
             // minConfidence is meaningless for a rule-based signal and must say so.

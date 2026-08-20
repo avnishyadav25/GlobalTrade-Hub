@@ -188,14 +188,32 @@ export const realErrors = (errors) => errors.filter((e) => !IGNORED.some((re) =>
  * a page that needs two attempts is worth knowing about even when it passes.
  */
 export async function goto(page, url, opts = {}) {
+    let res;
     try {
-        return await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000, ...opts });
+        res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000, ...opts });
     } catch (err) {
         if (!/Timeout/i.test(String(err.message))) throw err;
         retried.push(url);
         console.log(`        (slow: retrying ${url})`);
-        return await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000, ...opts });
+        res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000, ...opts });
     }
+
+    // CONFIRM WE LANDED before letting the caller assert on the page.
+    //
+    // `domcontentloaded` can resolve while the previous route is still what a body read
+    // returns, and two tests then asserted against a lesson page they had navigated away
+    // from — reporting "/agents does not mention every automated path" when the browser
+    // was not on /agents at all. A test that reads the wrong page does not fail loudly;
+    // it fails as though the app were broken.
+    const want = new URL(url).pathname;
+    for (let i = 0; i < 40; i++) {
+        const at = new URL(page.url()).pathname;
+        // A redirect is a legitimate landing (/ -> /terminal), so only wait while we are
+        // still sitting on some entirely unrelated route.
+        if (at === want || at !== want && i > 8) break;
+        await page.waitForTimeout(250);
+    }
+    return res;
 }
 
 const retried = [];

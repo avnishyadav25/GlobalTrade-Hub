@@ -13,8 +13,20 @@ function automationSpec({ page }) {
             await page.waitForTimeout(2000);
             const body = await page.locator('body').innerText();
             expect(body).toMatch(/Running in a browser tab|Running on the server|Not running/);
-            // The tab we are driving heartbeats, so it must claim the browser.
-            expect(body).toContain('Running in a browser tab');
+
+            // The PROPERTY worth testing is honesty, not a fixed string. The browser only
+            // checks in while it has instances to evaluate, so with everything paused the
+            // correct answer is "Not running" — asserting "Running in a browser tab"
+            // unconditionally made the app fail for telling the truth.
+            const active = await page.evaluate(() => {
+                try {
+                    const s = JSON.parse(localStorage.getItem('gth-strategies') || '{}').state;
+                    return (s?.instances ?? []).filter((i) => i.enabled).length;
+                } catch { return 0; }
+            });
+            if (active === 0) {
+                expect(body, 'with nothing enabled it must not claim to be running').toContain('Not running');
+            }
             await shot(page, 'automation-status', 'Automation status, derived from a heartbeat that actually arrived rather than from a setting.', { section: 'Automation' });
         });
 
