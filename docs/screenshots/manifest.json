@@ -1,0 +1,290 @@
+[
+ {
+  "file": "01-home.png",
+  "slug": "home",
+  "caption": "The entry point, which redirects into the terminal.",
+  "section": "Orientation"
+ },
+ {
+  "file": "02-terminal.png",
+  "slug": "terminal",
+  "caption": "The terminal: live prices, chart and order ticket in one place.",
+  "section": "Orientation"
+ },
+ {
+  "file": "03-agents.png",
+  "slug": "agents",
+  "caption": "LLM-backed agents, and the guardrails that bind every automated path.",
+  "section": "Risk"
+ },
+ {
+  "file": "04-alerts.png",
+  "slug": "alerts",
+  "caption": "Price alerts.",
+  "section": "Orientation"
+ },
+ {
+  "file": "05-automation.png",
+  "slug": "automation",
+  "caption": "What is running, and whether anything is actually running it.",
+  "section": "Automation"
+ },
+ {
+  "file": "06-backtest.png",
+  "slug": "backtest",
+  "caption": "Comparing a strategy against buy-and-hold — the only comparison that means anything.",
+  "section": "Testing"
+ },
+ {
+  "file": "07-backtest-portfolio.png",
+  "slug": "backtest-portfolio",
+  "caption": "Portfolio backtest across sleeves, with a correlation matrix.",
+  "section": "Testing"
+ },
+ {
+  "file": "08-backtest-walk-forward.png",
+  "slug": "backtest-walk-forward",
+  "caption": "Walk-forward: fit on one window, test on the next, repeatedly.",
+  "section": "Testing"
+ },
+ {
+  "file": "09-funds.png",
+  "slug": "funds",
+  "caption": "Charges itemised. Brokerage, STT, exchange, SEBI, stamp duty and GST are different things.",
+  "section": "Trading"
+ },
+ {
+  "file": "10-holdings.png",
+  "slug": "holdings",
+  "caption": "Open positions and what closing them would realise.",
+  "section": "Trading"
+ },
+ {
+  "file": "11-insights.png",
+  "slug": "insights",
+  "caption": "Coach rules and what they have refused.",
+  "section": "Risk"
+ },
+ {
+  "file": "12-learn.png",
+  "slug": "learn",
+  "caption": "Sixteen tracks. Every practice lesson is verified against the ledger.",
+  "section": "Learn"
+ },
+ {
+  "file": "13-library.png",
+  "slug": "library",
+  "caption": "Reading list.",
+  "section": "Learn"
+ },
+ {
+  "file": "14-options.png",
+  "slug": "options",
+  "caption": "A live NIFTY/BANKNIFTY chain with solved Greeks and IV.",
+  "section": "Options"
+ },
+ {
+  "file": "15-orders.png",
+  "slug": "orders",
+  "caption": "Every order, including refusals and the reason each was refused.",
+  "section": "Trading"
+ },
+ {
+  "file": "16-paper.png",
+  "slug": "paper",
+  "caption": "The paper account itself.",
+  "section": "Trading"
+ },
+ {
+  "file": "17-portfolio.png",
+  "slug": "portfolio",
+  "caption": "Positions, equity curve and the record so far.",
+  "section": "Trading"
+ },
+ {
+  "file": "18-research.png",
+  "slug": "research",
+  "caption": "Fundamentals, earnings and IPOs — each distinguishing \"no data\" from \"not covered\".",
+  "section": "Research"
+ },
+ {
+  "file": "19-scanner.png",
+  "slug": "scanner",
+  "caption": "Screening the universe.",
+  "section": "Research"
+ },
+ {
+  "file": "20-settings.png",
+  "slug": "settings",
+  "caption": "Broker connections and keys. Secrets never reach the browser.",
+  "section": "Orientation"
+ },
+ {
+  "file": "21-signals.png",
+  "slug": "signals",
+  "caption": "What strategies want to do, and what actually binds an automatic order.",
+  "section": "Automation"
+ },
+ {
+  "file": "22-start.png",
+  "slug": "start",
+  "caption": "The five-week programme. Twelve steps are checked against your ledger.",
+  "section": "Learn"
+ },
+ {
+  "file": "23-strategies.png",
+  "slug": "strategies",
+  "caption": "Twenty-four rule sets, each with where it makes money and where it loses it.",
+  "section": "Strategy"
+ },
+ {
+  "file": "24-strategies-unavailable.png",
+  "slug": "strategies-unavailable",
+  "caption": "What is deliberately NOT built, and the honest reason for each.",
+  "section": "Strategy"
+ },
+ {
+  "file": "25-watchlists.png",
+  "slug": "watchlists",
+  "caption": "Instruments you follow.",
+  "section": "Orientation"
+ },
+ {
+  "file": "26-learn-lease.png",
+  "slug": "learn-lease",
+  "caption": "A lesson explaining why only one runner may write the ledger.",
+  "section": "Learn"
+ },
+ {
+  "file": "27-automation-status.png",
+  "slug": "automation-status",
+  "caption": "Automation status, derived from a heartbeat that actually arrived rather than from a setting.",
+  "section": "Automation"
+ },
+ {
+  "file": "28-automation-delete-confirm.png",
+  "slug": "automation-delete-confirm",
+  "caption": "Delete asks first, and points at pause — the old control destroyed tuned parameters with one silent click.",
+  "section": "Automation"
+ },
+ {
+  "file": "29-strategy-run-it-live.png",
+  "slug": "strategy-run-it-live",
+  "caption": "The \"Run it live\" panel now distinguishes review from automatic instead of claiming approval is always required.",
+  "section": "Automation"
+ },
+ {
+  "file": "30-guardrails.png",
+  "slug": "guardrails",
+  "caption": "All eight guardrails. Four of these were enforced but had no control at all until recently.",
+  "section": "Risk"
+ },
+ {
+  "file": "31-signals.png",
+  "slug": "signals",
+  "caption": "The signal queue, and what actually binds an automatic order.",
+  "section": "Risk"
+ },
+ {
+  "file": "32-order-ticket.png",
+  "slug": "order-ticket",
+  "caption": "The order ticket before submitting: quantity, order value and buying power.",
+  "section": "Trading"
+ },
+ {
+  "file": "33-orders-provenance.png",
+  "slug": "orders-provenance",
+  "caption": "The Orders screen, now recording what placed each order — you, a strategy, the agent, or expiry.",
+  "section": "Trading"
+ },
+ {
+  "file": "34-portfolio.png",
+  "slug": "portfolio",
+  "caption": "The portfolio: positions, equity curve and the record so far.",
+  "section": "Trading"
+ },
+ {
+  "file": "35-funds.png",
+  "slug": "funds",
+  "caption": "Charges itemised — brokerage, STT, exchange, SEBI, stamp duty and GST are different things with different rules.",
+  "section": "Trading"
+ },
+ {
+  "file": "36-refusal-oversized-ticket.png",
+  "slug": "refusal-oversized-ticket",
+  "caption": "An order far larger than the account can fund. The ticket shows the order value against buying power before you ever submit.",
+  "section": "Refusals"
+ },
+ {
+  "file": "37-refusal-recorded.png",
+  "slug": "refusal-recorded",
+  "caption": "Refusals are recorded on the Orders screen with their reason — not flashed as a toast and lost.",
+  "section": "Refusals"
+ },
+ {
+  "file": "38-refusal-kill-switch.png",
+  "slug": "refusal-kill-switch",
+  "caption": "The kill switch engaged. Nothing places while this is on — automatic or manual.",
+  "section": "Refusals"
+ },
+ {
+  "file": "39-refusal-kill-switch-automation.png",
+  "slug": "refusal-kill-switch-automation",
+  "caption": "The automation screen refuses to imply anything is trading while the kill switch is on.",
+  "section": "Refusals"
+ },
+ {
+  "file": "40-refusal-unavailable.png",
+  "slug": "refusal-unavailable",
+  "caption": "Eight strategies that are deliberately not built, each with the actual reason — a paid feed, no historical data, or a blocked source.",
+  "section": "Refusals"
+ },
+ {
+  "file": "41-empty-signals.png",
+  "slug": "empty-signals",
+  "caption": "With nothing running, the signal queue says so instead of showing placeholder rows.",
+  "section": "Refusals"
+ },
+ {
+  "file": "42-backtest-result.png",
+  "slug": "backtest-result",
+  "caption": "A strategy compared against buy-and-hold — the only comparison that means anything.",
+  "section": "Testing"
+ },
+ {
+  "file": "43-practice-lesson.png",
+  "slug": "practice-lesson",
+  "caption": "A practice lesson. It cannot be completed by clicking — it reads your order book.",
+  "section": "Learn"
+ },
+ {
+  "file": "44-quiz-feedback.png",
+  "slug": "quiz-feedback",
+  "caption": "Quizzes explain why an answer is wrong rather than only scoring it.",
+  "section": "Learn"
+ },
+ {
+  "file": "45-programme.png",
+  "slug": "programme",
+  "caption": "The five-week programme. Verified steps have no checkbox, because there is nothing to click.",
+  "section": "Learn"
+ },
+ {
+  "file": "46-watchlists.png",
+  "slug": "watchlists",
+  "caption": "Watchlists persist across a reload; the instruments you follow are not session state.",
+  "section": "Orientation"
+ },
+ {
+  "file": "47-coach.png",
+  "slug": "coach",
+  "caption": "The coach scores discipline from what you actually did, and its rules can refuse an order.",
+  "section": "Risk"
+ },
+ {
+  "file": "48-options-chain.png",
+  "slug": "options-chain",
+  "caption": "The option chain. Where NSE cannot be reached it says so rather than showing an empty grid.",
+  "section": "Options"
+ }
+]
