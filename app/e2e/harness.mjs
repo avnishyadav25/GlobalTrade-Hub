@@ -164,7 +164,11 @@ export async function login(page) {
     // The submit button carries no type attribute — inside a form it still submits, but
     // `button[type=submit]` does not match it. That cost a whole run of false passes once.
     await page.click('form button');
-    await page.waitForURL((u) => !new URL(u).pathname.startsWith('/auth/login'), { timeout: 20000 });
+    // waitForURL defaults to waiting for 'load', which this app's persistent connections
+    // can leave pending indefinitely — the same trap as networkidle, missed here when I
+    // fixed it for goto(). The login then "timed out" while being perfectly successful.
+    await page.waitForURL((u) => !new URL(u).pathname.startsWith('/auth/login'),
+        { timeout: 45000, waitUntil: 'domcontentloaded' });
 }
 
 /** Noise that is not this app's fault and would fail every page. */
@@ -278,7 +282,11 @@ export async function run() {
             } catch (err) {
                 failures.push({ suite: s.name, test: t.name, error: err });
                 console.log(`  FAIL  ${t.name}`);
-                console.log(`        ${String(err.message).split('\n').join('\n        ')}`);
+                // Never print an empty reason: a failure with no explanation is
+                // indistinguishable from a harness bug, and three of those in a row sent
+                // me looking in the wrong place.
+                const why = String(err && (err.message || err.stack) || err || '(no message)').trim() || '(empty error)';
+                console.log(`        ${why.split('\n').slice(0, 4).join('\n        ')}`);
             }
         }
     }

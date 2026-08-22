@@ -36,7 +36,22 @@ function learnSpec({ page }) {
         test('every lesson renders a visual with real height', async () => {
             const noFigure = [];
             const collapsed = [];
-            for (const href of lessons) {
+
+            // SAMPLE BY DEFAULT, exhaustive on demand.
+            //
+            // Walking all 135 lessons took 63 minutes and left the market-data provider
+            // throttling us, which then failed three unrelated tests. A check you cannot
+            // afford to run is not a check — it just makes the suite something people
+            // skip. One lesson per track still catches a broken archetype or a visual key
+            // that resolves to nothing, which is what this is actually guarding.
+            //
+            //   E2E_ALL_LESSONS=1  walks every lesson (slow, and hard on the provider)
+            const sample = process.env.E2E_ALL_LESSONS === '1'
+                ? lessons
+                : [...new Map(lessons.map((h) => [h.split('/')[2]?.[0] ?? h, h])).values()];
+            console.log(`        checking ${sample.length} of ${lessons.length} lessons${sample.length < lessons.length ? ' (set E2E_ALL_LESSONS=1 for all)' : ''}`);
+
+            for (const href of sample) {
                 await goto(page, BASE + href);
 
                 // Poll for the figure to EXIST as well as to have height. Checking
