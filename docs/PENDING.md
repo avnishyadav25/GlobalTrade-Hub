@@ -119,36 +119,23 @@ enter on a gap between implied and realised volatility, and a synthetic chain ha
 equal by construction. The backtester says so explicitly rather than reporting a silent
 zero.
 
-### 3. A setting changed mid-hydration can be silently reverted
-Zustand rehydrates a persisted store from localStorage, and `cloudSync` then applies the
-server row on top. A control changed inside that window is accepted by the UI and then
-overwritten by either stage — no error, no notice.
-
-Found while writing the end-to-end suite, which reported it as "a guardrail does not
-survive a reload". It does; the change had simply been made before the store settled. The
-window is short and a person is unlikely to hit it, but a risk control that reverts
-without saying so is exactly the failure this codebase keeps having to correct.
-
-No hydration flag is exposed, so nothing in the UI can currently disable a control until
-its store has settled. The test works around it by waiting for the store to stop changing.
-
-### 4. `lib/scanner.ts` has three fixed defects and no regression test
+### 3. `lib/scanner.ts` has three fixed defects and no regression test
 AUDIT S8.1–S8.3 were fixed with nothing to stop them returning. Highest-value missing
 test in the repo.
 
-### 5. Other untested modules
+### 4. Other untested modules
 `strategies/place.ts` (the order chokepoint), `cloudSync.ts`, `instruments.ts`,
 `options/snapshot.ts` (the cron writer), every market-data provider, every broker
 adapter, and all of `lib/notify` and `lib/ai`.
 
-### 6. Stale documentation
+### 5. Stale documentation
 | File | State |
 |---|---|
 | `ARCHITECTURE.md` | **Updated 2026-08-20** — now covers automation, the lease, provenance and the real test counts. |
 | `DOCUMENTATION.md` | **Updated** — the phantom `lib/backtestEngine.ts` reference is gone. |
 | `PROVIDERS.md` | **Updated** — it no longer tells you to set two variables the app never reads. |
-| `MARKET-DATA.md` | Mostly current; no row for the NSE option chain. |
-| `AUDIT.md` | Header says "1 open" but no `[ ]` row exists; the S5 heading claims S5.5–S5.7 are open when they are marked done. |
+| `MARKET-DATA.md` | **Updated 2026-08-22** — the NSE option chain now has its own row and section. |
+| `AUDIT.md` | Header now reads "0 open" and no `[ ]` row exists, so the two agree. Check the S5 heading if you touch that section. |
 | `E2E_TESTING.md` | **Deleted** — described a suite that was never written and prescribed a script that does not exist. Superseded by `USER-ACCEPTANCE.md`. |
 
 ---
@@ -172,6 +159,9 @@ For the record, so the next audit does not re-find them:
   `MARKETDATA_*` variables read by nothing.
 - 95 lessons with no visual, and a visual registry where a key without a component gave a
   blank lesson and a passing test.
+- **A setting changed while a store was hydrating.** Listed here as open on 2026-08-20
+  and fixed the same week — the entry stayed after the fix, which is precisely the drift
+  this document exists to catch. Same root cause as the entry below.
 - **cloudSync silently discarding writes made during hydration.** Subscribers were
   attached only after the hydration fetch resolved, so a setting changed in that window
   was saved to localStorage and never sent to the server; the next reload then hydrated
