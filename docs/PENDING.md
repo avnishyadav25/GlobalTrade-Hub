@@ -84,20 +84,28 @@ conservative) · NSE's 30-minute closing settlement average (last mark used inst
 
 ## Genuinely open
 
-### 1. Playwright is written but has never run
-`app/e2e/` and `playwright.config.ts` exist, `npm run test:e2e` is defined — and
-`@playwright/test` **is not installed**. **Four** install attempts have now timed out
-against the registry from this machine, across two Node versions and two npm versions,
-including one with a raised `--fetch-timeout`. Chromium itself is cached locally, so
-this is specific to fetching that one package.
+### 1. `npm run test:e2e` still does not work
+`@playwright/test` has never installed on this machine — five attempts, all timing out
+against the registry. The end-to-end suite is real and runs, but via `scripts/e2e.mjs`
+against a separately-supplied Playwright:
 
-Treat it as an environment problem rather than a project one: `npm i -D @playwright/test`
-from a machine that can reach the registry should be all it takes.
+```bash
+ADMIN_EMAIL=... ADMIN_PASSWORD=... NODE_PATH=/path/to/node_modules node scripts/e2e.mjs
+```
 
-`npm run verify` still passes because it does not include e2e. **`npm run test:e2e` will
-fail until `npm i -D @playwright/test` succeeds**, and the selectors in
-`honesty.spec.ts` have never been executed — expect to fix some on the first real run,
-because untested selectors are guesses.
+**54 checks, currently 0 failing.** Getting there took eleven rounds, and it is worth
+recording that **ten of the eleven defects were in the tests, not the app**: guessed
+selectors, a guessed localStorage key, fixed-interval waits, `networkidle` and
+`waitForURL` on a page that holds a websocket open, and assertions that encoded my
+assumptions rather than the app's contract. The suite only became worth believing once it
+distinguished "the UI did not accept the click" from "the value did not persist".
+
+The eleventh was real, and justified the exercise — see *Recently corrected*.
+
+Two operational notes. The lesson sweep samples one lesson per track by default;
+`E2E_ALL_LESSONS=1` walks all 135, which takes about an hour and leaves Yahoo throttling
+you. And the dev server has died three times under sustained suite load, so long
+unattended runs are not yet reliable.
 
 ### 2. Real option history has barely started
 The nightly snapshot is now scheduled (`vercel.json`, 10:15 UTC = 15:45 IST, just after
@@ -164,3 +172,10 @@ For the record, so the next audit does not re-find them:
   `MARKETDATA_*` variables read by nothing.
 - 95 lessons with no visual, and a visual registry where a key without a component gave a
   blank lesson and a passing test.
+- **cloudSync silently discarding writes made during hydration.** Subscribers were
+  attached only after the hydration fetch resolved, so a setting changed in that window
+  was saved to localStorage and never sent to the server; the next reload then hydrated
+  the older row over it. Found by the end-to-end suite, and only because the failure was
+  intermittent — it passed alone and failed in a full run, where a busier server widened
+  the window. Note that `cloudSync.ts` remains untested (it imports stores), so this fix
+  rests on the e2e check and manual probes rather than a unit test.

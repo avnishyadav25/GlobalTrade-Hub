@@ -13,6 +13,7 @@ entire instrument universe keylessly. Keys only buy you *lower latency*, not cov
 | **US equities** | Finnhub free tier | `FINNHUB_API_KEY` | **real-time** | AAPL 306.49 |
 | US (fallback) | Yahoo v8 chart | no | ~15 min | AAPL 306.64 |
 | **India (NSE)** | Yahoo v8 chart, `.NS` / `^NSEI` | no | **~15 min delayed** | RELIANCE ₹1,327.30 · NIFTY 24,583.80 |
+| **NSE option chain** | NSE's own public endpoint, NIFTY / BANKNIFTY only | no | live during the session | strike, LTP, IV, OI, bid/ask |
 | **Forex** | Yahoo, `EURUSD=X` / `JPY=X` | no | ~15 min | EUR/USD 1.1554 · USD/JPY 158.88 |
 | **Commodities** | Yahoo futures, `GC=F` / `SI=F` / `CL=F` | no | ~15 min | Gold 4,383.50 · WTI 80.75 |
 | **USD/INR** | Yahoo `USDINR=X`, then frankfurter.app | no | ~15 min | **95.29** |
@@ -143,3 +144,21 @@ Implement the `Provider` interface in `app/src/lib/marketData/providers/types.ts
 map to `symbols.ts`, and insert it into the chain in `router.ts`. Always go through `cachedFetch`
 from `lib/marketData/cache.ts` — that is what supplies the caching, single-flight, rate limiting
 and circuit breaking. Declare `state` and `delayMinutes` honestly; they drive the header badge.
+
+---
+
+## The option chain is a different source from the equity feed
+
+NIFTY and BANKNIFTY chains come from NSE directly, not from Yahoo, and they are what
+`/options` and the options backtester read. Two things follow.
+
+NSE blocks obvious programmatic access, so the fetch carries a browser-like session and
+fails closed — where it cannot be reached the screen says so rather than rendering an
+empty grid. FII/DII flow data is published by the same organisation and is **not** wired
+for exactly this reason (verified 403); see `/strategies/unavailable`.
+
+Chains are snapshotted nightly by `/api/cron/tick`, one trading day at a time, and **no
+free source can backfill them**. Until enough history accumulates the options backtester
+runs on a labelled synthetic chain — which has implied and realised volatility equal by
+construction, so three of the four options strategies structurally cannot fire on it. The
+backtester says that outright instead of reporting a silent zero.

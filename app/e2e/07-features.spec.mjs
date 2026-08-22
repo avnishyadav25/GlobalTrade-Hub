@@ -1,4 +1,4 @@
-import { suite, test, expect, BASE, shot, goto, waitForStore } from './harness.mjs';
+import { suite, test, expect, BASE, shot, goto } from './harness.mjs';
 
 // The remaining surfaces: backtesting, the curriculum's honesty rules, the programme,
 // watchlists and the coach.
