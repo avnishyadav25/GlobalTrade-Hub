@@ -8,10 +8,34 @@ cannot fail — you will look at a number, it will be a number, and you will tic
 every check below says what the *wrong* answer looks like. If you cannot make a step fail, it
 is not testing anything.
 
-This document is for a person. The automated version lives in [`app/e2e/`](../app/e2e/) —
-but note that **`@playwright/test` is not installed and that suite has never run**. See
-[PENDING.md](PENDING.md). Install it with `npm i -D @playwright/test` before trusting
-`npm run test:e2e`.
+This document is for a **person**, walking the app by hand. It is not the automated suite
+and does not overlap with it much: the checks here are about whether a screen tells you the
+truth, which is easier for a human to judge than to assert.
+
+The automated suite lives in [`app/e2e/`](../app/e2e/) and **does now run** — 54 checks,
+currently all passing:
+
+```bash
+ADMIN_EMAIL=... ADMIN_PASSWORD=... \
+NODE_PATH=/path/to/a/playwright/node_modules node scripts/e2e.mjs
+```
+
+`npm run test:e2e` still does **not** work: `@playwright/test` has never installed here
+despite six attempts, and `playwright.config.ts` cannot resolve it. See
+[PENDING.md](PENDING.md).
+
+For a picture of what a passing run looks like, [AUTOMATED-TRADING.md](AUTOMATED-TRADING.md)
+is generated from that suite — 48 screenshots of a real paper book, including the refusals.
+
+**Where to go for what**
+
+| To do this | Read |
+|---|---|
+| Run strategies unattended | [AUTOMATION.md](AUTOMATION.md) |
+| Learn to trade | in-app `/start` and `/learn`, or [PAPER-TRADING-CAREER.md](PAPER-TRADING-CAREER.md) |
+| Know what is real and what is not built | [PENDING.md](PENDING.md) |
+| Understand the internals | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Set up API keys | [GETTING_STARTED.md](GETTING_STARTED.md), then [PROVIDERS.md](PROVIDERS.md) |
 
 ---
 
@@ -20,7 +44,7 @@ but note that **`@playwright/test` is not installed and that suite has never run
 ```bash
 cd app
 npm install
-npm run verify     # 614 tests, lint, build. Everything below assumes this is green.
+npm run verify     # 676 tests, lint, build. Everything below assumes this is green.
 npm run dev        # http://localhost:3000
 ```
 
@@ -468,6 +492,71 @@ decision, not a misclick.
 ❌ **Broken if:** the older book overwrites the newer one. This was a real hazard — the sync
 writes unconditionally, so a client that skipped a row it could not read would overwrite it 1.5
 seconds later.
+
+---
+
+## 15 · Automation — running strategies unattended
+
+The newest layer, and the one where "it looks like it is working" is most dangerous.
+
+**Enable a strategy.** `/strategies` → pick one → **Enable on <instrument>**. It starts in
+**review** mode.
+→ *Broken if* the panel claims nothing is placed without approval while an instance beside
+it says `places automatically`. That copy was wrong once, directly above an `auto` instance.
+
+**Watch it want something.** `/signals` shows what fired and why.
+→ *Broken if* a signal appears with no reason attached, or the page implies approval is the
+only thing protecting you. It should name the caps that bind an automatic order.
+
+**See what is running.** `/automation` lists every instance across all strategies, with a
+status line at the top.
+→ *Broken if* it says "Running on the server" when no scheduler is running. That status must
+come from a check-in that actually happened, never from a setting being switched on. With
+everything paused it must say **Not running**.
+
+**Stop something.** Each instance has **Pause** and **Delete**.
+→ *Broken if* Delete goes through without asking. Pause must keep the instrument, timeframe
+and parameters; only Delete may lose them.
+
+**Let a guardrail refuse you.** `/agents` → set **MAX ORDERS / DAY** to 1, then let a
+strategy try to trade again.
+→ *Broken if* the refusal only appears as a toast. It must be recorded on `/orders` with its
+reason, and the row must say which strategy was refused.
+
+**Check the exits are not trapped.** With a position open, set **MAX OPEN POSITIONS** to 1.
+→ *Broken if* you cannot close the position. Exposure caps apply to **opening** only — being
+unable to exit the trade that breached a limit is the opposite of a risk control.
+
+**Run it with no browser open** (optional, needs `CRON_SECRET`):
+
+```bash
+BASE_URL=http://localhost:3000 CRON_SECRET=... MAX_TICKS=3 ./scripts/scheduler.sh
+```
+
+→ *Broken if* it places an order while a tab is open. It must report
+`a browser tab holds the lease` and do nothing — two writers cannot share the ledger.
+→ *Broken if* a second tick re-places the same order. The same bar must not fire twice.
+→ *Broken if* it trades when `USD/INR` is unavailable. It should refuse rather than price
+your whole ₹ book on a fallback constant.
+
+**Check provenance.** `/orders` has a **Placed by** column.
+→ *Broken if* a strategy's order is indistinguishable from one you typed into the ticket.
+
+---
+
+## 16 · Learn — 135 lessons, 16 tracks
+
+**Try to cheat a lesson.** Open any practice lesson, e.g. `/learn/run-a-strategy`.
+→ *Broken if* you find a "mark as done" button anywhere. Every practice exercise is a
+predicate over your actual ledger; if one can be ticked, the curriculum is decoration.
+
+**Check a verified programme step.** `/start`.
+→ *Broken if* a step labelled *checked against your account* has a checkbox. Twelve steps are
+verified and must have nothing to click; six are self-marked and say so.
+
+**Check the visuals.** Any lesson.
+→ *Broken if* a lesson shows an empty framed box. Every one of the 135 has a visual, and a
+blank frame means a key that resolves to no component.
 
 ---
 
