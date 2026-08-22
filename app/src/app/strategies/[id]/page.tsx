@@ -37,8 +37,8 @@ export default function StrategyDetailPage({ params }: { params: Promise<{ id: s
 
     const instances = useStrategyStore((s) => s.instances);
     const addInstance = useStrategyStore((s) => s.add);
-    const removeInstance = useStrategyStore((s) => s.remove);
     const setMode = useStrategyStore((s) => s.setMode);
+    const setEnabledInstance = useStrategyStore((s) => s.setEnabled);
 
     // Default the form once the strategy resolves.
     useEffect(() => {
@@ -220,8 +220,13 @@ export default function StrategyDetailPage({ params }: { params: Promise<{ id: s
                     {!strategy.signalOnly && (
                         <Panel title="Run it live" className="mt-5">
                             <p className="text-xs text-foreground-muted">
-                                Runs against live candles and posts what it wants to do to the Signals screen.
-                                Nothing is placed until you approve it.
+                                Runs against live candles. It starts in <strong>review</strong> mode, which posts what
+                                it wants to do to the Signals screen and places nothing until you approve it.
+                                {/* This used to end at "nothing is placed until you approve it" — full stop — while
+                                    the very next line showed an instance sitting in `auto`, which places without
+                                    asking. True when written, false the moment automatic mode existed. */}
+                                {' '}An instance switched to <strong>automatic</strong> places orders on its own,
+                                subject to your guardrails.
                             </p>
                             <Button variant="primary" className="mt-3 w-full" onClick={enable} disabled={!symbol}>
                                 Enable on {symbol || '…'}
@@ -232,16 +237,25 @@ export default function StrategyDetailPage({ params }: { params: Promise<{ id: s
                                     {mine.map((i) => (
                                         <li key={i.id} className="flex items-center justify-between gap-2 text-xs">
                                             <span className="min-w-0 truncate">
-                                                {i.symbol} · {i.timeframe} · {i.mode}
+                                                {i.symbol} · {i.timeframe} · {!i.enabled ? 'paused' : i.mode === 'auto' ? 'places automatically' : 'asks first'}
                                             </span>
-                                            <span className="flex shrink-0 gap-1">
+                                            <span className="flex shrink-0 items-center gap-2">
                                                 <button
                                                     onClick={() => setMode(i.id, i.mode === 'auto' ? 'review' : 'auto')}
                                                     className="text-faint underline underline-offset-2 hover:text-foreground"
                                                 >
-                                                    {i.mode === 'auto' ? 'to review' : 'to auto'}
+                                                    {i.mode === 'auto' ? 'ask first' : 'let it place'}
                                                 </button>
-                                                <button onClick={() => removeInstance(i.id)} className="text-faint hover:text-down">stop</button>
+                                                {/* "stop" used to sit here and DELETE the instance along with every
+                                                    parameter you had tuned, styled identically to the link beside it.
+                                                    Pause and delete are different actions and now look different;
+                                                    delete lives on /automation behind a confirm. */}
+                                                <button
+                                                    onClick={() => setEnabledInstance(i.id, !i.enabled)}
+                                                    className="text-faint underline underline-offset-2 hover:text-foreground"
+                                                >
+                                                    {i.enabled ? 'pause' : 'resume'}
+                                                </button>
                                             </span>
                                         </li>
                                     ))}

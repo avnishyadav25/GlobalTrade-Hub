@@ -29,6 +29,28 @@ export interface AutomationLease {
     browserHeartbeatAt?: number;
     /** Epoch ms of the last server run that placed or evaluated. */
     serverRanAt?: number;
+    /**
+     * Signal ids already acted on, shared between the two runners.
+     *
+     * Lives on the lease rather than in per-runner memory because it is precisely the
+     * handover case it guards: whichever runner takes over starts with blank runtime
+     * memory and would otherwise re-place an order the other just made on the same bar.
+     */
+    actedSignalIds?: string[];
+    /**
+     * What the last server run actually did.
+     *
+     * Recorded so the UI can report evidence rather than intent. "Automation is on" is a
+     * setting; "the last run placed nothing because BTC/USDT gave no signal" is a fact,
+     * and only the second one tells you whether anything is working.
+     */
+    lastRun?: {
+        at: number;
+        placed: number;
+        refused: number;
+        /** Why nothing happened, when nothing happened. */
+        reason?: string;
+    };
 }
 
 export type LeaseHolder = 'browser' | 'server' | 'idle';

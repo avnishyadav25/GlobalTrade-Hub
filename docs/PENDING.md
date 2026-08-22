@@ -7,8 +7,9 @@ This is not `docs/AUDIT.md` — that stays as the historical record of the defec
 remediation. This file answers a different question: **if you sat down to use this app
 today, what would you find, and what would you not.**
 
-Verified against the code on **2026-08-12**. Counts: **621 tests across 31 files · 117
-lessons · 24 strategies · 30 page routes · 16 API routes.**
+Verified against the code on **2026-08-20**. Counts: **661 unit tests across 33 files ·
+135 lessons across 16 tracks · 24 strategies · 31 page routes · 19 API routes**, plus an
+end-to-end suite of ~50 checks in `app/e2e/`.
 
 ---
 
@@ -83,20 +84,28 @@ conservative) · NSE's 30-minute closing settlement average (last mark used inst
 
 ## Genuinely open
 
-### 1. Playwright is written but has never run
-`app/e2e/` and `playwright.config.ts` exist, `npm run test:e2e` is defined — and
-`@playwright/test` **is not installed**. **Four** install attempts have now timed out
-against the registry from this machine, across two Node versions and two npm versions,
-including one with a raised `--fetch-timeout`. Chromium itself is cached locally, so
-this is specific to fetching that one package.
+### 1. `npm run test:e2e` still does not work
+`@playwright/test` has never installed on this machine — five attempts, all timing out
+against the registry. The end-to-end suite is real and runs, but via `scripts/e2e.mjs`
+against a separately-supplied Playwright:
 
-Treat it as an environment problem rather than a project one: `npm i -D @playwright/test`
-from a machine that can reach the registry should be all it takes.
+```bash
+ADMIN_EMAIL=... ADMIN_PASSWORD=... NODE_PATH=/path/to/node_modules node scripts/e2e.mjs
+```
 
-`npm run verify` still passes because it does not include e2e. **`npm run test:e2e` will
-fail until `npm i -D @playwright/test` succeeds**, and the selectors in
-`honesty.spec.ts` have never been executed — expect to fix some on the first real run,
-because untested selectors are guesses.
+**54 checks, currently 0 failing.** Getting there took eleven rounds, and it is worth
+recording that **ten of the eleven defects were in the tests, not the app**: guessed
+selectors, a guessed localStorage key, fixed-interval waits, `networkidle` and
+`waitForURL` on a page that holds a websocket open, and assertions that encoded my
+assumptions rather than the app's contract. The suite only became worth believing once it
+distinguished "the UI did not accept the click" from "the value did not persist".
+
+The eleventh was real, and justified the exercise — see *Recently corrected*.
+
+Two operational notes. The lesson sweep samples one lesson per track by default;
+`E2E_ALL_LESSONS=1` walks all 135, which takes about an hour and leaves Yahoo throttling
+you. And the dev server has died three times under sustained suite load, so long
+unattended runs are not yet reliable.
 
 ### 2. Real option history has barely started
 The nightly snapshot is now scheduled (`vercel.json`, 10:15 UTC = 15:45 IST, just after
@@ -122,11 +131,11 @@ adapter, and all of `lib/notify` and `lib/ai`.
 ### 5. Stale documentation
 | File | State |
 |---|---|
-| `ARCHITECTURE.md` | Predates the options layer, workers, walk-forward and portfolio backtest. |
-| `DOCUMENTATION.md` | References `lib/backtestEngine.ts`, which does not exist. |
-| `PROVIDERS.md` | No Finnhub, no EIA, no NSE; still frames Twelve Data as current. |
-| `MARKET-DATA.md` | Mostly current; no row for the NSE option chain. |
-| `AUDIT.md` | Header says "1 open" but no `[ ]` row exists; the S5 heading claims S5.5–S5.7 are open when they are marked done. |
+| `ARCHITECTURE.md` | **Updated 2026-08-20** — now covers automation, the lease, provenance and the real test counts. |
+| `DOCUMENTATION.md` | **Updated** — the phantom `lib/backtestEngine.ts` reference is gone. |
+| `PROVIDERS.md` | **Updated** — it no longer tells you to set two variables the app never reads. |
+| `MARKET-DATA.md` | **Updated 2026-08-22** — the NSE option chain now has its own row and section. |
+| `AUDIT.md` | Header now reads "0 open" and no `[ ]` row exists, so the two agree. Check the S5 heading if you touch that section. |
 | `E2E_TESTING.md` | **Deleted** — described a suite that was never written and prescribed a script that does not exist. Superseded by `USER-ACCEPTANCE.md`. |
 
 ---
@@ -150,3 +159,13 @@ For the record, so the next audit does not re-find them:
   `MARKETDATA_*` variables read by nothing.
 - 95 lessons with no visual, and a visual registry where a key without a component gave a
   blank lesson and a passing test.
+- **A setting changed while a store was hydrating.** Listed here as open on 2026-08-20
+  and fixed the same week — the entry stayed after the fix, which is precisely the drift
+  this document exists to catch. Same root cause as the entry below.
+- **cloudSync silently discarding writes made during hydration.** Subscribers were
+  attached only after the hydration fetch resolved, so a setting changed in that window
+  was saved to localStorage and never sent to the server; the next reload then hydrated
+  the older row over it. Found by the end-to-end suite, and only because the failure was
+  intermittent — it passed alone and failed in a full run, where a busier server widened
+  the window. Note that `cloudSync.ts` remains untested (it imports stores), so this fix
+  rests on the e2e check and manual probes rather than a unit test.

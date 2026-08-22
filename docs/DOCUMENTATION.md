@@ -81,7 +81,8 @@ app/src/
 │   └── api/  auth/login · coach · agents/[agent] · brokers/connect · brokers/[broker]/order
 │             · notify · marketdata · state/[key] · cron/tick
 ├── components/  charts/ · terminal/ · layout/ · system/ (MarketEngine, AgentEngine, CloudSync)
-├── lib/  paperEngine · backtestEngine · scanner · coach · format · auth
+├── lib/  paperEngine · strategies/backtest · scanner · coach · format · auth
+│         automation/ (lease, decide, server store) · options/ · marketData/ · learn/
 │         ai/ (index, agents, types) · brokers/ (registry, adapters) · notify/ · supabase/ · marketData/
 └── stores/  market · paper · ui · coach · connections · agent
 supabase/migrations/  0001_globaltrade_hub.sql · 0002_app_state.sql

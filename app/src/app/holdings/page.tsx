@@ -59,7 +59,7 @@ export default function HoldingsPage() {
     const dayPnl = rows.reduce((a, r) => a + r.dayPnl, 0);
 
     const exit = (r: Row) => {
-        const result = place({ symbol: r.symbol, side: r.qty > 0 ? 'sell' : 'buy', type: 'market', qty: Math.abs(r.qty) });
+        const result = place({ symbol: r.symbol, side: r.qty > 0 ? 'sell' : 'buy', type: 'market', qty: Math.abs(r.qty), source: { kind: 'manual' } });
         if (result.status === 'rejected') toast.error('Could not exit', { description: result.reason });
         else toast.success(`Exited ${r.symbol}`);
         setExiting(null);

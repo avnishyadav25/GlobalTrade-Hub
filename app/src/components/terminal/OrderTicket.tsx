@@ -94,6 +94,7 @@ export function OrderTicket({ symbol, forcePaper = false }: { symbol: string; fo
             qty: q,
             limitPrice: type === 'limit' ? parseFloat(price) || px : undefined,
             stopPrice: type === 'sl' ? parseFloat(stop) || px : undefined,
+            source: { kind: 'manual' },
         });
 
         const label = `${side === 'buy' ? 'Buy' : 'Sell'} ${q} ${symbol} · ${type.toUpperCase()}`;

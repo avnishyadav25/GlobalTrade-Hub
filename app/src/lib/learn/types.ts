@@ -42,7 +42,8 @@ export interface Quiz {
 export type TrackId =
     | 'markets' | 'india-equity' | 'us-equity' | 'company' | 'technical'
     | 'crypto' | 'airdrops' | 'ipo' | 'derivatives' | 'forex'
-    | 'commodities' | 'other-markets' | 'strategy' | 'macro' | 'risk';
+    | 'commodities' | 'other-markets' | 'strategy' | 'macro' | 'risk'
+    | 'automation';
 
 /** Depth. A track spans several of these. */
 export type Level = 'foundation' | 'intermediate' | 'advanced' | 'expert';
@@ -78,6 +79,7 @@ export const TRACKS: Track[] = [
     { id: 'strategy', title: 'Strategy and systems', blurb: 'Turning an idea into rules, and testing it honestly.', order: 13 },
     { id: 'macro', title: 'News, macro and calendars', blurb: 'Rate decisions, inflation prints, and pricing expectations.', order: 14 },
     { id: 'risk', title: 'Risk, psychology and regulation', blurb: 'Ruin, bias, scams, and what protects you.', order: 15 },
+    { id: 'automation', title: 'Automation', blurb: 'Running rules unattended — and the guardrails that make that survivable.', order: 16 },
 ];
 
 /**

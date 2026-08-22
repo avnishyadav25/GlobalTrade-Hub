@@ -14,7 +14,7 @@ const ROUTES = new Set([
     '/terminal', '/orders', '/holdings', '/portfolio', '/funds', '/watchlists',
     '/alerts', '/scanner', '/insights', '/agents', '/settings', '/backtest', '/paper',
     '/learn', '/library', '/strategies', '/strategies/unavailable', '/signals', '/research',
-    '/backtest/walk-forward', '/backtest/portfolio', '/options', '/start',
+    '/backtest/walk-forward', '/backtest/portfolio', '/options', '/start', '/automation',
 ]);
 
 /** A fresh account with nothing done — every verifier must cope with this. */
@@ -26,9 +26,9 @@ const emptyCtx = (): VerifyContext => ({
 });
 
 describe('curriculum integrity', () => {
-    it('spans fifteen declared tracks and four levels', () => {
+    it('spans sixteen declared tracks and four levels', () => {
         expect(LESSONS.length).toBeGreaterThanOrEqual(16);
-        expect(TRACKS).toHaveLength(15);
+        expect(TRACKS).toHaveLength(16);
         expect(LEVELS).toHaveLength(4);
     });
 

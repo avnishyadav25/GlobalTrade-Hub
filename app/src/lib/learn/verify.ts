@@ -42,6 +42,65 @@ export const sizedBetween = (lo: number, hi: number) => (c: VerifyContext): Veri
     return { done: false, hint: `Place a trade worth between ${lo * 100}% and ${hi * 100}% of your equity — check "Order value" against "Buying power" on the ticket.` };
 };
 
+/**
+ * An order the LEDGER attributes to this strategy.
+ *
+ * Reads provenance recorded on the order rather than the strategy store or the signal
+ * queue. That matters for two reasons: the book is what cloud-syncs, so this progress
+ * follows you between devices; and enabling a strategy is an intention, whereas an order
+ * carrying its source is something that actually happened. A lesson gated on intention
+ * would be completable by clicking, which is the one thing the curriculum refuses to be.
+ *
+ * Counts refused orders too, deliberately: a strategy that fired and was blocked by a
+ * guardrail DID run, and watching it be refused is the more valuable lesson.
+ */
+export const placedByStrategy = (strategyId: string) => (c: VerifyContext): VerifyResult => {
+    const mine = c.state.orders.filter((o) => o.source?.kind === 'strategy' && o.source.strategyId === strategyId);
+    if (!mine.length) {
+        return {
+            done: false,
+            hint: `No order from this strategy yet. Enable it on an instrument, then approve its signal on **/signals** — or switch that instance to automatic and let it place on its own.`,
+        };
+    }
+    const filled = mine.filter((o) => o.status === 'filled').length;
+    const refused = mine.filter((o) => o.status === 'rejected').length;
+    return ok(
+        filled
+            ? `${filled} order${filled === 1 ? '' : 's'} placed by this strategy.`
+            : `This strategy fired ${refused} time${refused === 1 ? '' : 's'} and was refused — it ran, which is what this step asked for.`
+    );
+};
+
+/** Any strategy at all placed an order — the automation loop demonstrably ran. */
+export const placedByAnyStrategy = (c: VerifyContext): VerifyResult => {
+    const mine = c.state.orders.filter((o) => o.source?.kind === 'strategy');
+    const names = [...new Set(mine.map((o) => o.source?.strategyId).filter(Boolean))];
+    return mine.length
+        ? ok(`${mine.length} order${mine.length === 1 ? '' : 's'} placed by ${names.join(', ')}.`)
+        : {
+              done: false,
+              hint: 'Enable any strategy on an instrument, then approve its signal on **/signals** — or switch that instance to automatic and let it place unattended.',
+          };
+};
+
+/**
+ * A guardrail actually refused something.
+ *
+ * The point of the exercise is to be BLOCKED. A limit that has never refused you has
+ * never been tested, and finding out which one bites — and how it reads — is worth more
+ * than reading the list of them.
+ */
+export const refusedByAGuardrail = (c: VerifyContext): VerifyResult => {
+    const refused = c.state.orders.filter((o) => o.status === 'rejected' && o.rejectReason);
+    if (!refused.length) {
+        return {
+            done: false,
+            hint: 'No refused order yet. Set a guardrail deliberately low on **/agents** — MAX ORDERS / DAY of 1 is the quickest — then let a strategy try to trade again.',
+        };
+    }
+    return ok(`Refused ${refused.length} time${refused.length === 1 ? '' : 's'}. Most recent: "${refused[0].rejectReason}"`);
+};
+
 export const closedARoundTrip = (c: VerifyContext): VerifyResult =>
     c.state.account.roundTrips >= 1
         ? ok(`${c.state.account.roundTrips} round trip${c.state.account.roundTrips === 1 ? '' : 's'} completed.`)
