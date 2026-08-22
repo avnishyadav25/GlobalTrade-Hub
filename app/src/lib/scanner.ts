@@ -67,10 +67,30 @@ export function warmupStatus(): { ready: number; total: number } {
 
 const finite = (n: number | null | undefined): n is number => typeof n === 'number' && Number.isFinite(n);
 
+/**
+ * Where the scanner gets its history.
+ *
+ * Injectable so the rules can be tested without a live store. The defaults are the real
+ * seriesStore accessors, so every existing caller is unchanged — this is a widening of
+ * the signature, not a change of behaviour.
+ *
+ * Worth stating why this exists at all: all three of the scanner's fixed defects were in
+ * how these values are USED (a constant RSI, a hardcoded high, NaN comparisons failing
+ * open), and none of them could be pinned by a test while the values could only come from
+ * a store.
+ */
+export interface ScanSeries {
+    rsi: (symbol: string, period: number) => number | null;
+    rolling24h: (symbol: string) => { high: number; low: number } | null;
+}
+
+const LIVE_SERIES: ScanSeries = { rsi: seriesRsi, rolling24h };
+
 export function scan(
     criteria: ScanCriteria,
     quotes: Record<string, LiveQuote>,
-    sort: { key: 'changePercent' | 'rsi'; dir: SortDir } = { key: 'changePercent', dir: 'desc' }
+    sort: { key: 'changePercent' | 'rsi'; dir: SortDir } = { key: 'changePercent', dir: 'desc' },
+    series: ScanSeries = LIVE_SERIES
 ): ScanRow[] {
     const rows: ScanRow[] = [];
 
@@ -83,8 +103,8 @@ export function scan(
         const price = q.price;
         const changePercent = q.changePercent;
         const volume = q?.volume ?? a.volume;
-        const rsi = seriesRsi(a.symbol, RSI_PERIOD);
-        const range = rolling24h(a.symbol);
+        const rsi = series.rsi(a.symbol, RSI_PERIOD);
+        const range = series.rolling24h(a.symbol);
         const high = range?.high;
 
         // Every comparison fails CLOSED: a row whose metric is unknown is excluded
